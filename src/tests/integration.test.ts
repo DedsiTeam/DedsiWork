@@ -118,7 +118,7 @@ test("web create → actual MCP client read and update → web sees result and c
   const mcp = await client();
   try {
     const tools = await mcp.listTools();
-    expect(tools.tools.length).toBe(7);
+    expect(tools.tools.length).toBe(18);
     const found = toolResult<WorkItem>(
       await mcp.callTool({ name: "work_item_get", arguments: { id: item.id } }),
     );
@@ -236,7 +236,7 @@ test("oversized bodies rejected by HTTP server", async () => {
 test("modern protocol negotiation supports tool discovery and read calls", async () => {
   const mcp = await client(credentials.readToken, true);
   try {
-    expect((await mcp.listTools()).tools.length).toBe(7);
+    expect((await mcp.listTools()).tools.length).toBe(18);
     expect(
       (await mcp.callTool({ name: "work_item_list", arguments: {} })).isError,
     ).not.toBe(true);
@@ -330,4 +330,323 @@ test("trash purge endpoint enforces auth, CSRF, versions and atomic batch deleti
   expect((await response.json()).data.count).toBe(2);
   expect(() => app.service.get(a.id, true)).toThrow();
   expect(() => app.service.get(b.id, true)).toThrow();
+});
+
+test("sprint REST and MCP share lifecycle, ordering, conflicts and read permissions", async () => {
+  const { cookie, csrf } = await webSession();
+  const headers = {
+    Cookie: cookie,
+    "X-CSRF-Token": csrf,
+    "Content-Type": "application/json",
+  };
+  const payload = {
+    name: "跨入口冲刺",
+    goal: "验证看板",
+    startDate: "2026-10-14",
+    endDate: "2026-10-27",
+  };
+  expect(
+    (
+      await fetch(`${origin}/api/v1/sprints`, {
+        method: "POST",
+        headers: { Cookie: cookie, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+    ).status,
+  ).toBe(403);
+  const response = await fetch(`${origin}/api/v1/sprints`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  expect(response.status).toBe(201);
+  const sprint = (await response.json()).data;
+  const mcp = await client(),
+    reader = await client(credentials.readToken, true);
+  try {
+    const tools = (await mcp.listTools()).tools.map((t) => t.name);
+    for (const name of [
+      "sprint_list",
+      "sprint_get",
+      "sprint_create",
+      "sprint_update",
+      "sprint_start",
+      "sprint_add_items",
+      "sprint_remove_items",
+      "sprint_move_item",
+      "sprint_create_item",
+      "sprint_finish",
+    ])
+      expect(tools).toContain(name);
+    const created = toolResult<{ items: WorkItem[] }>(
+      await mcp.callTool({
+        name: "sprint_create_item",
+        arguments: {
+          id: sprint.id,
+          expectedVersion: 1,
+          item: { title: "冲刺卡片" },
+          status: "in_progress",
+          requestKey: "sprint-integration",
+        },
+      }),
+    );
+    const item = created.items[0]!;
+    expect(item.status).toBe("in_progress");
+    expect(
+      (
+        await fetch(`${origin}/api/v1/sprints/${sprint.id}/start`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ expectedVersion: 1 }),
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await fetch(`${origin}/api/v1/sprints/${sprint.id}/start`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ expectedVersion: 2 }),
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await reader.callTool({
+          name: "sprint_move_item",
+          arguments: {
+            id: sprint.id,
+            expectedVersion: 3,
+            itemId: item.id,
+            itemVersion: item.version,
+            status: "done",
+          },
+        })
+      ).isError,
+    ).toBe(true);
+    toolResult(
+      await mcp.callTool({
+        name: "sprint_move_item",
+        arguments: {
+          id: sprint.id,
+          expectedVersion: 3,
+          itemId: item.id,
+          itemVersion: item.version,
+          status: "done",
+        },
+      }),
+    );
+    const result = await fetch(`${origin}/api/v1/sprints/${sprint.id}`, {
+      headers,
+    });
+    expect((await result.json()).data.items[0].status).toBe("done");
+    toolResult(
+      await mcp.callTool({
+        name: "sprint_finish",
+        arguments: { id: sprint.id, expectedVersion: 4 },
+      }),
+    );
+    const final = toolResult<{ sprint: { state: string }; items: WorkItem[] }>(
+      await reader.callTool({
+        name: "sprint_get",
+        arguments: { id: sprint.id },
+      }),
+    );
+    expect(final.sprint.state).toBe("closed");
+    expect(final.items[0]?.status).toBe("done");
+  } finally {
+    await mcp.close();
+    await reader.close();
+  }
+}, 15000);
+
+test("MCP understands delivery stages, pause, blocking and return reasons", async () => {
+  const mcp = await client(),
+    reader = await client(credentials.readToken);
+  try {
+    let item = toolResult<WorkItem>(
+      await mcp.callTool({
+        name: "work_item_create",
+        arguments: { title: "workflow MCP", requestKey: "workflow-mcp" },
+      }),
+    );
+    for (const status of [
+      "in_review",
+      "in_verification",
+      "awaiting_acceptance",
+      "paused",
+    ] as const) {
+      item = toolResult<WorkItem>(
+        await mcp.callTool({
+          name: "work_item_update",
+          arguments: { id: item.id, expectedVersion: item.version, status },
+        }),
+      );
+      expect(item.status).toBe(status);
+    }
+    item = toolResult<WorkItem>(
+      await mcp.callTool({
+        name: "work_item_update",
+        arguments: {
+          id: item.id,
+          expectedVersion: item.version,
+          status: "in_review",
+          blockedReason: "等待评审人",
+        },
+      }),
+    );
+    const flagged = toolResult<{ data: WorkItem[] }>(
+      await reader.callTool({
+        name: "work_item_list",
+        arguments: { blocked: "true", q: "workflow MCP" },
+      }),
+    );
+    expect(flagged.data[0]?.status).toBe("in_review");
+    expect(
+      (
+        await reader.callTool({
+          name: "work_item_update",
+          arguments: {
+            id: item.id,
+            expectedVersion: item.version,
+            blockedReason: "",
+          },
+        })
+      ).isError,
+    ).toBe(true);
+    expect(
+      (
+        await mcp.callTool({
+          name: "work_item_update",
+          arguments: {
+            id: item.id,
+            expectedVersion: item.version,
+            status: "in_progress",
+          },
+        })
+      ).isError,
+    ).toBe(true);
+    item = toolResult<WorkItem>(
+      await mcp.callTool({
+        name: "work_item_update",
+        arguments: {
+          id: item.id,
+          expectedVersion: item.version,
+          status: "in_progress",
+          transitionReason: "补充异常处理",
+        },
+      }),
+    );
+    expect(item.blockedReason).toBe("等待评审人");
+  } finally {
+    await mcp.close();
+    await reader.close();
+  }
+});
+
+test("empty sprint deletion works across REST and MCP and requires confirmation", async () => {
+  const { cookie, csrf } = await webSession();
+  const headers = {
+    Cookie: cookie,
+    "X-CSRF-Token": csrf,
+    "Content-Type": "application/json",
+  };
+  const response = await fetch(`${origin}/api/v1/sprints`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      name: "empty delete",
+      startDate: "2026-10-14",
+      endDate: "2026-10-27",
+    }),
+  });
+  const sprint = (await response.json()).data;
+  const body = JSON.stringify({
+    expectedVersion: sprint.version,
+    confirmed: true,
+  });
+  expect(
+    (
+      await fetch(`${origin}/api/v1/sprints/${sprint.id}`, {
+        method: "DELETE",
+        headers: { Cookie: cookie, "Content-Type": "application/json" },
+        body,
+      })
+    ).status,
+  ).toBe(403);
+  expect(
+    (
+      await fetch(`${origin}/api/v1/sprints/${sprint.id}`, {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ expectedVersion: sprint.version }),
+      })
+    ).status,
+  ).toBe(400);
+  const mcp = await client(),
+    reader = await client(credentials.readToken);
+  try {
+    const tool = (await mcp.listTools()).tools.find(
+      (x) => x.name === "sprint_delete",
+    );
+    expect(tool?.annotations?.destructiveHint).toBe(true);
+    expect(
+      (
+        await reader.callTool({
+          name: "sprint_delete",
+          arguments: {
+            id: sprint.id,
+            expectedVersion: sprint.version,
+            confirmed: true,
+          },
+        })
+      ).isError,
+    ).toBe(true);
+    expect(
+      (
+        await mcp.callTool({
+          name: "sprint_delete",
+          arguments: {
+            id: sprint.id,
+            expectedVersion: sprint.version + 1,
+            confirmed: true,
+          },
+        })
+      ).isError,
+    ).toBe(true);
+    const result = toolResult<{ deleted: boolean }>(
+      await mcp.callTool({
+        name: "sprint_delete",
+        arguments: {
+          id: sprint.id,
+          expectedVersion: sprint.version,
+          confirmed: true,
+        },
+      }),
+    );
+    expect(result.deleted).toBe(true);
+    expect(
+      (await fetch(`${origin}/api/v1/sprints/${sprint.id}`, { headers }))
+        .status,
+    ).toBe(404);
+    const empty = app.sprints.create(
+      { name: "REST delete", startDate: "2026-10-14", endDate: "2026-10-27" },
+      { source: "web", identity: "test", writable: true, requestId: "test" },
+    );
+    expect(
+      (
+        await fetch(`${origin}/api/v1/sprints/${empty.id}`, {
+          method: "DELETE",
+          headers,
+          body: JSON.stringify({
+            expectedVersion: empty.version,
+            confirmed: true,
+          }),
+        })
+      ).status,
+    ).toBe(200);
+  } finally {
+    await mcp.close();
+    await reader.close();
+  }
 });

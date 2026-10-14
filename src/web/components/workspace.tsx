@@ -1,14 +1,14 @@
 import { useState } from "react";
 import {
   ArrowUpRight,
-  Circle,
-  CircleCheck,
-  CircleDot,
+  ListTodo,
+  Check,
+  Play,
   Command,
   Database,
   Link2,
   Loader2,
-  MoreHorizontal,
+  Pause,
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "./ui/button";
@@ -33,12 +33,16 @@ export function Mark() {
 export function Status({ status }: { status: WorkItem["status"] }) {
   const Icon =
     status === "done"
-      ? CircleCheck
+      ? Check
       : status === "in_progress"
-        ? CircleDot
-        : status === "blocked"
-          ? MoreHorizontal
-          : Circle;
+        ? Play
+        : status === "paused"
+          ? Pause
+          : status === "in_review" || status === "awaiting_acceptance"
+            ? ShieldCheck
+            : status === "in_verification"
+              ? Loader2
+              : ListTodo;
   return (
     <span className={`status status-${status}`}>
       <Icon size={13} />

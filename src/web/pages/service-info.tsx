@@ -29,7 +29,6 @@ export function ServiceInfo() {
       <div className="page-heading">
         <div>
           <h1>服务与 MCP</h1>
-          <p>连接你的 AI 工具，让工作项在同一个空间流转。</p>
         </div>
       </div>
       {error && (
@@ -75,7 +74,7 @@ export function ServiceInfo() {
                   <Link2 size={18} /> MCP 连接
                 </CardTitle>
                 <CardDescription>
-                  Streamable HTTP · 7 个工作项工具
+                  Streamable HTTP · 7 个工作项工具 · 11 个冲刺工具
                 </CardDescription>
               </CardHeader>
               <CardContent className="info-list">

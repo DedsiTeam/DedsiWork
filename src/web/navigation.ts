@@ -1,10 +1,12 @@
 import {
+  Columns3,
   LayoutList,
   CircleDot,
   CircleCheck,
   Trash2,
   Settings2,
   ListTodo,
+  Boxes,
 } from "lucide-react";
 export const navigation = [
   {
@@ -36,7 +38,14 @@ export const navigation = [
         icon: Trash2,
         count: "trash" as const,
       },
+      { to: "/work-items/sprints", label: "冲刺看板", icon: Columns3 },
     ],
+  },
+  {
+    id: "domain-models",
+    label: "领域模型",
+    icon: Boxes,
+    children: [{ to: "/domain-models", label: "模型管理", icon: Boxes }],
   },
   {
     id: "system",

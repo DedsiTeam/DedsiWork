@@ -3,15 +3,13 @@ import {
   ArrowDown,
   ChevronLeft,
   ChevronRight,
-  CircleCheck,
-  CircleDot,
-  FileText,
   LayoutList,
   Plus,
   RefreshCw,
   Search,
   Trash2,
   X,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -39,6 +37,7 @@ export function WorkItemsPage({
 }) {
   const navigate = useNavigate();
   const { summary, setSummary } = useWorkspace();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [status, setStatus] = useState(initialStatus),
     [type, setType] = useState("all"),
     [priority, setPriority] = useState("all");
@@ -207,57 +206,17 @@ export function WorkItemsPage({
                   : status === "done"
                     ? "已完成的工作"
                     : "全部工作项"}
+              <span className="title-count">{result.meta.total}</span>
             </h1>
-            <p>
-              {view === "trash"
-                ? "恢复误删的工作项，或永久删除不再需要的内容。"
-                : "把每一件事安排妥当，让重要的工作持续向前。"}
-            </p>
           </div>
           {view !== "trash" && (
-            <Button onClick={() => open(null)}>
-              <Plus />
-              新建工作项
-            </Button>
+            <div className="sprint-header-actions">
+              <Button onClick={() => open(null)}>
+                <Plus />
+                新建工作项
+              </Button>
+            </div>
           )}
-        </div>
-        <div className="overview">
-          <div>
-            <span className="metric-icon">
-              <LayoutList size={19} />
-            </span>
-            <div>
-              <span>全部工作项</span>
-              <strong>
-                {summary.total}
-                <small>项工作</small>
-              </strong>
-            </div>
-          </div>
-          <div>
-            <span className="metric-icon progress">
-              <CircleDot size={19} />
-            </span>
-            <div>
-              <span>正在推进</span>
-              <strong>
-                {summary.inProgress}
-                <small>保持专注</small>
-              </strong>
-            </div>
-          </div>
-          <div>
-            <span className="metric-icon done">
-              <CircleCheck size={19} />
-            </span>
-            <div>
-              <span>已经完成</span>
-              <strong>
-                {summary.done}
-                <small>每一步都算数</small>
-              </strong>
-            </div>
-          </div>
         </div>
         <div className="work-layout">
           <section className="list-panel" aria-label="工作项列表">
@@ -271,7 +230,31 @@ export function WorkItemsPage({
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <div className="filter-toolbar">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-expanded={filtersOpen}
+                aria-controls="work-item-filters"
+                onClick={() => setFiltersOpen((value) => !value)}
+              >
+                <SlidersHorizontal />
+                筛选
+                {[status, type, priority].filter((value) => value !== "all")
+                  .length > 0 && (
+                  <span className="filter-count">
+                    {
+                      [status, type, priority].filter(
+                        (value) => value !== "all",
+                      ).length
+                    }
+                  </span>
+                )}
+              </Button>
+              <div
+                id="work-item-filters"
+                className="filter-toolbar"
+                hidden={!filtersOpen}
+              >
                 <Choice
                   label="筛选状态"
                   value={status}
@@ -306,7 +289,7 @@ export function WorkItemsPage({
               </span>
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon-sm"
                 aria-label="刷新工作项"
                 onClick={() => refresh()}
                 disabled={loading}
@@ -316,7 +299,22 @@ export function WorkItemsPage({
             </div>
             {view === "trash" && (
               <div className="trash-actions">
-                <span>已选 {selected.length} 项 · 全选仅限当前页</span>
+                <label className="task-select-all">
+                  <input
+                    ref={selectAll}
+                    type="checkbox"
+                    aria-label="全选当前页"
+                    checked={
+                      result.data.length > 0 &&
+                      selected.length === result.data.length
+                    }
+                    disabled={!result.data.length || loading || purging}
+                    onChange={(event) =>
+                      setSelected(event.target.checked ? [...result.data] : [])
+                    }
+                  />
+                  全选当前页 <span>已选 {selected.length} 项</span>
+                </label>
                 <Button
                   variant="outline"
                   size="sm"
@@ -336,125 +334,92 @@ export function WorkItemsPage({
                 </Button>
               </div>
             )}
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    {view === "trash" && (
-                      <th className="selection-cell">
-                        <input
-                          ref={selectAll}
-                          type="checkbox"
-                          aria-label="全选当前页"
-                          checked={
-                            result.data.length > 0 &&
-                            selected.length === result.data.length
-                          }
-                          disabled={!result.data.length || loading || purging}
-                          onChange={(event) =>
-                            setSelected(
-                              event.target.checked ? [...result.data] : [],
-                            )
-                          }
-                        />
-                      </th>
-                    )}
-                    <th className="item-title-column">工作项</th>
-                    <th>状态</th>
-                    <th>优先级</th>
-                    <th>更新时间</th>
-                    <th className="item-actions-column">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.data.map((item) => (
-                    <tr key={item.id}>
-                      {view === "trash" && (
-                        <td className="selection-cell">
-                          <input
-                            type="checkbox"
-                            aria-label={`选择 ${item.title}`}
-                            checked={selected.some(
-                              (target) => target.id === item.id,
-                            )}
-                            disabled={loading || purging}
-                            onChange={(event) =>
-                              setSelected((previous) =>
-                                event.target.checked
-                                  ? [...previous, item]
-                                  : previous.filter(
-                                      (target) => target.id !== item.id,
-                                    ),
-                              )
-                            }
-                          />
-                        </td>
-                      )}
-                      <td>
-                        <button
-                          className="item-link"
-                          onClick={() => open(item)}
-                        >
-                          <span className="item-type">
-                            <FileText size={17} />
-                          </span>
-                          <span>
-                            <strong>{item.title}</strong>
-                            <small>
-                              {typeLabels[item.type]}
-                              <span>·</span>
-                              {item.id.slice(0, 8).toUpperCase()}
-                            </small>
-                          </span>
-                        </button>
-                      </td>
-                      <td>
-                        <Status status={item.status} />
-                      </td>
-                      <td>
-                        <span className={`priority priority-${item.priority}`}>
-                          <span className="priority-bars">
-                            {item.priority === "urgent"
-                              ? "▂▅█"
-                              : item.priority === "high"
-                                ? "▂▅"
-                                : item.priority === "normal"
-                                  ? "▂"
-                                  : "—"}
-                          </span>
-                          {priorityLabels[item.priority]}
-                        </span>
-                      </td>
-                      <td className="updated-cell">
-                        {formatDate(item.updatedAt)}
-                      </td>
-                      {view !== "trash" && (
-                        <td className="item-actions-column">
-                          <CopyForCodex
-                            item={item}
-                            disabled={loading}
-                            onNotice={setNotice}
-                          />
-                        </td>
-                      )}
-                      {view === "trash" && (
-                        <td>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={loading || purging}
-                            aria-label={`永久删除 ${item.title}`}
-                            onClick={() => confirmPurge([item])}
+            <div className="task-list" role="list" aria-busy={loading}>
+              {result.data.map((item) => (
+                <article className="task-row" role="listitem" key={item.id}>
+                  {view === "trash" && (
+                    <input
+                      className="task-checkbox"
+                      type="checkbox"
+                      aria-label={`选择 ${item.title}`}
+                      checked={selected.some((target) => target.id === item.id)}
+                      disabled={loading || purging}
+                      onChange={(event) =>
+                        setSelected((previous) =>
+                          event.target.checked
+                            ? [...previous, item]
+                            : previous.filter(
+                                (target) => target.id !== item.id,
+                              ),
+                        )
+                      }
+                    />
+                  )}
+                  <button className="task-main" onClick={() => open(item)}>
+                    <span
+                      className={`task-state task-state-${item.status}`}
+                      title={statusLabels[item.status]}
+                    >
+                      <Status status={item.status} />
+                    </span>
+                    <span className="task-copy">
+                      <strong
+                        className={
+                          item.status === "done" ? "task-completed" : ""
+                        }
+                      >
+                        {item.title}
+                      </strong>
+                      <span className="task-context">
+                        {typeLabels[item.type]}
+                        {item.blockedReason && (
+                          <span
+                            className="work-item-blocked"
+                            title={item.blockedReason}
                           >
-                            <Trash2 />
-                            永久删除
-                          </Button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            {" "}
+                            · 已阻塞
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  </button>
+                  <div className="task-meta">
+                    <span className={`priority priority-${item.priority}`}>
+                      {priorityLabels[item.priority]}
+                    </span>
+                    <time
+                      title={`最近更新：${formatDate(item.updatedAt)}`}
+                      dateTime={item.dueAt || item.updatedAt}
+                    >
+                      {item.dueAt
+                        ? `截止 ${formatDate(item.dueAt)}`
+                        : formatDate(item.updatedAt)}
+                    </time>
+                  </div>
+                  <div className="row-reveal task-row-actions">
+                    {view === "trash" ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title="永久删除"
+                        disabled={loading || purging}
+                        aria-label={`永久删除 ${item.title}`}
+                        onClick={() => confirmPurge([item])}
+                      >
+                        <Trash2 />
+                      </Button>
+                    ) : (
+                      <CopyForCodex
+                        compact
+                        item={item}
+                        disabled={loading}
+                        onNotice={setNotice}
+                      />
+                    )}
+                  </div>
+                </article>
+              ))}
             </div>
             {!result.data.length && !error && (
               <div className="empty-state">

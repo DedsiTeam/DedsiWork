@@ -12,9 +12,13 @@ import {
   StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
 
+const binarySuffix =
+  process.platform === "darwin"
+    ? `${process.arch === "arm64" ? "aarch64" : "x86_64"}-apple-darwin`
+    : "x86_64-pc-windows-msvc.exe";
 const binary = resolve(
   import.meta.dir,
-  "../src-tauri/binaries/dedsiwork-service-x86_64-pc-windows-msvc.exe",
+  `../src-tauri/binaries/dedsiwork-service-${binarySuffix}`,
 );
 const root = resolve(import.meta.dir, "../.qa");
 mkdirSync(root, { recursive: true });
@@ -108,7 +112,7 @@ desktopTest(
             },
           }),
         );
-        expect((await mcp.listTools()).tools.length).toBe(7);
+        expect((await mcp.listTools()).tools.length).toBe(18);
       } finally {
         await mcp.close();
       }

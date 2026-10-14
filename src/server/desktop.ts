@@ -12,6 +12,9 @@ if (!bootstrapToken || bootstrapToken.length < 32)
   throw new Error("Missing desktop launch token");
 delete process.env.DEDSIWORK_DESKTOP_TOKEN;
 const app = createApp({ ...config, origin });
+// Warm up the private App Server automatically. The AI page surfaces failures
+// and retries startup without preventing the rest of the workspace from opening.
+void app.startAI().catch(() => {});
 let bootstrapUsed = false;
 const bootstrapExpires = Date.now() + 60_000;
 let closing = false;

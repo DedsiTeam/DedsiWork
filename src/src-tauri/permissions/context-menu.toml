@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-context-menu"
+description = "允许主窗口显示中文右键菜单。"
+commands.allow = ["show_context_menu"]

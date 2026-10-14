@@ -9,6 +9,7 @@ node_modules/
 dist/
 out/
 target/
+src/src-tauri/binaries/
 coverage/
 *.lcov
 *.tsbuildinfo

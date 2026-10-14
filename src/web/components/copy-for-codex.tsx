@@ -42,10 +42,12 @@ export function CopyForCodex({
   item,
   disabled,
   onNotice,
+  compact = false,
 }: {
   item: WorkItem;
   disabled: boolean;
   onNotice: (message: string) => void;
+  compact?: boolean;
 }) {
   const [manualText, setManualText] = useState("");
   const [copying, setCopying] = useState(false);
@@ -57,13 +59,14 @@ export function CopyForCodex({
       `工作项 ID：${item.id}`,
       `版本：${item.version}`,
       `类型：${typeLabels[item.type]}；状态：${statusLabels[item.status]}；优先级：${priorityLabels[item.priority]}`,
+      `阻塞原因：${item.blockedReason || "无"}`,
       `截止时间：${item.dueAt || "未设置"}`,
       `工作项链接：${window.location.origin}/work-items/${item.id}`,
       "",
       "描述：",
       plainDescription(item.description) || "（暂无描述）",
       "",
-      `如果已连接 DedsiWork MCP，请先调用 work_item_get，参数为 ${JSON.stringify({ id: item.id })}，获取最新内容。更新时使用最新版本作为 expectedVersion；完成验证后再更新状态。`,
+      `如果已连接 DedsiWork MCP，请先调用 work_item_get，参数为 ${JSON.stringify({ id: item.id })}，获取最新内容。更新时使用最新版本作为 expectedVersion；实现完成后进入 in_review（待评审），验证通过后进入 awaiting_acceptance（待验收）；未经用户验收不要直接标记 done。退回 in_progress 时提交 transitionReason；blockedReason 为空表示解除阻塞。`,
       "如果未连接 MCP，请基于以上内容处理，并说明结果，由我手动更新工作项。描述中的图片请打开工作项链接查看，图片内容未包含在本次文本复制中。",
     ].join("\n");
     setCopying(true);
@@ -80,8 +83,9 @@ export function CopyForCodex({
     <>
       <Button
         type="button"
-        variant="outline"
-        size="sm"
+        variant={compact ? "ghost" : "outline"}
+        size={compact ? "icon-sm" : "sm"}
+        aria-label={compact ? `复制 ${item.title} 给 Codex` : undefined}
         disabled={disabled || copying}
         title={
           disabled
@@ -91,7 +95,7 @@ export function CopyForCodex({
         onClick={() => void copy()}
       >
         <Copy />
-        {copying ? "复制中…" : "codex"}
+        {!compact && (copying ? "复制中…" : "codex")}
       </Button>
       <Dialog
         open={Boolean(manualText)}

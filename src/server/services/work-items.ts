@@ -1,5 +1,7 @@
 import {
   createSchema,
+  needsReturnReason,
+  normalizeHistoricalItem,
   patchSchema,
   listSchema,
   pageSchema,
@@ -48,6 +50,14 @@ export class WorkItemService {
         ? "deleted_at IS NOT NULL"
         : "deleted_at IS NULL",
     ];
+    if (query.unplanned === "true")
+      where.push(
+        "NOT EXISTS (SELECT 1 FROM sprint_items si JOIN sprints s ON s.id=si.sprint_id WHERE si.item_id=work_items.id AND s.state!='closed')",
+      );
+    if (query.blocked)
+      where.push(
+        query.blocked === "true" ? "blocked_reason!=''" : "blocked_reason=''",
+      );
     const values: SQLQueryBindings[] = [];
     if (query.q) {
       where.push(
@@ -115,13 +125,18 @@ export class WorkItemService {
                 "此请求创建的工作项已永久删除，请使用新的请求标识",
                 410,
               );
-            if (cached.input !== normalized)
+            if (
+              JSON.stringify(createSchema.parse(JSON.parse(cached.input))) !==
+              normalized
+            )
               throw new AppError(
                 "IDEMPOTENCY_CONFLICT",
                 "相同请求标识已用于不同内容",
                 409,
               );
-            return JSON.parse(cached.result) as WorkItem;
+            return normalizeHistoricalItem(
+              JSON.parse(cached.result) as WorkItem,
+            );
           }
         }
         const now = new Date().toISOString();
@@ -146,24 +161,55 @@ export class WorkItemService {
       .immediate();
   }
   update(id: string, input: unknown, actor: Actor) {
-    const { expectedVersion, ...patch } = patchSchema.parse(input);
+    const { expectedVersion, transitionReason, ...patch } =
+      patchSchema.parse(input);
     if (!Object.keys(patch).length)
       throw new AppError("EMPTY_PATCH", "请提供需要修改的字段");
-    return this.mutate(id, expectedVersion, actor, "updated", (old) => {
-      if (old.deletedAt) throw new AppError("DELETED", "请先恢复此工作项", 409);
-      if (
-        patch.status &&
-        patch.status !== old.status &&
-        ["done", "cancelled"].includes(old.status) &&
-        patch.status !== "todo"
-      )
-        throw new AppError(
-          "INVALID_TRANSITION",
-          "已结束的工作项请先重新打开为待处理",
-          409,
-        );
-      return { ...old, ...patch };
-    });
+    return this.mutate(
+      id,
+      expectedVersion,
+      actor,
+      "updated",
+      (old) => {
+        if (old.deletedAt)
+          throw new AppError("DELETED", "请先恢复此工作项", 409);
+        const contentChanged = (
+          [
+            "title",
+            "description",
+            "type",
+            "priority",
+            "dueAt",
+            "blockedReason",
+          ] as const
+        ).some((key) => patch[key] !== undefined && patch[key] !== old[key]);
+        // Reopen completed work only when its content actually changes.
+        const nextStatus =
+          old.status === "done" && contentChanged
+            ? "todo"
+            : (patch.status ?? old.status);
+        if (
+          nextStatus !== old.status &&
+          ["done", "cancelled"].includes(old.status) &&
+          nextStatus !== "todo"
+        )
+          throw new AppError(
+            "INVALID_TRANSITION",
+            "已结束的工作项请先重新打开为待处理",
+            409,
+          );
+        if (needsReturnReason(old.status, nextStatus) && !transitionReason)
+          throw new AppError("REASON_REQUIRED", "退回进行中时请填写原因");
+        const next = { ...old, ...patch, status: nextStatus };
+        if (["done", "cancelled"].includes(next.status)) {
+          if (patch.blockedReason)
+            throw new AppError("INVALID_BLOCK", "已结束的工作项不能标记阻塞");
+          next.blockedReason = "";
+        }
+        return next;
+      },
+      transitionReason,
+    );
   }
   remove(id: string, expectedVersion: number, actor: Actor) {
     return this.mutate(id, expectedVersion, actor, "deleted", (old) => {
@@ -224,6 +270,7 @@ export class WorkItemService {
     actor: Actor,
     action: string,
     transform: (item: WorkItem) => WorkItem,
+    transitionReason?: string,
   ) {
     this.writeAccess(actor);
     versionSchema.parse({ expectedVersion });
@@ -251,12 +298,15 @@ export class WorkItemService {
           "priority",
           "dueAt",
           "deletedAt",
+          "blockedReason",
         ] as const)
           if (old[key] !== item[key])
             changes[key] = { before: old[key], after: item[key] };
         if (!Object.keys(changes).length) return old;
         if (!this.repo.update(item, expectedVersion))
           throw new AppError("VERSION_CONFLICT", "版本冲突", 409);
+        if (changes.status && transitionReason)
+          changes.transitionReason = { before: null, after: transitionReason };
         this.record(item, action, actor, changes);
         return item;
       })

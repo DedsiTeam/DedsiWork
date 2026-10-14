@@ -1,15 +1,21 @@
 import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
+import { homedir } from "node:os";
 const root = resolve(import.meta.dir, "..");
 // Existing shells may not yet see the PATH updated by rustup.
-const cargoBin = join(process.env.USERPROFILE || "", ".cargo", "bin");
+const cargoBin = join(homedir(), ".cargo", "bin");
 const env = Object.fromEntries(
   Object.entries(process.env).filter(([key]) => key.toLowerCase() !== "path"),
 );
-env.PATH = `${cargoBin};${process.env.PATH || process.env.Path || ""}`;
-if (!existsSync(join(cargoBin, "cargo.exe")) && !Bun.which("cargo")) {
+env.PATH = `${cargoBin}${delimiter}${process.env.PATH || process.env.Path || ""}`;
+if (
+  !existsSync(
+    join(cargoBin, process.platform === "win32" ? "cargo.exe" : "cargo"),
+  ) &&
+  !Bun.which("cargo")
+) {
   console.error(
-    "请先通过 https://rustup.rs 安装 Rust，并安装 Visual Studio C++ Build Tools 与 Windows SDK。",
+    "请先通过 https://rustup.rs 安装 Rust；macOS 需要 Xcode Command Line Tools，Windows 需要 Visual Studio C++ Build Tools 与 Windows SDK。",
   );
   process.exit(1);
 }

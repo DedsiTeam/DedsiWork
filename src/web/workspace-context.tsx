@@ -14,6 +14,7 @@ export const WorkspaceContext = createContext<{
   summary: Summary;
   setSummary: Dispatch<SetStateAction<Summary>>;
   refreshSummary: () => void;
+  notify: (message: string, tone?: "success" | "error") => void;
 } | null>(null);
 export function useWorkspace() {
   const context = useContext(WorkspaceContext);

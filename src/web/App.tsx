@@ -1,12 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
 import { Outlet, useMatches, useLocation } from "react-router";
-import { ChevronRight, FolderOpen } from "lucide-react";
 import { api, setCsrf } from "./api";
 import { Mark, Pairing } from "./components/workspace";
 import { Sidebar } from "./components/sidebar";
+import { useWindowDrag } from "./components/window-drag";
 import { WorkspaceContext, type Summary } from "./workspace-context";
+import { Check, AlertTriangle, X } from "lucide-react";
 export function App() {
+  const windowDrag = useWindowDrag();
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [notification, setNotification] = useState<{
+    id: string;
+    message: string;
+    tone: "success" | "error";
+  } | null>(null);
+  const notify = useCallback(
+    (message: string, tone: "success" | "error" = "success") => {
+      setNotification({ id: crypto.randomUUID(), message, tone });
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!notification) return;
+    const timer = setTimeout(
+      () => setNotification(null),
+      notification.tone === "error" ? 6000 : 4000,
+    );
+    return () => clearTimeout(timer);
+  }, [notification]);
   const [summary, setSummary] = useState<Summary>({
     total: 0,
     inProgress: 0,
@@ -61,22 +82,36 @@ export function App() {
   if (!authenticated)
     return <Pairing onConnected={() => setAuthenticated(true)} />;
   return (
-    <WorkspaceContext.Provider value={{ summary, setSummary, refreshSummary }}>
+    <WorkspaceContext.Provider
+      value={{ summary, setSummary, refreshSummary, notify }}
+    >
       <div className="app-shell">
         <Sidebar />
         <main className="main-area">
-          <header className="topbar">
-            <div>
-              <FolderOpen size={15} />
-              <span>
-                {location.pathname.startsWith("/settings") ? "设置" : "工作项"}
-              </span>
-              <ChevronRight size={13} />
-              <strong>{title}</strong>
-            </div>
-          </header>
+          <header className="topbar" {...windowDrag} />
           <Outlet />
         </main>
+        {notification && (
+          <div
+            key={notification.id}
+            className={`workspace-toast workspace-toast-${notification.tone}`}
+            role={notification.tone === "error" ? "alert" : "status"}
+          >
+            {notification.tone === "error" ? (
+              <AlertTriangle size={15} aria-hidden="true" />
+            ) : (
+              <Check size={15} aria-hidden="true" />
+            )}
+            <span>{notification.message}</span>
+            <button
+              type="button"
+              aria-label="关闭提示"
+              onClick={() => setNotification(null)}
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
       </div>
     </WorkspaceContext.Provider>
   );

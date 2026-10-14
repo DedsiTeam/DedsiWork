@@ -3,12 +3,28 @@ import { App } from "./App";
 import { WorkItemsPage } from "./pages/work-items";
 import { WorkItemPage } from "./pages/work-item";
 import { ServiceInfo } from "./pages/service-info";
+import { DomainModelsPage } from "./pages/domain-models";
+import { DomainModelPage } from "./pages/domain-model";
+import { DomainModelDiagramPage } from "./pages/domain-model-diagram";
+import { AssistantPage } from "./pages/assistant";
+import { SprintsPage } from "./pages/sprints";
 export const router = createBrowserRouter([
   {
     path: "/",
     Component: App,
     children: [
+      {
+        path: "work-items/sprints",
+        Component: SprintsPage,
+        handle: { title: "冲刺看板" },
+      },
       { index: true, element: <Navigate to="/work-items" replace /> },
+      {
+        path: "assistant",
+        Component: AssistantPage,
+        handle: { title: "AI 助手" },
+      },
+      { path: "chat", element: <Navigate to="/assistant?mode=chat" replace /> },
       {
         path: "work-items",
         element: <WorkItemsPage key="all" />,
@@ -35,9 +51,37 @@ export const router = createBrowserRouter([
         handle: { title: "创建工作项" },
       },
       {
+        path: "work-items/ai",
+        element: <Navigate to="/assistant" replace />,
+      },
+      {
         path: "work-items/:id",
         Component: WorkItemPage,
         handle: { title: "修改工作项" },
+      },
+      {
+        path: "domain-models",
+        Component: DomainModelsPage,
+        handle: { title: "领域模型" },
+      },
+      {
+        path: "domain-models/new",
+        element: <DomainModelPage key="new-domain-model" />,
+        handle: { title: "新建领域模型" },
+      },
+      {
+        path: "domain-models/ai",
+        element: <Navigate to="/assistant" replace />,
+      },
+      {
+        path: "domain-models/:id/diagram",
+        Component: DomainModelDiagramPage,
+        handle: { title: "领域模型一张图" },
+      },
+      {
+        path: "domain-models/:id",
+        Component: DomainModelPage,
+        handle: { title: "编辑领域模型" },
       },
       {
         path: "settings/service",

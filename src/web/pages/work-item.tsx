@@ -5,16 +5,16 @@ import { Button } from "../components/ui/button";
 import { api } from "../api";
 import { useWorkspace } from "../workspace-context";
 import type { WorkItem } from "../../shared/work-item";
+import { AssistantSource } from "../components/assistant-source";
 
 export function WorkItemPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { refreshSummary } = useWorkspace();
+  const { refreshSummary, notify } = useWorkspace();
   const [item, setItem] = useState<WorkItem | null>(null);
   const [loading, setLoading] = useState(Boolean(id));
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [attempt, setAttempt] = useState(0);
   const returnTo = [
     "/work-items",
@@ -53,9 +53,17 @@ export function WorkItemPage() {
   }, [id, attempt]);
   return (
     <div className="workspace-content editor-page-content">
-      {notice && (
-        <div className="message" role="status">
-          {notice}
+      {item && !loading && (
+        <div className="assistant-context-bar">
+          <AssistantSource kind="work-items" id={item.id} />
+          {!item.deletedAt && (
+            <Link
+              to={`/assistant?items=${item.id}`}
+              className="assistant-context-link"
+            >
+              用此工作项设计领域模型
+            </Link>
+          )}
         </div>
       )}
       {loading ? (
@@ -88,7 +96,7 @@ export function WorkItemPage() {
                 state: { returnTo },
               });
           }}
-          onNotice={setNotice}
+          onNotice={notify}
         />
       )}
     </div>

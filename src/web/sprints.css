@@ -1,0 +1,432 @@
+.sprint-selector,
+.sprint-toolbar,
+.sprint-header-actions,
+.sprint-overview-heading,
+.sprint-metrics,
+.sprint-column-heading,
+.sprint-card-top,
+.sprint-card-actions,
+.sprint-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sprint-selector {
+  margin-bottom: 16px;
+}
+.sprint-selector [data-slot="select-trigger"] {
+  min-width: 260px;
+}
+.sprint-overview {
+  border: 1px solid #e6e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  background: white;
+  margin-bottom: 20px;
+}
+.sprint-overview-heading {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.sprint-overview h2 {
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sprint-overview-heading p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #858993;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.sprint-state {
+  font-size: 11px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: #f1f2f4;
+  color: #777;
+}
+.sprint-state.active {
+  background: #eaf2ff;
+  color: #3974cf;
+}
+.sprint-state.closed {
+  background: #eef7f1;
+  color: #4a8561;
+}
+.sprint-goal {
+  margin: 18px 0;
+  color: #535863;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.sprint-metrics {
+  gap: 24px;
+}
+.sprint-metrics button {
+  font-size: 12px;
+  color: #858993;
+  cursor: pointer;
+}
+.sprint-metrics button strong {
+  font-size: 14px;
+  color: #303641;
+  margin-left: 6px;
+}
+.sprint-metrics button[aria-pressed="true"] {
+  color: #2563eb;
+}
+.sprint-metrics progress {
+  margin-left: auto;
+  width: 160px;
+  height: 5px;
+  accent-color: #3974cf;
+}
+.sprint-toolbar {
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.sprint-toolbar .search-field {
+  width: 250px;
+}
+.sprint-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #858993;
+  font-size: 12px;
+}
+.sprint-check input {
+  accent-color: #3974cf;
+}
+.sprint-board {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 14px;
+  min-height: 380px;
+}
+.sprint-column {
+  flex: 1;
+  min-width: 235px;
+  background: #f3f4f6;
+  border: 1px solid #eceef1;
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 380px;
+}
+.sprint-column-heading {
+  justify-content: space-between;
+  padding: 2px 2px 10px;
+}
+.sprint-column h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555c68;
+}
+.sprint-column h3 > span {
+  width: 7px;
+  height: 7px;
+  background: #a1a8b3;
+  border-radius: 50%;
+}
+.column-in_progress h3 > span {
+  background: #4e8be7;
+}
+.column-blocked h3 > span {
+  background: #e1a143;
+}
+.column-done h3 > span {
+  background: #67a880;
+}
+.sprint-column h3 small {
+  font-weight: 400;
+  color: #959ba5;
+  margin-left: 3px;
+}
+.sprint-column-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sprint-card {
+  background: white;
+  border: 1px solid #e2e5eb;
+  border-radius: 6px;
+  padding: 14px;
+  box-shadow: 0 1px 2px #27364a05;
+}
+.sprint-card[data-movable="true"] {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.sprint-card.dragging {
+  opacity: 0.4;
+}
+.sprint-card:hover {
+  border-color: #b7c9e5;
+}
+.sprint-card-top {
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9297a0;
+}
+.sprint-card-title {
+  display: block;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.6;
+  width: 100%;
+  margin: 9px 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  color: #343943;
+}
+.sprint-card time {
+  font-size: 11px;
+  color: #8b919b;
+}
+.sprint-card time.sprint-overdue {
+  color: #c45b50;
+}
+.sprint-card-actions {
+  justify-content: flex-end;
+  margin-top: 9px;
+  gap: 4px;
+}
+.sprint-card-actions [data-slot="select-trigger"] {
+  width: 105px;
+  height: 26px;
+  font-size: 11px;
+}
+.sprint-column-empty {
+  text-align: center;
+  color: #a3a9b3;
+  font-size: 12px;
+  padding: 32px 0;
+}
+.sprint-history {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #858993;
+}
+.sprint-history summary {
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+.sprint-history > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eceef1;
+}
+.dialog-content.editor.sprint-modal {
+  width: 540px;
+  max-height: 85vh;
+  overflow: auto;
+  padding: 24px;
+}
+.dialog-content.editor.sprint-modal .editor-form {
+  padding: 0;
+}
+.sprint-modal > h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.sprint-modal > p {
+  font-size: 12px;
+  color: #858993;
+  margin: 8px 0 20px;
+}
+.sprint-modal textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 13px;
+}
+.sprint-modal .field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0 0 18px;
+  font-size: 12px;
+  color: #687185;
+}
+.sprint-modal-actions {
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+.sprint-candidates {
+  max-height: 320px;
+  overflow: auto;
+  margin-top: 12px;
+}
+.sprint-candidates > label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 2px;
+  border-bottom: 1px solid #eceef1;
+  font-size: 13px;
+}
+.sprint-candidates small {
+  display: block;
+  color: #9297a0;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.sprint-finish-list {
+  max-height: 230px;
+  overflow: auto;
+  font-size: 13px;
+  margin: 16px 0;
+}
+.sprint-finish-list p {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eceef1;
+}
+.sprint-finish-list small {
+  color: #9297a0;
+}
+.dialog-content.editor.sprint-drawer {
+  position: fixed;
+  left: auto;
+  right: 0;
+  top: 0;
+  transform: none;
+  width: 650px;
+  max-width: 90vw;
+  height: 100vh;
+  max-height: 100vh;
+  border-radius: 0;
+  overflow-y: auto;
+  padding: 24px;
+}
+.sprint-drawer .editor-page {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+.sprint-drawer .editor-heading h1 {
+  font-size: 18px;
+}
+.sprint-drawer .editor-page .rich-text .tiptap {
+  min-height: 240px;
+  padding: 16px;
+}
+.sprint-metrics progress {
+  appearance: none;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #e9edf3;
+}
+.sprint-metrics progress::-webkit-progress-bar {
+  background: #e9edf3;
+}
+.sprint-metrics progress::-webkit-progress-value {
+  background: #3974cf;
+}
+.sprint-snapshot .rich-toolbar,
+.sprint-snapshot .rich-hint {
+  display: none;
+}
+.sprint-snapshot .rich-text {
+  border: 0;
+}
+
+.sprint-column.drop-active {
+  background: #edf3fc;
+  border-color: #94b5e6;
+}
+.sprint-card.insert-before {
+  box-shadow: 0 -3px 0 #3974cf;
+}
+.sprint-drag-preview {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  max-width: 280px;
+  padding: 12px 16px;
+  border: 1px solid #94b5e6;
+  border-radius: 6px;
+  background: white;
+  box-shadow: 0 8px 24px #27364a26;
+  font-size: 13px;
+  color: #343943;
+}
+/* Keep delivery stages readable; narrower windows scroll the board horizontally. */
+.sprint-column {
+  min-width: 220px;
+}
+.column-in_review h3 > span {
+  background: #8c78c4;
+}
+.column-in_verification h3 > span {
+  background: #45a6b5;
+}
+.column-awaiting_acceptance h3 > span {
+  background: #d2a34d;
+}
+.column-paused h3 > span {
+  background: #9299a5;
+}
+.sprint-blocked {
+  margin: 8px 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: #fff4e4;
+  color: #a96b26;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.sprint-card-actions {
+  flex-wrap: wrap;
+}
+.sprint-card-actions:not(.read-only) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 24px);
+  gap: 4px;
+}
+.sprint-card-actions:not(.read-only) > * {
+  grid-row: 1;
+}
+.sprint-card-actions:not(.read-only) > [data-slot="select-trigger"] {
+  grid-column: 1;
+  width: 100%;
+  min-width: 0;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.sprint-card-actions > [data-slot="button"] {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+.sprint-card-actions:not(.read-only) > [data-slot="button"]:first-child {
+  grid-column: 2;
+}
+.sprint-card-actions > .sprint-block-action {
+  grid-column: 3;
+  color: #a96b26;
+}
+.sprint-card-actions > .sprint-remove-action {
+  grid-column: 4;
+}

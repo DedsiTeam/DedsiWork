@@ -8,6 +8,7 @@ import {
   Save,
   Trash2,
   ArrowLeft,
+  LoaderCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -17,8 +18,10 @@ import { MAX_DESCRIPTION_LENGTH } from "../../shared/description";
 import { Label } from "./ui/label";
 import { Choice } from "./choice";
 import { api } from "../api";
+import { useWorkspace } from "../workspace-context";
 import {
   statusLabels,
+  needsReturnReason,
   typeLabels,
   priorityLabels,
   type WorkItem,
@@ -50,6 +53,8 @@ const fieldLabels: Record<string, string> = {
   type: "类型",
   dueAt: "截止时间",
   deletedAt: "删除状态",
+  blockedReason: "阻塞原因",
+  transitionReason: "退回原因",
 };
 function localDate(value: string | null) {
   if (!value) return "";
@@ -63,20 +68,30 @@ export function Editor({
   onClose,
   onSaved,
   onNotice,
+  embedded = false,
+  initialDraft,
 }: {
+  embedded?: boolean;
+  initialDraft?: WorkItemInput;
   item: WorkItem | null;
   onClose: () => void;
   onSaved: (item: WorkItem) => void;
   onNotice: (message: string) => void;
 }) {
-  const initial: WorkItemInput = {
-    title: item?.title || "",
-    description: item?.description || "",
-    status: item?.status || "todo",
-    type: item?.type || "task",
-    priority: item?.priority || "normal",
-    dueAt: item?.dueAt || null,
-  };
+  const { notify } = useWorkspace();
+  const initial: WorkItemInput =
+    initialDraft && !item
+      ? initialDraft
+      : {
+          title: item?.title || "",
+          description: item?.description || "",
+          status: item?.status || "todo",
+          type: item?.type || "task",
+          priority: item?.priority || "normal",
+          dueAt: item?.dueAt || null,
+          blockedReason: item?.blockedReason || "",
+        };
+  const [transitionReason, setTransitionReason] = useState("");
   const [form, setForm] = useState(initial),
     [due, setDue] = useState(localDate(initial.dueAt));
   const [busy, setBusy] = useState(false),
@@ -90,6 +105,7 @@ export function Editor({
   const lifecycleButton = useRef<HTMLButtonElement>(null);
   const request = useRef({ payload: "", key: crypto.randomUUID() });
   const dirty =
+    Boolean(initialDraft && !item) ||
     JSON.stringify(form) !== JSON.stringify(initial) ||
     due !== localDate(initial.dueAt);
   const deleted = Boolean(item?.deletedAt);
@@ -146,6 +162,12 @@ export function Editor({
   ) => setForm((prev) => ({ ...prev, [key]: value }));
   function close() {
     if (busy || uploading) return;
+    if (
+      embedded &&
+      dirty &&
+      !window.confirm("有未保存的修改，确认放弃并关闭？")
+    )
+      return;
     onClose();
   }
   async function save(event: React.FormEvent) {
@@ -153,6 +175,7 @@ export function Editor({
     if (busy || uploading) return;
     if (form.description.length > MAX_DESCRIPTION_LENGTH) {
       setError("描述容量已超出，请减少图片或文字。");
+      notify("描述容量已超出，请减少图片或文字。", "error");
       return;
     }
     setBusy(true);
@@ -160,6 +183,9 @@ export function Editor({
     try {
       const payload = {
         ...form,
+        blockedReason: ["done", "cancelled"].includes(form.status)
+          ? ""
+          : form.blockedReason,
         dueAt: due ? new Date(due).toISOString() : null,
       };
       const serialized = JSON.stringify(payload);
@@ -171,15 +197,27 @@ export function Editor({
           method: item ? "PATCH" : "POST",
           headers: item ? {} : { "Idempotency-Key": request.current.key },
           body: JSON.stringify(
-            item ? { ...payload, expectedVersion: item.version } : payload,
+            item
+              ? { ...payload, transitionReason, expectedVersion: item.version }
+              : payload,
           ),
         },
       );
       skipNavigationGuard.current = true;
       onSaved(result.data);
-      onNotice(item ? "工作项已保存" : "工作项已创建");
+      notify(
+        item?.status === "done" && result.data.status === "todo"
+          ? "工作项已修改，状态已变为待处理"
+          : item
+            ? "工作项修改成功"
+            : "工作项创建成功",
+      );
     } catch (e) {
       setError((e as Error).message);
+      notify(
+        `${item ? "修改失败" : "创建失败"}：${(e as Error).message}`,
+        "error",
+      );
     } finally {
       setBusy(false);
     }
@@ -237,17 +275,14 @@ export function Editor({
       <div className="editor-heading">
         <div>
           <h1>{item ? "修改工作项" : "创建工作项"}</h1>
-          <p className="field-hint">
-            编辑标题、富文本描述和工作项属性，保存后生效。
-          </p>
         </div>
         <Button
           variant="ghost"
-          aria-label="返回工作项列表"
+          aria-label={embedded ? "关闭详情" : "返回工作项列表"}
           onClick={close}
           disabled={busy || uploading}
         >
-          <ArrowLeft /> 返回列表
+          <ArrowLeft /> {embedded ? "关闭详情" : "返回列表"}
         </Button>
       </div>
       {error && (
@@ -327,6 +362,29 @@ export function Editor({
               />
             </div>
           </div>
+          {item && needsReturnReason(item.status, form.status) && (
+            <div className="field">
+              <Label htmlFor="transition-reason">退回原因</Label>
+              <Input
+                id="transition-reason"
+                required
+                maxLength={1000}
+                value={transitionReason}
+                onChange={(e) => setTransitionReason(e.target.value)}
+              />
+            </div>
+          )}
+          <div className="field">
+            <Label htmlFor="blocked-reason">阻塞原因</Label>
+            <Input
+              id="blocked-reason"
+              maxLength={1000}
+              placeholder="填写原因标记阻塞，清空后解除；保留当前阶段"
+              value={form.blockedReason}
+              disabled={["done", "cancelled"].includes(form.status)}
+              onChange={(e) => change("blockedReason", e.target.value)}
+            />
+          </div>
           <div className="field">
             <Label htmlFor="item-description">描述</Label>
             <RichText
@@ -343,8 +401,14 @@ export function Editor({
               type="submit"
               disabled={busy || uploading || (!dirty && Boolean(item))}
             >
-              <Save />
-              {busy ? "保存中…" : item ? "保存修改" : "创建工作项"}
+              {busy ? <LoaderCircle className="ai-spin" /> : <Save />}
+              {busy
+                ? item
+                  ? "保存中…"
+                  : "创建中…"
+                : item
+                  ? "保存修改"
+                  : "创建工作项"}
             </Button>
           )}
           {item && (
@@ -384,11 +448,28 @@ export function Editor({
                   </strong>{" "}
                   {eventLabels[event.action] || event.action}
                 </p>
+                {event.changes.transitionReason && (
+                  <small>
+                    退回原因：{String(event.changes.transitionReason.after)}
+                  </small>
+                )}
                 {event.action === "updated" && (
                   <small>
                     {Object.keys(event.changes)
                       .map((k) => fieldLabels[k] || k)
                       .join("、")}
+                  </small>
+                )}
+                {event.changes.status && (
+                  <small>
+                    状态：
+                    {statusLabels[
+                      event.changes.status.before as WorkItem["status"]
+                    ] || String(event.changes.status.before)}
+                    {" → "}
+                    {statusLabels[
+                      event.changes.status.after as WorkItem["status"]
+                    ] || String(event.changes.status.after)}
                   </small>
                 )}
                 <time>{formatDate(event.createdAt)}</time>

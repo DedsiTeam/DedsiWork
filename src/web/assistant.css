@@ -1,0 +1,312 @@
+.app-shell .assistant-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--header-height));
+  min-height: 0;
+}
+.app-shell .assistant-page.assistant-preview {
+  height: auto;
+  min-height: calc(100vh - var(--header-height));
+}
+.assistant-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.app-shell .assistant-body > .workspace-content.chat-page {
+  padding: 0;
+  height: 100%;
+}
+.assistant-toolbar,
+.assistant-toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.assistant-toolbar {
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+.assistant-workbench {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid #e6e7ec;
+  border-radius: 9px;
+  background: #fff;
+}
+.assistant-conversation {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.assistant-stages {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #eeeef3;
+  flex-shrink: 0;
+}
+.assistant-stages > span {
+  font-size: 11px;
+  color: #b0b3bc;
+}
+.assistant-stages > span.active {
+  color: #555c8a;
+}
+.assistant-stages > span.done {
+  color: #668773;
+}
+.assistant-stages > button {
+  margin-left: auto;
+}
+.assistant-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px;
+  overscroll-behavior: contain;
+}
+.assistant-message-text {
+  white-space: pre-wrap;
+  color: #626874;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.assistant-drafts,
+.assistant-source-picker,
+.assistant-model-action,
+.assistant-result {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid #e6e7ec;
+  border-radius: 8px;
+  background: #fafafd;
+}
+.assistant-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.assistant-card-heading > strong {
+  font-size: 12px;
+  font-weight: 550;
+  color: #555c78;
+}
+.assistant-card-heading > span {
+  font-size: 10px;
+  color: #a0a5ae;
+}
+.assistant-draft {
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px solid #ececf1;
+  border-radius: 6px;
+  background: #fff;
+}
+.assistant-draft-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #9297a1;
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+.assistant-draft > input,
+.assistant-source-picker > input {
+  width: 100%;
+  height: 31px;
+  padding: 0 9px;
+  border: 1px solid #e2e4eb;
+  border-radius: 5px;
+  background: #fff;
+  font-size: 12px;
+  color: #535762;
+}
+.assistant-draft-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.assistant-draft-options select {
+  height: 27px;
+  padding: 0 8px;
+  border: 1px solid #e6e7ec;
+  border-radius: 5px;
+  color: #858a94;
+  background: #fff;
+  font-size: 11px;
+}
+.assistant-draft-options > span {
+  color: #a0a5ae;
+  font-size: 10px;
+}
+.assistant-draft > textarea,
+.assistant-model-action > textarea {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #e2e4eb;
+  border-radius: 5px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #626874;
+  resize: vertical;
+}
+.assistant-result > strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+  color: #668773;
+  font-weight: 550;
+  font-size: 12px;
+}
+.assistant-result > a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  color: #555c8a;
+  font-size: 12px;
+  text-decoration: none;
+}
+.assistant-result > a:hover {
+  text-decoration: underline;
+}
+.assistant-source-picker > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  color: #626874;
+  font-size: 12px;
+}
+.assistant-source-picker > label > small {
+  margin-left: auto;
+  font-size: 10px;
+  color: #a0a5ae;
+}
+.assistant-source-pages {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #a0a5ae;
+}
+.assistant-source-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.assistant-source-tags > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 7px;
+  border: 1px solid #e6e7ec;
+  border-radius: 4px;
+  background: #fff;
+  color: #9297a1;
+  font-size: 10px;
+}
+.assistant-source-tags button {
+  background: none;
+  border: 0;
+  color: #9297a1;
+  cursor: pointer;
+}
+.assistant-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+.assistant-action-row > span {
+  color: #a0a5ae;
+  font-size: 10px;
+}
+.assistant-conversation .chat-composer-actions > span {
+  color: #a0a5ae;
+  font-size: 10px;
+}
+.assistant-provenance {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+  color: #9297a1;
+  font-size: 11px;
+}
+.assistant-provenance a,
+.assistant-context-link {
+  color: #858ba4;
+  text-decoration: none;
+  font-size: 11px;
+}
+.assistant-provenance a:hover,
+.assistant-context-link:hover {
+  color: #555c8a;
+  text-decoration: underline;
+}
+.assistant-context-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.assistant-context-bar .assistant-provenance {
+  margin-bottom: 0;
+}
+.assistant-context-link {
+  margin-left: auto;
+}
+
+.assistant-proposal-editor > .assistant-drafts {
+  max-width: 800px;
+}
+.chat-proposal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 0 20px;
+  padding: 12px 14px;
+  border: 1px solid #e6e7ec;
+  border-radius: 8px;
+  background: #fafafd;
+}
+.chat-proposal > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.chat-proposal strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.chat-proposal span {
+  font-size: 11px;
+  color: #9297a1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-proposal button {
+  flex-shrink: 0;
+}

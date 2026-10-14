@@ -13,10 +13,22 @@ use std::{
     time::{Duration, Instant},
 };
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+
+struct ChineseContextMenu(Menu<tauri::Wry>);
+
+#[tauri::command]
+async fn show_context_menu(
+    window: tauri::WebviewWindow,
+    menu: tauri::State<'_, ChineseContextMenu>,
+) -> Result<(), String> {
+    window
+        .popup_menu(&menu.0)
+        .map_err(|error| error.to_string())
+}
 
 fn show_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
@@ -69,10 +81,25 @@ fn show_error(app: &tauri::AppHandle, message: &str) {
 fn launch_service(app: tauri::AppHandle, service: Arc<Service>, port: u16) -> Result<(), String> {
     let data_dir = std::env::var_os("DEDSIWORK_DATA_DIR")
         .map(PathBuf::from)
+        .map(Ok)
         .unwrap_or_else(|| {
-            PathBuf::from(std::env::var_os("LOCALAPPDATA").expect("LOCALAPPDATA missing"))
-                .join("DedsiWork")
-        });
+            #[cfg(windows)]
+            {
+                std::env::var_os("LOCALAPPDATA")
+                    .map(|path| PathBuf::from(path).join("DedsiWork"))
+                    .ok_or_else(|| {
+                        tauri::Error::Io(std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            "LOCALAPPDATA missing",
+                        ))
+                    })
+            }
+            #[cfg(not(windows))]
+            {
+                app.path().app_local_data_dir()
+            }
+        })
+        .map_err(|e| e.to_string())?;
     fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
     let log_path = data_dir.join("desktop-service.log");
     let log = OpenOptions::new()
@@ -84,10 +111,16 @@ fn launch_service(app: tauri::AppHandle, service: Arc<Service>, port: u16) -> Re
     let mut sidecar = executable
         .parent()
         .ok_or("无法定位安装目录")?
-        .join("dedsiwork-service.exe");
+        .join(if cfg!(windows) {
+            "dedsiwork-service.exe"
+        } else {
+            "dedsiwork-service"
+        });
     if cfg!(debug_assertions) && !sidecar.exists() {
-        sidecar = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("binaries/dedsiwork-service-x86_64-pc-windows-msvc.exe");
+        sidecar = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(concat!(
+            "binaries/dedsiwork-service-",
+            env!("DEDSIWORK_SIDECAR_TARGET")
+        ));
     }
     let token = uuid::Uuid::new_v4().to_string();
     let origin = format!("http://127.0.0.1:{port}");
@@ -175,6 +208,17 @@ fn main() {
     let service = Arc::new(Service::default());
     let managed = service.clone();
     let app = tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![show_context_menu])
+        .on_menu_event(|app, event| {
+            let script = match event.id.as_ref() {
+                "context-back" => "history.back()",
+                "context-reload" => "location.reload()",
+                _ => return,
+            };
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.eval(script);
+            }
+        })
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -190,8 +234,39 @@ fn main() {
             }
         })
         .setup(move |app| {
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("DedsiWork")
+            app.add_capability(
+                tauri::ipc::CapabilityBuilder::new("desktop-window-drag")
+                    .window("main")
+                    .remote(format!("http://127.0.0.1:{port}/*"))
+                    .permission("core:window:allow-outer-position")
+                    .permission("core:window:allow-scale-factor")
+                    .permission("core:window:allow-set-position")
+                    .permission("core:window:allow-toggle-maximize")
+                    .permission("allow-context-menu"),
+            )?;
+            let back = MenuItem::with_id(app, "context-back", "返回", true, None::<&str>)?;
+            let reload = MenuItem::with_id(app, "context-reload", "刷新", true, None::<&str>)?;
+            let separator = PredefinedMenuItem::separator(app)?;
+            let cut = PredefinedMenuItem::cut(app, Some("剪切"))?;
+            let copy = PredefinedMenuItem::copy(app, Some("复制"))?;
+            let paste = PredefinedMenuItem::paste(app, Some("粘贴"))?;
+            let select_all = PredefinedMenuItem::select_all(app, Some("全选"))?;
+            app.manage(ChineseContextMenu(Menu::with_items(
+                app,
+                &[&back, &reload, &separator, &cut, &copy, &paste, &select_all],
+            )?));
+            let window =
+                WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+                    .disable_drag_drop_handler()
+                    .devtools(false)
+                    .initialization_script(include_str!("context-menu.js"))
+                    .title("DedsiWork");
+            #[cfg(target_os = "macos")]
+            let window = window
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true)
+                .traffic_light_position(tauri::LogicalPosition::new(16.0, 20.0));
+            window
                 .inner_size(1360.0, 900.0)
                 .min_inner_size(1100.0, 720.0)
                 .on_navigation(move |url| {

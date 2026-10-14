@@ -4,7 +4,10 @@ import { MAX_DESCRIPTION_LENGTH } from "./description";
 export const statuses = [
   "todo",
   "in_progress",
-  "blocked",
+  "in_review",
+  "in_verification",
+  "awaiting_acceptance",
+  "paused",
   "done",
   "cancelled",
 ] as const;
@@ -13,7 +16,10 @@ export const priorities = ["low", "normal", "high", "urgent"] as const;
 export const statusLabels = {
   todo: "待处理",
   in_progress: "进行中",
-  blocked: "已阻塞",
+  in_review: "待评审",
+  in_verification: "待验证",
+  awaiting_acceptance: "待验收",
+  paused: "已暂停",
   done: "已完成",
   cancelled: "已取消",
 };
@@ -31,6 +37,7 @@ const fields = {
   type: z.enum(types).default("task"),
   status: z.enum(statuses).default("todo"),
   priority: z.enum(priorities).default("normal"),
+  blockedReason: z.string().trim().max(1000).default(""),
   dueAt: z.iso.datetime({ offset: true }).nullable().default(null),
 };
 export const createSchema = z.object(fields).strict();
@@ -41,6 +48,8 @@ export const patchSchema = z
     type: z.enum(types).optional(),
     status: z.enum(statuses).optional(),
     priority: z.enum(priorities).optional(),
+    blockedReason: z.string().trim().max(1000).optional(),
+    transitionReason: z.string().trim().max(1000).optional(),
     dueAt: z.iso.datetime({ offset: true }).nullable().optional(),
     expectedVersion: z.number().int().positive(),
   })
@@ -52,10 +61,12 @@ export const listSchema = z
   .object({
     q: z.string().max(200).default(""),
     status: z.enum(statuses).optional(),
+    blocked: z.enum(["true", "false"]).optional(),
     type: z.enum(types).optional(),
     priority: z.enum(priorities).optional(),
     page: z.coerce.number().int().min(1).max(100000).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
+    unplanned: z.enum(["true", "false"]).default("false"),
     deleted: z.enum(["true", "false"]).default("false"),
   })
   .strict();
@@ -102,3 +113,31 @@ export type Page<T> = {
   data: T[];
   meta: { total: number; page: number; pageSize: number };
 };
+
+export const flowStatuses = [
+  "todo",
+  "in_progress",
+  "in_review",
+  "in_verification",
+  "awaiting_acceptance",
+  "paused",
+  "done",
+] as const;
+export function needsReturnReason(
+  from: WorkItem["status"],
+  to: WorkItem["status"],
+) {
+  return (
+    ["in_review", "in_verification", "awaiting_acceptance"].includes(from) &&
+    to === "in_progress"
+  );
+}
+export function normalizeHistoricalItem(item: WorkItem): WorkItem {
+  const legacy = (item.status as string) === "blocked";
+  return {
+    ...item,
+    status: legacy ? "in_progress" : item.status,
+    blockedReason:
+      item.blockedReason || (legacy ? "历史阻塞工作项（原阶段未记录）" : ""),
+  };
+}

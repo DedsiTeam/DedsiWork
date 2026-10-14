@@ -1,0 +1,55 @@
+{
+  "name": "dedsiwork",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch server/main.ts",
+    "start": "bun server/main.ts --production",
+    "build": "bun run build.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.web.json",
+    "test": "bun test tests",
+    "mcp:check": "bun examples/mcp-client.ts",
+    "format": "prettier --write web server shared tests examples build.ts",
+    "check": "bun run typecheck && bun test tests && bun run build",
+    "desktop:service": "bun scripts/build-sidecar.ts",
+    "desktop:dev": "bun scripts/desktop.ts dev",
+    "desktop:build": "bun scripts/desktop.ts build",
+    "desktop:info": "bun scripts/desktop.ts info"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "@radix-ui/react-alert-dialog": "^1.2.1",
+    "@radix-ui/react-dialog": "^1.3.1",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@tiptap/extension-image": "^3.32.0",
+    "@tiptap/pm": "^3.32.0",
+    "@tiptap/react": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
+    "bun-plugin-tailwind": "^0.1.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dompurify": "^3.4.17",
+    "lucide-react": "^1",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-router": "^8.4.0",
+    "tailwind-merge": "^3.3.1",
+    "tw-animate-css": "^1.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.2",
+    "@types/bun": "latest",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "prettier": "^3.9.10",
+    "tailwindcss": "^4.1.11"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  }
+}

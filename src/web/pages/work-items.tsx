@@ -1,0 +1,522 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleCheck,
+  CircleDot,
+  FileText,
+  LayoutList,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Choice } from "../components/choice";
+import { PurgeConfirmation } from "../components/purge-confirmation";
+import { CopyForCodex } from "../components/copy-for-codex";
+import { formatDate } from "../components/editor";
+import { api } from "../api";
+import {
+  statusLabels,
+  typeLabels,
+  priorityLabels,
+  type WorkItem,
+  type Page,
+} from "../../shared/work-item";
+import { useNavigate } from "react-router";
+import { useWorkspace } from "../workspace-context";
+import { Status } from "../components/workspace";
+export function WorkItemsPage({
+  view = "items",
+  initialStatus = "all",
+}: {
+  view?: "items" | "trash";
+  initialStatus?: string;
+}) {
+  const navigate = useNavigate();
+  const { summary, setSummary } = useWorkspace();
+  const [status, setStatus] = useState(initialStatus),
+    [type, setType] = useState("all"),
+    [priority, setPriority] = useState("all");
+  const [search, setSearch] = useState(""),
+    [q, setQ] = useState(""),
+    [page, setPage] = useState(1);
+  const [result, setResult] = useState<Page<WorkItem>>({
+    data: [],
+    meta: { total: 0, page: 1, pageSize: 20 },
+  });
+  const [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState("");
+  const [selected, setSelected] = useState<WorkItem[]>([]);
+  const [purgeTargets, setPurgeTargets] = useState<WorkItem[]>([]);
+  const [purging, setPurging] = useState(false);
+  const [purgeError, setPurgeError] = useState("");
+  const selectAll = useRef<HTMLInputElement>(null);
+  const purgeTrigger = useRef<HTMLElement | null>(null);
+  const serial = useRef(0);
+  useEffect(() => {
+    setSelected([]);
+  }, [view, search, page, status, type, priority]);
+  useEffect(() => {
+    setSelected((previous) =>
+      previous.filter((item) =>
+        result.data.some(
+          (current) =>
+            current.id === item.id && current.version === item.version,
+        ),
+      ),
+    );
+  }, [result]);
+  useEffect(() => {
+    if (selectAll.current)
+      selectAll.current.indeterminate =
+        selected.length > 0 && selected.length < result.data.length;
+  }, [selected, result]);
+  function confirmPurge(items: WorkItem[]) {
+    purgeTrigger.current = document.activeElement as HTMLElement | null;
+    setPurgeError("");
+    setPurgeTargets(items);
+  }
+  function cancelPurge() {
+    setPurgeTargets([]);
+    purgeTrigger.current?.focus();
+  }
+  async function purge() {
+    if (purging || !purgeTargets.length) return;
+    setPurging(true);
+    setPurgeError("");
+    try {
+      const response = await api<{ data: { count: number } }>(
+        "/api/v1/trash/purge",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            items: purgeTargets.map((item) => ({
+              id: item.id,
+              expectedVersion: item.version,
+            })),
+          }),
+        },
+      );
+      setSelected([]);
+      setPurgeTargets([]);
+      setNotice(`已永久删除 ${response.data.count} 个工作项`);
+      await refresh(true);
+    } catch (error) {
+      setPurgeError((error as Error).message);
+      void refresh(true);
+    } finally {
+      setPurging(false);
+    }
+  }
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQ(search);
+      setPage(1);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 4500);
+    return () => clearTimeout(timer);
+  }, [notice]);
+  const refresh = useCallback(
+    async (silent = false) => {
+      const id = ++serial.current;
+      if (!silent) setLoading(true);
+      const params = new URLSearchParams({
+        q,
+        page: String(page),
+        pageSize: "20",
+        deleted: String(view === "trash"),
+      });
+      if (status !== "all") params.set("status", status);
+      if (type !== "all") params.set("type", type);
+      if (priority !== "all") params.set("priority", priority);
+      try {
+        const [list, stats] = await Promise.all([
+          api<Page<WorkItem>>(`/api/v1/work-items?${params}`),
+          api<{ data: typeof summary }>("/api/v1/summary"),
+        ]);
+        if (id === serial.current) {
+          setResult(list);
+          setSummary(stats.data);
+          setError("");
+          if (page > 1 && !list.data.length) setPage((p) => p - 1);
+        }
+      } catch (e) {
+        if (id === serial.current) setError((e as Error).message);
+      } finally {
+        if (id === serial.current) setLoading(false);
+      }
+    },
+    [view, q, page, status, type, priority, setSummary],
+  );
+  useEffect(() => {
+    void refresh();
+    const poll = () => {
+      if (!document.hidden) void refresh(true);
+    };
+    const timer = setInterval(poll, 5000);
+    window.addEventListener("focus", poll);
+    return () => {
+      serial.current++;
+      clearInterval(timer);
+      window.removeEventListener("focus", poll);
+    };
+  }, [refresh]);
+
+  function open(item: WorkItem | null) {
+    navigate(item ? `/work-items/${item.id}` : "/work-items/new", {
+      state: { returnTo: window.location.pathname },
+    });
+  }
+  return (
+    <>
+      {purgeTargets.length > 0 && (
+        <PurgeConfirmation
+          titles={purgeTargets.map((item) => item.title)}
+          busy={purging}
+          error={purgeError}
+          onCancel={cancelPurge}
+          onConfirm={() => void purge()}
+        />
+      )}
+      {notice && (
+        <div className="toast" role="status">
+          {notice}
+          <button aria-label="关闭提示" onClick={() => setNotice("")}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      <div className="workspace-content">
+        <div className="page-heading">
+          <div>
+            <h1>
+              {view === "trash"
+                ? "回收站"
+                : status === "in_progress"
+                  ? "进行中的工作"
+                  : status === "done"
+                    ? "已完成的工作"
+                    : "全部工作项"}
+            </h1>
+            <p>
+              {view === "trash"
+                ? "恢复误删的工作项，或永久删除不再需要的内容。"
+                : "把每一件事安排妥当，让重要的工作持续向前。"}
+            </p>
+          </div>
+          {view !== "trash" && (
+            <Button onClick={() => open(null)}>
+              <Plus />
+              新建工作项
+            </Button>
+          )}
+        </div>
+        <div className="overview">
+          <div>
+            <span className="metric-icon">
+              <LayoutList size={19} />
+            </span>
+            <div>
+              <span>全部工作项</span>
+              <strong>
+                {summary.total}
+                <small>项工作</small>
+              </strong>
+            </div>
+          </div>
+          <div>
+            <span className="metric-icon progress">
+              <CircleDot size={19} />
+            </span>
+            <div>
+              <span>正在推进</span>
+              <strong>
+                {summary.inProgress}
+                <small>保持专注</small>
+              </strong>
+            </div>
+          </div>
+          <div>
+            <span className="metric-icon done">
+              <CircleCheck size={19} />
+            </span>
+            <div>
+              <span>已经完成</span>
+              <strong>
+                {summary.done}
+                <small>每一步都算数</small>
+              </strong>
+            </div>
+          </div>
+        </div>
+        <div className="work-layout">
+          <section className="list-panel" aria-label="工作项列表">
+            <div className="list-toolbar">
+              <div className="search-field">
+                <Search size={16} />
+                <Input
+                  aria-label="搜索工作项"
+                  placeholder="搜索工作项…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="filter-toolbar">
+                <Choice
+                  label="筛选状态"
+                  value={status}
+                  options={{ all: "全部状态", ...statusLabels }}
+                  onChange={(value) => {
+                    setStatus(value);
+                    setPage(1);
+                  }}
+                />
+                <Choice
+                  label="筛选类型"
+                  value={type}
+                  options={{ all: "全部类型", ...typeLabels }}
+                  onChange={(value) => {
+                    setType(value);
+                    setPage(1);
+                  }}
+                />
+                <Choice
+                  label="筛选优先级"
+                  value={priority}
+                  options={{ all: "全部优先级", ...priorityLabels }}
+                  onChange={(value) => {
+                    setPriority(value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+              <span className="sort-label">
+                <ArrowDown size={12} />
+                最近更新
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="刷新工作项"
+                onClick={() => refresh()}
+                disabled={loading}
+              >
+                <RefreshCw className={loading ? "animate-spin" : ""} />
+              </Button>
+            </div>
+            {view === "trash" && (
+              <div className="trash-actions">
+                <span>已选 {selected.length} 项 · 全选仅限当前页</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!selected.length || loading || purging}
+                  onClick={() => confirmPurge(selected)}
+                >
+                  <Trash2 />
+                  批量永久删除
+                </Button>
+              </div>
+            )}
+            {error && (
+              <div className="message error" role="alert">
+                {error}
+                <Button variant="link" onClick={() => refresh()}>
+                  重试
+                </Button>
+              </div>
+            )}
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    {view === "trash" && (
+                      <th className="selection-cell">
+                        <input
+                          ref={selectAll}
+                          type="checkbox"
+                          aria-label="全选当前页"
+                          checked={
+                            result.data.length > 0 &&
+                            selected.length === result.data.length
+                          }
+                          disabled={!result.data.length || loading || purging}
+                          onChange={(event) =>
+                            setSelected(
+                              event.target.checked ? [...result.data] : [],
+                            )
+                          }
+                        />
+                      </th>
+                    )}
+                    <th className="item-title-column">工作项</th>
+                    <th>状态</th>
+                    <th>优先级</th>
+                    <th>更新时间</th>
+                    <th className="item-actions-column">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.data.map((item) => (
+                    <tr key={item.id}>
+                      {view === "trash" && (
+                        <td className="selection-cell">
+                          <input
+                            type="checkbox"
+                            aria-label={`选择 ${item.title}`}
+                            checked={selected.some(
+                              (target) => target.id === item.id,
+                            )}
+                            disabled={loading || purging}
+                            onChange={(event) =>
+                              setSelected((previous) =>
+                                event.target.checked
+                                  ? [...previous, item]
+                                  : previous.filter(
+                                      (target) => target.id !== item.id,
+                                    ),
+                              )
+                            }
+                          />
+                        </td>
+                      )}
+                      <td>
+                        <button
+                          className="item-link"
+                          onClick={() => open(item)}
+                        >
+                          <span className="item-type">
+                            <FileText size={17} />
+                          </span>
+                          <span>
+                            <strong>{item.title}</strong>
+                            <small>
+                              {typeLabels[item.type]}
+                              <span>·</span>
+                              {item.id.slice(0, 8).toUpperCase()}
+                            </small>
+                          </span>
+                        </button>
+                      </td>
+                      <td>
+                        <Status status={item.status} />
+                      </td>
+                      <td>
+                        <span className={`priority priority-${item.priority}`}>
+                          <span className="priority-bars">
+                            {item.priority === "urgent"
+                              ? "▂▅█"
+                              : item.priority === "high"
+                                ? "▂▅"
+                                : item.priority === "normal"
+                                  ? "▂"
+                                  : "—"}
+                          </span>
+                          {priorityLabels[item.priority]}
+                        </span>
+                      </td>
+                      <td className="updated-cell">
+                        {formatDate(item.updatedAt)}
+                      </td>
+                      {view !== "trash" && (
+                        <td className="item-actions-column">
+                          <CopyForCodex
+                            item={item}
+                            disabled={loading}
+                            onNotice={setNotice}
+                          />
+                        </td>
+                      )}
+                      {view === "trash" && (
+                        <td>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={loading || purging}
+                            aria-label={`永久删除 ${item.title}`}
+                            onClick={() => confirmPurge([item])}
+                          >
+                            <Trash2 />
+                            永久删除
+                          </Button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {!result.data.length && !error && (
+              <div className="empty-state">
+                <span>
+                  <LayoutList size={28} />
+                </span>
+                <h2>
+                  {loading
+                    ? "正在读取工作项…"
+                    : q ||
+                        status !== "all" ||
+                        type !== "all" ||
+                        priority !== "all"
+                      ? "没有找到匹配的工作项"
+                      : view === "trash"
+                        ? "回收站是空的"
+                        : "从一件小事开始"}
+                </h2>
+                <p>
+                  {loading
+                    ? "正在从本地数据库获取最新数据。"
+                    : view === "trash"
+                      ? "移入回收站的工作项会显示在这里。"
+                      : "记录接下来要做的事，在这里逐步推进。"}
+                </p>
+                {!loading && view === "items" && (
+                  <Button variant="outline" onClick={() => open(null)}>
+                    <Plus />
+                    创建工作项
+                  </Button>
+                )}
+              </div>
+            )}
+            <footer className="list-footer">
+              <span>共 {result.meta.total} 项</span>
+              <div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="上一页"
+                  disabled={page === 1 || loading}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  <ChevronLeft />
+                </Button>
+                <span>
+                  {page} / {Math.max(1, Math.ceil(result.meta.total / 20))}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="下一页"
+                  disabled={page * 20 >= result.meta.total || loading}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <ChevronRight />
+                </Button>
+              </div>
+            </footer>
+          </section>
+        </div>
+      </div>
+    </>
+  );
+}

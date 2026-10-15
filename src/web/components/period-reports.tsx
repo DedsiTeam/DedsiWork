@@ -1,3 +1,5 @@
+import { DatePicker } from "./date-picker";
+import { useReportExport } from "../report-export";
 import { ReportAIPanel } from "./report-ai";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -7,7 +9,6 @@ import { Copy, Download, RefreshCw } from "lucide-react";
 import { api } from "../api";
 import { useWorkspace } from "../workspace-context";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import { matterStatusLabels } from "../../shared/daily-report";
 import {
   addDays,
@@ -29,9 +30,9 @@ export function PeriodReports({
   type: PeriodType;
   onOpenReport: (id: string) => Promise<void>;
 }) {
+  const { exporting, exportMarkdown } = useReportExport();
   const { notify } = useWorkspace();
   const [anchor, setAnchor] = useState(localToday()),
-    [finalOnly, setFinalOnly] = useState(false),
     [revision, setRevision] = useState(0);
   const [report, setReport] = useState<PeriodReport | null>(null),
     [error, setError] = useState(""),
@@ -49,7 +50,7 @@ export function PeriodReports({
       return;
     }
     api<{ data: PeriodReport }>(
-      `/api/v1/daily-reports/summary?${new URLSearchParams({ type, date: anchor, finalOnly: String(finalOnly) })}`,
+      `/api/v1/daily-reports/summary?${new URLSearchParams({ type, date: anchor })}`,
       { signal: controller.signal },
     )
       .then((r) => setReport(r.data))
@@ -60,7 +61,7 @@ export function PeriodReports({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [type, anchor, finalOnly, revision]);
+  }, [type, anchor, revision]);
   function move(direction: number) {
     const range = periodRange(type, anchor);
     if (type === "weekly") setAnchor(addDays(range.start, direction * 7));
@@ -92,16 +93,10 @@ export function PeriodReports({
   }
   function download() {
     if (!report) return;
-    const url = URL.createObjectURL(
-        new Blob([periodMarkdown(report)], {
-          type: "text/markdown;charset=utf-8",
-        }),
-      ),
-      link = document.createElement("a");
-    link.href = url;
-    link.download = `${report.start}-${report.end}-${label}.md`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    void exportMarkdown(
+      `${report.start}-${report.end}-${label}.md`,
+      periodMarkdown(report),
+    );
   }
   function matters(items: MatterSummary[]) {
     return !items.length ? (
@@ -144,9 +139,6 @@ export function PeriodReports({
                   >
                     {day.date} · 打开日报
                   </Button>
-                  {day.reportStatus === "draft" && (
-                    <span className="period-draft">草稿</span>
-                  )}
                 </div>
                 <div className="period-day-content">
                   <div>
@@ -186,23 +178,22 @@ export function PeriodReports({
         {type === "weekly" ? (
           <label>
             选择周内任意一天
-            <Input
-              aria-label="周报日期"
-              type="date"
+            <DatePicker
+              label="周报日期"
+              placement="bottom"
               value={anchor}
-              onChange={(e) => setAnchor(e.target.value)}
+              onChange={setAnchor}
             />
           </label>
         ) : (
           <label>
             选择月份
-            <Input
-              aria-label="月报月份"
-              type="month"
+            <DatePicker
+              label="月报月份"
+              mode="month"
+              placement="bottom"
               value={anchor.slice(0, 7)}
-              onChange={(e) =>
-                setAnchor(e.target.value ? e.target.value + "-01" : "")
-              }
+              onChange={(value) => setAnchor(value ? value + "-01" : "")}
             />
           </label>
         )}
@@ -212,14 +203,6 @@ export function PeriodReports({
         <Button variant="ghost" onClick={() => setAnchor(localToday())}>
           本{type === "weekly" ? "周" : "月"}
         </Button>
-        <label className="period-filter">
-          <input
-            type="checkbox"
-            checked={finalOnly}
-            onChange={(e) => setFinalOnly(e.target.checked)}
-          />
-          仅包含已定稿日报
-        </label>
         <Button variant="outline" onClick={() => setRevision((v) => v + 1)}>
           <RefreshCw />
           刷新汇总
@@ -237,39 +220,40 @@ export function PeriodReports({
       ) : (
         <>
           <div className="report-editor period-editor">
-            <div className="report-editor-heading">
-              <h2>
-                {label} · {report.start} 至 {report.end}
-              </h2>
-              <span>
-                {report.reportCount} 份日报 · {report.draftCount} 份草稿
-              </span>
+            <div className="report-document-header">
+              <div className="report-editor-heading">
+                <h2>
+                  {label} · {report.start} 至 {report.end}
+                </h2>
+                <span>{report.reportCount} 份日报</span>
+              </div>
+              <div className="report-actions report-document-actions">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setPreview(!preview)}
+                >
+                  {preview ? "返回汇总" : "预览全文"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void copy()}>
+                  <Copy />
+                  复制数据汇总
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={download}
+                  disabled={exporting}
+                >
+                  <Download />
+                  {exporting ? "请选择保存位置…" : "导出数据汇总"}
+                </Button>
+              </div>
             </div>
-            <div className="report-actions">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setPreview(!preview)}
-              >
-                {preview ? "返回汇总" : "预览全文"}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => void copy()}>
-                <Copy />
-                复制数据汇总
-              </Button>
-              <Button size="sm" variant="outline" onClick={download}>
-                <Download />
-                导出数据汇总
-              </Button>
-            </div>
-            <ReportAIPanel
-              key={`${report.type}:${report.start}:${report.finalOnly}`}
-              report={report}
-            />
             <div className="report-metrics">
               <div>
                 <strong>{report.metrics.total}</strong>
-                <span>涉及事项（去重）</span>
+                <span>涉及事项</span>
               </div>
               <div>
                 <strong>{report.metrics.firstRecorded}</strong>
@@ -281,13 +265,15 @@ export function PeriodReports({
               </div>
               <div>
                 <strong>{quantityText(report.metrics.quantities)}</strong>
-                <span>期间新增完成量（按单位统计）</span>
+                <span>本期完成量</span>
               </div>
             </div>
-            <p className="report-help">
-              期末已完成 {report.metrics.endDone}{" "}
-              件。首次记录和首次完成依据已有日报判断；期末状态和进度取本期最后一次记录。完成量只累加每日增量，进度不相加。缺失信息不按零计算。
-            </p>
+            <details className="report-inline-help">
+              <summary>统计口径 · 期末完成 {report.metrics.endDone} 件</summary>
+              <p>
+                事项按身份去重，完成量累加每日增量，进度取期末记录。首次记录与首次完成均以已有日报为依据，缺失信息不计为零。
+              </p>
+            </details>
             {(report.metrics.missingQuantityDays > 0 ||
               report.metrics.missingResultDays > 0) && (
               <p className="period-data-warning">
@@ -296,10 +282,13 @@ export function PeriodReports({
                 个事项日缺少产出结果，可打开来源日报补充。
               </p>
             )}
+            <ReportAIPanel
+              key={`${report.type}:${report.start}`}
+              report={report}
+            />
             {!report.reportCount && (
               <p className="report-add-hint">
-                当前时段没有{finalOnly ? "已定稿" : ""}
-                日报。先记录日报，再刷新汇总。
+                当前时段没有 日报。先记录日报，再刷新汇总。
               </p>
             )}
             {preview ? (
@@ -317,20 +306,35 @@ export function PeriodReports({
                   </>
                 ) : (
                   <>
-                    {report.weeks.map((week, index) => (
-                      <section className="period-week" key={week.start}>
-                        <div className="report-section-heading">
-                          <h2>
-                            第 {index + 1} 周 · {week.start} 至 {week.end}
-                          </h2>
-                          <span>
-                            {week.reportCount} 份日报 · {week.matters.length}{" "}
-                            件事项
-                          </span>
-                        </div>
-                        {matters(week.matters)}
-                      </section>
-                    ))}
+                    {report.weeks.map((week, index) =>
+                      week.reportCount === 0 ? (
+                        <details className="period-empty-week" key={week.start}>
+                          <summary>
+                            <span>第 {index + 1} 周</span>
+                            <span>
+                              {week.start} — {week.end}
+                            </span>
+                            <span>暂无记录</span>
+                          </summary>
+                          <p className="report-help">
+                            这一周没有日报，补写后即可纳入汇总。
+                          </p>
+                        </details>
+                      ) : (
+                        <section className="period-week" key={week.start}>
+                          <div className="report-section-heading">
+                            <h2>
+                              第 {index + 1} 周 · {week.start} 至 {week.end}
+                            </h2>
+                            <span>
+                              {week.reportCount} 份日报 · {week.matters.length}{" "}
+                              件事项
+                            </span>
+                          </div>
+                          {matters(week.matters)}
+                        </section>
+                      ),
+                    )}
                     <section>
                       <h2 className="period-heading">
                         全月事项汇总（跨周去重）
@@ -358,14 +362,14 @@ export function PeriodReports({
                     </section>
                   </>
                 )}
-                <section>
-                  <h2 className="period-heading">来源日报与补充记录</h2>
+                <details className="period-sources">
+                  <summary>
+                    来源日报与补充记录 <span>{report.sources.length} 份</span>
+                  </summary>
                   {report.sources.map((source) => (
                     <details key={source.id} className="period-source">
                       <summary>
-                        {source.date} ·{" "}
-                        {source.status === "draft" ? "草稿" : "已定稿"} ·{" "}
-                        {source.sections.length} 段补充记录
+                        {source.date} · {source.sections.length} 段补充记录
                       </summary>
                       <Button
                         variant="link"
@@ -384,7 +388,7 @@ export function PeriodReports({
                       ))}
                     </details>
                   ))}
-                </section>
+                </details>
               </>
             )}
           </div>

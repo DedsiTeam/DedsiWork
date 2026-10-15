@@ -50,14 +50,15 @@ test("one active report per date; version conflicts preserve data", () => {
   expect(() => service.save(null, input(), actor)).toThrow("该日期已有日报");
   const saved = service.save(
     report.id,
-    { ...input(), status: "final", expectedVersion: report.version },
+    { ...input(), completed: "新增工作结果", expectedVersion: report.version },
     actor,
   );
   expect(saved.version).toBe(2);
   expect(() =>
     service.save(report.id, { ...input(), expectedVersion: 1 }, actor),
   ).toThrow("日报已在其他窗口修改");
-  expect(service.get(report.id).status).toBe("final");
+  expect(service.get(report.id).completed).toBe("新增工作结果");
+  expect(service.get(report.id)).not.toHaveProperty("status");
 });
 test("date changes and restoration cannot collide with another report", () => {
   const first = service.save(null, input(), actor);
@@ -330,5 +331,57 @@ test("REST routes preserve workspace isolation, auth, method and version boundar
     ).toBe(405);
   } finally {
     await app.close();
+  }
+});
+
+test("schema 10 migration removes only report status and preserves history, quantities and matter status", async () => {
+  const { mkdtempSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "dedsiwork-report-status-")),
+    path = join(dir, "reports.sqlite");
+  const legacy = openDatabase(path),
+    old = new DailyReports(legacy);
+  const active = old.save(
+    null,
+    {
+      ...input(),
+      matters: [{ ...input().matters[0], status: "done", progress: 100 }],
+    },
+    actor,
+  );
+  const removed = old.save(null, input("2026-10-14"), actor);
+  old.lifecycle(removed.id, { expectedVersion: removed.version }, false, actor);
+  legacy.exec(
+    "UPDATE daily_reports SET content=json_set(content,'$.status','draft');DELETE FROM schema_migrations WHERE version=11",
+  );
+  legacy.close();
+  const upgraded = openDatabase(path);
+  try {
+    const reports = new DailyReports(upgraded),
+      current = reports.get(active.id);
+    expect(current).not.toHaveProperty("status");
+    expect(current.version).toBe(active.version);
+    expect(current.matters[0]?.status).toBe("done");
+    expect(current.matters[0]?.completedQuantity).toBe(2);
+    expect(reports.get(removed.id).deletedAt).not.toBeNull();
+    expect(
+      upgraded
+        .query(
+          "SELECT id FROM daily_reports WHERE json_type(content,'$.status') IS NOT NULL",
+        )
+        .all(),
+    ).toHaveLength(0);
+    expect(
+      reports.summary(
+        new URLSearchParams({ type: "weekly", date: "2026-10-15" }),
+      ).reportCount,
+    ).toBe(1);
+    expect(() =>
+      reports.save(null, { ...input("2026-10-13"), status: "draft" }, actor),
+    ).toThrow();
+  } finally {
+    upgraded.close();
+    rmSync(dir, { recursive: true, force: true });
   }
 });

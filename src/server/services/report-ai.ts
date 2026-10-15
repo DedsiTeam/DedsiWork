@@ -67,7 +67,6 @@ export class ReportAI {
       query = new URLSearchParams({
         type: value.type,
         date: value.date,
-        finalOnly: String(value.finalOnly),
       }),
       source = this.reports.summary(query);
     if (!source.reportCount)
@@ -84,7 +83,7 @@ export class ReportAI {
     if (prompt.length > 180000)
       throw new AppError(
         "REPORT_AI_TOO_LARGE",
-        "本期资料超过 AI 整理容量，请按周整理或仅选择已定稿日报；不会截断数据",
+        "本期资料超过 AI 整理容量，请按周整理或减少日报内容；不会截断数据",
         400,
       );
     for (const [id, meta] of this.jobs)
@@ -138,8 +137,6 @@ export class ReportAI {
             start: meta.source.start,
             end: meta.source.end,
             reportCount: meta.source.reportCount,
-            draftCount: meta.source.draftCount,
-            finalOnly: meta.source.finalOnly,
           },
         },
       };

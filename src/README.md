@@ -39,6 +39,35 @@ bun run desktop:info
 
 桌面命令会自动先编译内嵌 React 资源的 Bun 服务，再启动/打包 Tauri。桌面开发启动不依赖单独的 `bun run dev`；修改前端或服务后需重新启动桌面开发命令以重新打包 sidecar。需要网页热更新时仍可单独使用 `bun run dev`。
 
+### GitHub Actions 打包 Windows 与 macOS
+
+桌面版从 `0.0.1` 开始发布。仓库的 `Build Desktop Installers` workflow 在推送 `v*` 标签时自动生成 Windows x64 NSIS 安装包，以及 macOS Apple Silicon、Intel 两种 DMG 安装包，也支持在 GitHub Actions 页面通过 `Run workflow` 手动运行。
+
+提交并推送版本变更与 workflow 后，首次发布执行：
+
+```sh
+git tag v0.0.1
+git push origin v0.0.1
+```
+
+推送版本标签后，三个平台全部构建成功才会自动发布 GitHub Release。打开 [版本下载页](https://github.com/DedsiTeam/DedsiWork/releases)，选择对应版本，在发布说明中点击系统下载链接，或在 Assets 直接下载安装包：
+
+- `DedsiWork-v0.0.1-Windows-x64.exe`：Windows 64 位。
+- `DedsiWork-v0.0.1-macOS-AppleSilicon.dmg`：M 系列芯片 Mac。
+- `DedsiWork-v0.0.1-macOS-Intel.dmg`：Intel Mac。
+
+Release 安装包不受 Actions Artifacts 的 7 天保留期限制。重新运行同一标签的 workflow 会更新该版本的安装包和发布说明。
+
+手动运行分支上的 workflow 只打包，不创建 Release。测试下载步骤：登录 GitHub，打开仓库 → Actions → Build Desktop Installers → 点击对应运行记录 → 在页面底部的 Artifacts 下载 ZIP，解压得到安装包：
+
+- `DedsiWork-Windows-x64-v0.0.1`：Windows `.exe` 安装包。
+- `DedsiWork-macOS-AppleSilicon-v0.0.1`：M 系列芯片 Mac 的 `.dmg` 安装包。
+- `DedsiWork-macOS-Intel-v0.0.1`：Intel Mac 的 `.dmg` 安装包。
+
+产物保留 7 天，过期后可重新手动运行 workflow。打开 DMG 后将 DedsiWork 拖入 Applications。macOS CI 使用 ad-hoc 签名，尚未配置 Apple Developer ID 签名与公证；首次打开可能需要在“系统设置 → 隐私与安全性”允许打开。
+
+后续发布需同步更新 `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock` 中应用包的版本，再推送对应标签（例如 `v0.0.2`）。workflow 会检查标签与应用版本是否一致。
+
 ### 运行行为
 
 - 打开应用时启动附带服务；服务就绪后，窗口自动连接网页并建立桌面会话，无需手动输入配对码。

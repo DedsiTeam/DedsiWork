@@ -200,5 +200,17 @@ export function openDatabase(path: string) {
       );
     }).immediate();
   }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=11").get()
+  ) {
+    db.transaction(() => {
+      db.exec(
+        "UPDATE daily_reports SET content=json_remove(content,'$.status')",
+      );
+      db.query("INSERT INTO schema_migrations VALUES (11,?)").run(
+        new Date().toISOString(),
+      );
+    }).immediate();
+  }
   return db;
 }

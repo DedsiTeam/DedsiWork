@@ -9,7 +9,6 @@ export const reportDateSchema = z
       !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
     );
   }, "请输入有效日期");
-export const reportStatusLabels = { draft: "草稿", final: "已定稿" };
 export const matterStatusLabels = {
   in_progress: "进行中",
   done: "已完成",
@@ -46,7 +45,6 @@ export const reportMatterSchema = z
 export const dailyReportInputSchema = z
   .object({
     date: reportDateSchema,
-    status: z.enum(["draft", "final"]).default("draft"),
     matters: z
       .array(reportMatterSchema)
       .max(100)
@@ -138,4 +136,13 @@ export function reportMarkdown(report: DailyReportInput) {
       "",
     );
   return lines.join("\n");
+}
+
+// Legacy backups may contain the removed report-level status. Matter status stays intact.
+export function parseStoredDailyReport(value: unknown): DailyReportInput {
+  const { status: _legacyStatus, ...content } = z
+    .object({ status: z.unknown().optional() })
+    .passthrough()
+    .parse(value);
+  return dailyReportInputSchema.parse(content);
 }

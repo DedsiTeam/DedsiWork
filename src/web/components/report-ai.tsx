@@ -1,3 +1,4 @@
+import { useReportExport } from "../report-export";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -18,9 +19,13 @@ type Cache = {
   snapshot: string;
   draftSnapshot: string;
 };
-function readCache(key: string): Cache {
+function readCache(key: string, legacyKey?: string): Cache {
   try {
-    const value = JSON.parse(sessionStorage.getItem(key) || "null");
+    const value = JSON.parse(
+      sessionStorage.getItem(key) ||
+        (legacyKey ? sessionStorage.getItem(legacyKey) : null) ||
+        "null",
+    );
     if (
       value &&
       typeof value.text === "string" &&
@@ -48,10 +53,13 @@ function readCache(key: string): Cache {
   };
 }
 export function ReportAIPanel({ report }: { report: PeriodReport }) {
+  const { exporting, exportMarkdown } = useReportExport();
   const { workspace, notify } = useWorkspace(),
     label = report.type === "weekly" ? "周报" : "月报";
-  const cacheKey = `dedsiwork:report-ai:${workspace?.id}:${report.type}:${report.start}:${report.finalOnly}`;
-  const [cache, setCache] = useState(() => readCache(cacheKey));
+  const cacheKey = `dedsiwork:report-ai:${workspace?.id}:${report.type}:${report.start}`;
+  const [cache, setCache] = useState(() =>
+    readCache(cacheKey, `${cacheKey}:false`),
+  );
   const [job, setJob] = useState<ReportAIJob | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -165,7 +173,6 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
           body: JSON.stringify({
             type: report.type,
             date: report.start,
-            finalOnly: report.finalOnly,
             note,
             ...(model ? { model } : {}),
           }),
@@ -208,14 +215,8 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
     }
   }
   function download() {
-    const url = URL.createObjectURL(
-        new Blob([cache.text], { type: "text/markdown;charset=utf-8" }),
-      ),
-      link = document.createElement("a");
-    link.href = url;
-    link.download = `${report.start}-${label}-AI文字稿.md`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (!cache.text) return;
+    void exportMarkdown(`${report.start}-${label}-AI文字稿.md`, cache.text);
   }
   const stale =
     !!cache.text &&
@@ -223,79 +224,86 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
       job?.stale);
   return (
     <section className="report-ai-panel" aria-label={`AI ${label}文字稿`}>
-      <div className="report-section-heading">
-        <h3>
-          <Sparkles size={17} />
-          AI 整理成文字
-        </h3>
-        <span className="report-help">使用当前 Codex 登录</span>
-      </div>
-      <p className="report-help">
-        根据本期日报整合成可直接复制的{label}
-        ，归纳工作进展和产出结果，并保留核对后的完成量。生成后可修改文字稿，重新生成会保留当前内容。
-      </p>
-      <div className="report-ai-options">
-        <label>
-          整理要求（可选）
-          <Input
-            aria-label="AI 报告整理要求"
-            placeholder="例如：适合发给主管，简洁一些，突出成果和问题"
-            maxLength={2000}
-            value={note}
-            disabled={running || busy}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </label>
-        <label>
-          模型
-          <select
-            aria-label="报告 AI 模型"
-            value={model}
-            disabled={running || busy}
-            onChange={(e) => setModel(e.target.value)}
-          >
-            <option value="">Codex 默认模型</option>
-            {connection?.models.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div className="report-actions">
+      <div className="report-section-heading report-ai-heading">
+        <div>
+          <h3>
+            <Sparkles size={17} />
+            AI 工作报告
+          </h3>
+          <p className="report-help">
+            将本期记录整理成可编辑、可复制的{label}。
+          </p>
+        </div>
         <Button
           onClick={() => void generate()}
           disabled={busy || running || !report.reportCount}
         >
           <Sparkles />
-          {cache.text ? `重新整理${label}` : `AI 整理${label}`}
+          {cache.text ? `重新整理${label}` : `生成${label}`}
         </Button>
-        {running && (
-          <Button variant="outline" onClick={() => void stop()} disabled={busy}>
-            <Square />
-            停止生成
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          onClick={() => void connect()}
-          disabled={connecting}
-        >
-          <RefreshCw />
-          {connecting ? "正在连接…" : "检查连接"}
-        </Button>
-        {connection && !connection.ready && (
-          <Button
-            variant="outline"
-            disabled={connecting}
-            onClick={() => void login()}
-          >
-            登录 Codex
-          </Button>
-        )}
-        {connection?.ready && <span className="report-help">Codex 已连接</span>}
       </div>
+      <details className="report-ai-settings">
+        <summary>
+          写作要求与模型设置{note || model ? " · 已自定义" : ""}
+        </summary>
+        <div className="report-ai-options">
+          <label>
+            整理要求（可选）
+            <Input
+              aria-label="AI 报告整理要求"
+              placeholder="例如：适合发给主管，简洁一些，突出成果和问题"
+              maxLength={2000}
+              value={note}
+              disabled={running || busy}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </label>
+          <label>
+            模型
+            <select
+              aria-label="报告 AI 模型"
+              value={model}
+              disabled={running || busy}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              <option value="">Codex 默认模型</option>
+              {connection?.models.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="report-actions">
+          <Button
+            variant="ghost"
+            onClick={() => void connect()}
+            disabled={connecting}
+          >
+            <RefreshCw />
+            {connecting ? "正在连接…" : "检查连接"}
+          </Button>
+          {connection && !connection.ready && (
+            <Button
+              variant="outline"
+              disabled={connecting}
+              onClick={() => void login()}
+            >
+              登录 Codex
+            </Button>
+          )}
+          {connection?.ready && (
+            <span className="report-help">Codex 已连接</span>
+          )}
+        </div>
+      </details>
+      {running && (
+        <Button variant="outline" onClick={() => void stop()} disabled={busy}>
+          <Square />
+          停止生成
+        </Button>
+      )}
       {running && (
         <p role="status" className="report-help">
           {job?.stage || "正在读取生成进度…"}，可稍后返回此周期查看。
@@ -313,7 +321,7 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
       )}
       {stale && (
         <p className="period-data-warning">
-          来源日报或筛选后的汇总已有变化，当前文字稿保留；建议重新整理并核对后复制。
+          来源日报或汇总已有变化，当前文字稿保留；建议重新整理并核对后复制。
         </p>
       )}
       {cache.candidate && (
@@ -361,9 +369,14 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
             >
               {preview ? "编辑文字" : "预览文字"}
             </Button>
-            <Button size="sm" variant="outline" onClick={download}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={download}
+              disabled={exporting}
+            >
               <Download />
-              导出文字稿
+              {exporting ? "请选择保存位置…" : "导出文字稿"}
             </Button>
           </div>
           {preview ? (

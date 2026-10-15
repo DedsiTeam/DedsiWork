@@ -7,6 +7,7 @@ import type { Database } from "bun:sqlite";
 import { z } from "zod";
 import {
   dailyReportInputSchema,
+  parseStoredDailyReport,
   reportDateSchema,
   type DailyReport,
   type DailyReportList,
@@ -27,7 +28,7 @@ export class DailyReports {
   constructor(private db: Database) {}
   private map(row: Row): DailyReport {
     return {
-      ...dailyReportInputSchema.parse(JSON.parse(row.content)),
+      ...parseStoredDailyReport(JSON.parse(row.content)),
       date: row.date,
       id: row.id,
       version: row.version,
@@ -89,12 +90,7 @@ export class DailyReports {
   }
   summary(params: URLSearchParams) {
     const query = periodQuerySchema.parse(Object.fromEntries(params));
-    return buildPeriodReport(
-      this.activeReports(),
-      query.type,
-      query.date,
-      query.finalOnly === "true",
-    );
+    return buildPeriodReport(this.activeReports(), query.type, query.date);
   }
   private checkLinks(content: DailyReport["matters"], id: string | null) {
     const reports = this.activeReports();

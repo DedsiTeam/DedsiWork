@@ -9,7 +9,6 @@ export const periodQuerySchema = z
   .object({
     type: z.enum(["weekly", "monthly"]),
     date: reportDateSchema,
-    finalOnly: z.enum(["true", "false"]).default("false"),
   })
   .strict();
 export type PeriodType = "weekly" | "monthly";
@@ -46,7 +45,6 @@ export function matterIdentity(reports: Pick<DailyReport, "matters">[]) {
 export type ReportObservation = ReportMatter & {
   reportId: string;
   date: string;
-  reportStatus: DailyReport["status"];
 };
 export type MatterSummary = {
   key: string;
@@ -67,11 +65,9 @@ export type PeriodGroup = {
   end: string;
   matters: MatterSummary[];
   reportCount: number;
-  draftCount: number;
 };
 export type PeriodReport = PeriodGroup & {
   type: PeriodType;
-  finalOnly: boolean;
   weeks: PeriodGroup[];
   metrics: {
     total: number;
@@ -86,7 +82,6 @@ export type PeriodReport = PeriodGroup & {
   sources: {
     id: string;
     date: string;
-    status: DailyReport["status"];
     sections: { label: string; content: string }[];
   }[];
 };
@@ -159,22 +154,17 @@ export function buildPeriodReport(
   reports: DailyReport[],
   type: PeriodType,
   date: string,
-  finalOnly = false,
 ): PeriodReport {
   const { start, end } = periodRange(type, date),
     identity = matterIdentity(reports.filter((r) => !r.deletedAt));
   const eligible = reports
-    .filter(
-      (r) =>
-        !r.deletedAt && r.date <= end && (!finalOnly || r.status === "final"),
-    )
+    .filter((r) => !r.deletedAt && r.date <= end)
     .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   const observations = eligible.flatMap((report) =>
     report.matters.map((item) => ({
       ...item,
       reportId: report.id,
       date: report.date,
-      reportStatus: report.status,
     })),
   );
   const source = eligible.filter((report) => report.date >= start);
@@ -189,7 +179,6 @@ export function buildPeriodReport(
         identity,
       ),
       reportCount: selected.length,
-      draftCount: selected.filter((r) => r.status === "draft").length,
     };
   }
   const main = group(start, end),
@@ -213,7 +202,6 @@ export function buildPeriodReport(
   return {
     ...main,
     type,
-    finalOnly,
     weeks,
     metrics: {
       total: main.matters.length,
@@ -240,7 +228,6 @@ export function buildPeriodReport(
     sources: source.map((r) => ({
       id: r.id,
       date: r.date,
-      status: r.status,
       sections: Object.entries(sectionNames)
         .filter(([key]) => r[key as keyof typeof sectionNames].trim())
         .map(([key, label]) => ({
@@ -263,7 +250,7 @@ export function periodMarkdown(report: PeriodReport) {
   const lines = [
     `# ${label} · ${report.start} 至 ${report.end}`,
     "",
-    `来源：${report.reportCount} 份日报（${report.draftCount} 份草稿），${report.finalOnly ? "仅定稿" : "包含草稿"}。`,
+    `来源：${report.reportCount} 份日报。`,
     `涉及 ${m.total} 件事项（去重）；本期首次记录 ${m.firstRecorded} 件；本期首次完成 ${m.firstCompleted} 件；期末已完成 ${m.endDone} 件。`,
     `期间新增完成量：${quantityText(m.quantities)}`,
     "",
@@ -293,7 +280,7 @@ export function periodMarkdown(report: PeriodReport) {
         );
       for (const day of item.days)
         lines.push(
-          `- ${day.date}${day.reportStatus === "draft" ? "（草稿）" : ""}：${day.activity || "未填写工作内容"}`,
+          `- ${day.date}：${day.activity || "未填写工作内容"}`,
           `  - 产出结果：${day.result || "未填写"}`,
           `  - 当日新增完成量：${day.completedQuantity === null ? "未填写" : `${day.completedQuantity} ${day.unit}`}；累计进度：${day.progress === null ? "未填写" : `${day.progress}%`}`,
           "",

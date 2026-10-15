@@ -46,7 +46,6 @@ function narrative(source: PeriodReport): ReportNarrative {
 function input(date = "2026-10-15") {
   return {
     date,
-    status: "final",
     matters: [
       {
         matterId: "b34cc4e1-2742-4e95-a07f-e397abce5eb1",

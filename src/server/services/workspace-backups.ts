@@ -1,4 +1,4 @@
-import { dailyReportInputSchema } from "../../shared/daily-report";
+import { parseStoredDailyReport } from "../../shared/daily-report";
 import { canvasNoteInputSchema } from "../../shared/canvas-note";
 import { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
@@ -235,7 +235,7 @@ export class WorkspaceBackups {
             n: number;
           }
         ).n;
-        if (![8, 9, 10].includes(version)) throw new Error();
+        if (![8, 9, 10, 11].includes(version)) throw new Error();
         for (const table of tables) {
           if (
             (table === "canvas_notes" && version === 8) ||
@@ -410,13 +410,14 @@ export class WorkspaceBackups {
                     content: JSON.parse(row.content),
                   });
                 for (const row of target
-                  .query("SELECT date,content FROM daily_reports")
-                  .all() as { date: string; content: string }[]) {
-                  const value = dailyReportInputSchema.parse(
-                    JSON.parse(row.content),
-                  );
+                  .query("SELECT id,date,content FROM daily_reports")
+                  .all() as { id: string; date: string; content: string }[]) {
+                  const value = parseStoredDailyReport(JSON.parse(row.content));
                   if (value.date !== row.date)
                     throw new Error("日报日期与内容不一致");
+                  target
+                    .query("UPDATE daily_reports SET content=? WHERE id=?")
+                    .run(JSON.stringify(value), row.id);
                 }
                 if (target.query("PRAGMA foreign_key_check").all().length)
                   throw new Error("关联数据不完整");

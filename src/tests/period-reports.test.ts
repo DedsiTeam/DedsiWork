@@ -150,14 +150,10 @@ test("same titles do not merge different matters; units and missing data remain 
   expect(result.metrics.missingResultDays).toBe(1);
   expect(result.matters[0]?.progress).toBeNull();
 });
-test("draft filtering, soft deletion and repeated completed status never inflate first-completion counts", () => {
+test("all active reports contribute while soft deletion and repeated completion never inflate counts", () => {
   const rows = [
     report("2026-10-11", { status: "done", progress: 100 }),
-    report(
-      "2026-10-12",
-      { status: "done", progress: 100 },
-      { status: "final" },
-    ),
+    report("2026-10-12", { status: "done", progress: 100 }),
     report("2026-10-13", { status: "done", progress: 100 }),
     report(
       "2026-10-14",
@@ -168,10 +164,10 @@ test("draft filtering, soft deletion and repeated completed status never inflate
   const result = buildPeriodReport(rows, "weekly", "2026-10-15");
   expect(result.reportCount).toBe(2);
   expect(result.metrics.firstCompleted).toBe(0);
-  const final = buildPeriodReport(rows, "weekly", "2026-10-15", true);
-  expect(final.reportCount).toBe(1);
-  expect(final.draftCount).toBe(0);
-  expect(final.metrics.quantities).toEqual({ 个接口: 2 });
+  expect(result.metrics.quantities).toEqual({ 个接口: 4 });
+  expect(result).not.toHaveProperty("finalOnly");
+  expect(result).not.toHaveProperty("draftCount");
+  expect(periodMarkdown(result)).not.toContain("草稿");
 });
 test("legacy duplicate aliases count equal daily quantity once, conflicting values are omitted with warning", () => {
   const a = report("2026-10-12", { workItemId: linked });

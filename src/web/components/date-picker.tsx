@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import "../date-picker.css";
 const iso = (date: Date) => date.toISOString().slice(0, 10);
-const parse = (value: string) => new Date(`${value}T00:00:00Z`);
+const parse = (value: string) =>
+  new Date(`${value.length === 7 ? value + "-01" : value}T00:00:00Z`);
 function chinaToday() {
   const parts = new Intl.DateTimeFormat("en", {
     timeZone: "Asia/Shanghai",
@@ -24,6 +25,8 @@ export function DatePicker({
   id,
   withTime = false,
   clearable = false,
+  mode = "date",
+  placement = "top",
 }: {
   value: string;
   onChange: (date: string) => void;
@@ -34,18 +37,24 @@ export function DatePicker({
   id?: string;
   withTime?: boolean;
   clearable?: boolean;
+  mode?: "date" | "month";
+  placement?: "top" | "bottom";
 }) {
-  const dateValue = value.slice(0, 10);
+  const dateValue = value.slice(0, mode === "month" ? 7 : 10);
   const timeValue = value.slice(11, 16) || "09:00";
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => parse(dateValue || chinaToday()));
-  const [focused, setFocused] = useState(dateValue || chinaToday());
+  const [focused, setFocused] = useState(
+    dateValue || chinaToday().slice(0, mode === "month" ? 7 : 10),
+  );
   const root = useRef<HTMLDivElement>(null),
     trigger = useRef<HTMLButtonElement>(null);
   const needsFocus = useRef(false);
-  const today = chinaToday();
+  const today = chinaToday().slice(0, mode === "month" ? 7 : 10);
+  const minimum = mode === "month" ? min?.slice(0, 7) : min;
+  const maximum = mode === "month" ? max?.slice(0, 7) : max;
   const allowed = (date: string) =>
-    (!min || date >= min) && (!max || date <= max);
+    (!minimum || date >= minimum) && (!maximum || date <= maximum);
   function close() {
     setOpen(false);
     trigger.current?.focus();
@@ -92,11 +101,15 @@ export function DatePicker({
     button.focus({ preventScroll: true });
     needsFocus.current = false;
     const next = new Date(
-      Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + offset, 1),
+      Date.UTC(
+        month.getUTCFullYear(),
+        month.getUTCMonth() + offset * (mode === "month" ? 12 : 1),
+        1,
+      ),
     );
     setMonth(next);
-    const first = iso(next);
-    setFocused(min && first < min ? min : first);
+    const first = iso(next).slice(0, mode === "month" ? 7 : 10);
+    setFocused(minimum && first < minimum ? minimum : first);
   }
   return (
     <div
@@ -136,88 +149,144 @@ export function DatePicker({
             ? `${dateValue.replaceAll("-", " / ")}${withTime ? "  " + timeValue : ""}`
             : withTime
               ? "选择日期和时间"
-              : "选择日期"}
+              : mode === "month"
+                ? "选择月份"
+                : "选择日期"}
         </span>
         <CalendarDays size={15} />
       </button>
       {open && (
         <div
-          className="date-picker-popover"
+          className={`date-picker-popover${placement === "bottom" ? " opens-down" : ""}`}
           role="dialog"
           aria-label={`选择${label}`}
         >
           <div className="date-picker-heading">
             <strong>
-              {month.getUTCFullYear()} 年 {month.getUTCMonth() + 1} 月
+              {month.getUTCFullYear()} 年
+              {mode === "date" ? ` ${month.getUTCMonth() + 1} 月` : ""}
             </strong>
             <div>
               <button
                 type="button"
-                aria-label="上个月"
+                aria-label={mode === "month" ? "上一年" : "上个月"}
                 onClick={(event) => changeMonth(-1, event.currentTarget)}
               >
                 <ChevronLeft size={15} />
               </button>
               <button
                 type="button"
-                aria-label="下个月"
+                aria-label={mode === "month" ? "下一年" : "下个月"}
                 onClick={(event) => changeMonth(1, event.currentTarget)}
               >
                 <ChevronRight size={15} />
               </button>
             </div>
           </div>
-          <div className="date-picker-weekdays">
-            {["一", "二", "三", "四", "五", "六", "日"].map((day) => (
-              <span key={day}>{day}</span>
-            ))}
-          </div>
-          <div className="date-picker-days" role="grid" aria-label="日期">
-            {days.map((date) => {
-              const key = iso(date);
-              return (
-                <button
-                  type="button"
-                  key={key}
-                  data-date={key}
-                  role="gridcell"
-                  aria-label={key}
-                  aria-selected={key === dateValue}
-                  aria-current={key === today ? "date" : undefined}
-                  tabIndex={key === focused ? 0 : -1}
-                  disabled={!allowed(key)}
-                  className={`${date.getUTCMonth() !== month.getUTCMonth() ? "other-month " : ""}${key === dateValue ? "selected " : ""}${key === today ? "today" : ""}`}
-                  onClick={() => select(key)}
-                  onFocus={() => setFocused(key)}
-                  onKeyDown={(event) => {
-                    const offsets: Record<string, number> = {
-                      ArrowLeft: -1,
-                      ArrowRight: 1,
-                      ArrowUp: -7,
-                      ArrowDown: 7,
-                    };
-                    if (event.key in offsets) {
+          {mode === "month" ? (
+            <div className="date-picker-months" role="grid" aria-label="月份">
+              {Array.from({ length: 12 }, (_, index) => {
+                const key = `${month.getUTCFullYear()}-${String(index + 1).padStart(2, "0")}`;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="gridcell"
+                    data-date={key}
+                    aria-label={key}
+                    aria-selected={key === dateValue}
+                    aria-current={key === today ? "date" : undefined}
+                    tabIndex={key === focused ? 0 : -1}
+                    disabled={!allowed(key)}
+                    className={`${key === dateValue ? "selected " : ""}${key === today ? "today" : ""}`}
+                    onFocus={() => setFocused(key)}
+                    onClick={() => select(key)}
+                    onKeyDown={(event) => {
+                      const offsets: Record<string, number> = {
+                        ArrowLeft: -1,
+                        ArrowRight: 1,
+                        ArrowUp: -3,
+                        ArrowDown: 3,
+                      };
+                      if (!(event.key in offsets)) return;
                       event.preventDefault();
-                      const next = new Date(date);
-                      next.setUTCDate(next.getUTCDate() + offsets[event.key]!);
-                      const nextKey = iso(next);
+                      const next = new Date(
+                        Date.UTC(
+                          month.getUTCFullYear(),
+                          index + offsets[event.key]!,
+                          1,
+                        ),
+                      );
+                      const nextKey = iso(next).slice(0, 7);
                       if (allowed(nextKey)) {
                         needsFocus.current = true;
                         setFocused(nextKey);
-                        if (
-                          next.getUTCMonth() !== month.getUTCMonth() ||
-                          next.getUTCFullYear() !== month.getUTCFullYear()
-                        )
-                          setMonth(next);
+                        setMonth(next);
                       }
-                    }
-                  }}
-                >
-                  {date.getUTCDate()}
-                </button>
-              );
-            })}
-          </div>
+                    }}
+                  >
+                    {index + 1} 月
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <>
+              <div className="date-picker-weekdays">
+                {["一", "二", "三", "四", "五", "六", "日"].map((day) => (
+                  <span key={day}>{day}</span>
+                ))}
+              </div>
+              <div className="date-picker-days" role="grid" aria-label="日期">
+                {days.map((date) => {
+                  const key = iso(date);
+                  return (
+                    <button
+                      type="button"
+                      key={key}
+                      data-date={key}
+                      role="gridcell"
+                      aria-label={key}
+                      aria-selected={key === dateValue}
+                      aria-current={key === today ? "date" : undefined}
+                      tabIndex={key === focused ? 0 : -1}
+                      disabled={!allowed(key)}
+                      className={`${date.getUTCMonth() !== month.getUTCMonth() ? "other-month " : ""}${key === dateValue ? "selected " : ""}${key === today ? "today" : ""}`}
+                      onClick={() => select(key)}
+                      onFocus={() => setFocused(key)}
+                      onKeyDown={(event) => {
+                        const offsets: Record<string, number> = {
+                          ArrowLeft: -1,
+                          ArrowRight: 1,
+                          ArrowUp: -7,
+                          ArrowDown: 7,
+                        };
+                        if (event.key in offsets) {
+                          event.preventDefault();
+                          const next = new Date(date);
+                          next.setUTCDate(
+                            next.getUTCDate() + offsets[event.key]!,
+                          );
+                          const nextKey = iso(next);
+                          if (allowed(nextKey)) {
+                            needsFocus.current = true;
+                            setFocused(nextKey);
+                            if (
+                              next.getUTCMonth() !== month.getUTCMonth() ||
+                              next.getUTCFullYear() !== month.getUTCFullYear()
+                            )
+                              setMonth(next);
+                          }
+                        }
+                      }}
+                    >
+                      {date.getUTCDate()}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
           {withTime && (
             <div className="date-picker-time">
               <span>时间</span>
@@ -262,7 +331,11 @@ export function DatePicker({
           )}
           <div className="date-picker-footer">
             <span>
-              {dateValue ? dateValue.replaceAll("-", "/") : "尚未选择日期"}
+              {dateValue
+                ? dateValue.replaceAll("-", "/")
+                : mode === "month"
+                  ? "尚未选择月份"
+                  : "尚未选择日期"}
             </span>
             <div>
               {clearable && (
@@ -282,7 +355,7 @@ export function DatePicker({
                 disabled={!allowed(today)}
                 onClick={() => select(today)}
               >
-                今天
+                {mode === "month" ? "本月" : "今天"}
               </button>
               {withTime && (
                 <button

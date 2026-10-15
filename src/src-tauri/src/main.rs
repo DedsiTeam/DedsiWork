@@ -263,17 +263,8 @@ fn main() {
                     .title("DedsiWork");
             #[cfg(target_os = "macos")]
             let window = window
-                .transparent(true)
-                .effects(
-                    tauri::window::EffectsBuilder::new()
-                        .effect(tauri::window::Effect::UnderWindowBackground)
-                        .state(tauri::window::EffectState::Active)
-                        .build(),
-                )
+                .transparent(false)
                 .theme(Some(tauri::Theme::Light))
-                .initialization_script(
-                    "document.addEventListener('DOMContentLoaded', () => document.documentElement.classList.add('native-glass'), { once: true });",
-                )
                 .title_bar_style(tauri::TitleBarStyle::Overlay)
                 .hidden_title(true)
                 .traffic_light_position(tauri::LogicalPosition::new(16.0, 20.0));

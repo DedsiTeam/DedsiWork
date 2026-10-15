@@ -14,7 +14,7 @@ const actor: Actor = {
   writable: true,
   requestId: "backup-test",
 };
-for (const version of [8, 9, 10])
+for (const version of [8, 9, 10, 11])
   test(`workspace backup version ${version} restores into current schema without dropping reports`, async () => {
     const dir = mkdtempSync(join(tmpdir(), "dedsiwork-reports-backup-")),
       store = new WorkspaceStore(join(dir, "legacy.sqlite")),
@@ -28,7 +28,7 @@ for (const version of [8, 9, 10])
     Object.defineProperty(backups, "pick", { value: async () => output });
     let savedId: string | null = null;
     try {
-      if (version === 10) {
+      if (version >= 10) {
         const saved = new DailyReports(db).save(
           null,
           {
@@ -48,9 +48,13 @@ for (const version of [8, 9, 10])
           actor,
         );
         savedId = saved.id;
+        if (version === 10)
+          db.exec(
+            "UPDATE daily_reports SET content=json_set(content,'$.status','final');DELETE FROM schema_migrations WHERE version=11",
+          );
       } else {
         db.exec(
-          "DROP TABLE daily_reports;DELETE FROM schema_migrations WHERE version=10",
+          "DROP TABLE daily_reports;DELETE FROM schema_migrations WHERE version>=10",
         );
         if (version === 8)
           db.exec(
@@ -69,9 +73,19 @@ for (const version of [8, 9, 10])
       try {
         const reports = new DailyReports(target);
         expect(reports.list(new URLSearchParams()).meta.total).toBe(
-          version === 10 ? 1 : 0,
+          version >= 10 ? 1 : 0,
         );
         if (savedId) {
+          expect(reports.get(savedId)).not.toHaveProperty("status");
+          expect(
+            (
+              target
+                .query(
+                  "SELECT json_type(content,'$.status') AS status FROM daily_reports WHERE id=?",
+                )
+                .get(savedId) as { status: null }
+            ).status,
+          ).toBeNull();
           expect(reports.get(savedId).matters[0]?.result).toBe("成果保留");
           expect(
             reports.summary(

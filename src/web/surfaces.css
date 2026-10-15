@@ -1,0 +1,50 @@
+/* Opaque white surfaces, including the native desktop window. */
+:root,
+:root.dark {
+  color-scheme: light;
+  --background: #ffffff;
+  --workspace-background: #ffffff;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --sidebar: #ffffff;
+}
+html,
+body,
+#root,
+.app-shell,
+.app-shell .main-area,
+.app-shell .topbar,
+.app-shell .sidebar,
+.app-shell .sidebar-header,
+.workspace-content,
+.settings-content,
+.chat-workbench {
+  background: #ffffff;
+}
+:is(
+  .space-card,
+  .note-card,
+  .sprint-overview,
+  .sprint-card,
+  .chat-composer,
+  .dm-fieldset.dm-workbench,
+  .dialog-content,
+  .confirmation-content,
+  .date-picker-popover,
+  .note-inspector,
+  .note-tools,
+  .note-zoom,
+  .space-card-menu,
+  .space-switcher-menu,
+  .chat-history-drawer,
+  .chat-directory-popover,
+  .workspace-toast
+) {
+  background: #ffffff;
+}
+*,
+*::before,
+*::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}

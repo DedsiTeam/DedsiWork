@@ -1,3 +1,4 @@
+import { ReportExports } from "./services/report-exports";
 import { ReportAI } from "./services/report-ai";
 import { DailyReports } from "./services/daily-reports";
 import { CanvasNotes } from "./services/canvas-notes";
@@ -28,6 +29,7 @@ export function createApp(options: {
   const workspaces = new WorkspaceStore(options.dbPath);
   const auth = new Auth(options.credentials);
   const backups = new WorkspaceBackups(workspaces);
+  const reportExports = new ReportExports();
   function createBundle(id: string) {
     const path = workspaces.path(id);
     mkdirSync(dirname(path), { recursive: true });
@@ -264,6 +266,13 @@ export function createApp(options: {
         if (req.method === "DELETE")
           return reply({
             data: notes.remove(noteMatch[1]!, await json(req), actor),
+          });
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
+      if (url.pathname === "/api/v1/reports/export") {
+        if (req.method === "POST")
+          return reply({
+            data: await reportExports.save(await json(req), actor),
           });
         throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
       }

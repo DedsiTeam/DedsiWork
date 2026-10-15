@@ -1,3 +1,5 @@
+import { DatePicker } from "../components/date-picker";
+import { useReportExport } from "../report-export";
 import * as Dialog from "@radix-ui/react-dialog";
 import { addDays } from "../../shared/period-report";
 import { PeriodReports } from "../components/period-reports";
@@ -20,7 +22,6 @@ import {
   reportMarkdown,
   reportMetrics,
   reportSections,
-  reportStatusLabels,
   matterStatusLabels,
   type DailyReport,
   type DailyReportInput,
@@ -61,6 +62,7 @@ export function DailyReportsPage() {
   return <DailyReportsView key={workspace?.id} />;
 }
 function DailyReportsView() {
+  const { exporting, exportMarkdown } = useReportExport();
   const { notify } = useWorkspace();
   const [mode, setMode] = useState<"daily" | "weekly" | "monthly">("daily");
   const [backfillOpen, setBackfillOpen] = useState(false);
@@ -351,16 +353,7 @@ function DailyReportsView() {
   }
   function download() {
     if (!form) return;
-    const url = URL.createObjectURL(
-        new Blob([reportMarkdown(form)], {
-          type: "text/markdown;charset=utf-8",
-        }),
-      ),
-      link = document.createElement("a");
-    link.href = url;
-    link.download = `${form.date}-日报.md`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    void exportMarkdown(`${form.date}-日报.md`, reportMarkdown(form));
   }
   async function switchMode(next: typeof mode) {
     if (busy) return;
@@ -437,9 +430,7 @@ function DailyReportsView() {
         <div className="page-heading">
           <div>
             <h1>日报管理</h1>
-            <p className="report-subtitle">
-              记录每天的工作、产出和进度，让每一份积累都有据可查。
-            </p>
+            <p className="report-subtitle">记录进展，沉淀成果。</p>
           </div>
           <div className="report-heading-actions">
             <Button
@@ -471,12 +462,14 @@ function DailyReportsView() {
               setPage(1);
             }}
           />
-          <Input
-            aria-label="按月份筛选"
-            type="month"
+          <DatePicker
+            label="按月份筛选"
+            mode="month"
+            placement="bottom"
+            clearable
             value={month}
-            onChange={(e) => {
-              setMonth(e.target.value);
+            onChange={(value) => {
+              setMonth(value);
               setPage(1);
             }}
           />
@@ -547,7 +540,6 @@ function DailyReportsView() {
                   >
                     <div>
                       <strong>{report.date}</strong>
-                      <span>{reportStatusLabels[report.status]}</span>
                     </div>
                     <p>
                       {report.matters.map((item) => item.title).join("、") ||
@@ -593,39 +585,55 @@ function DailyReportsView() {
               </div>
             ) : (
               <>
-                <div className="report-editor-heading">
-                  <h2>{form.date} 日报</h2>
-                  <span role="status">{saveState}</span>
-                </div>
-                <div className="report-actions">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setPreview(!preview)}
-                  >
-                    {preview ? "继续编辑" : "预览"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void copy()}
-                  >
-                    <Copy />
-                    复制日报
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={download}>
-                    <Download />
-                    导出 Markdown
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => void lifecycle()}
-                  >
-                    <Trash2 />
-                    {selected?.deletedAt ? "恢复" : "删除"}
-                  </Button>
+                <div className="report-document-header">
+                  <div className="report-editor-heading">
+                    <div className="report-document-title">
+                      <DatePicker
+                        label="日报日期"
+                        placement="bottom"
+                        value={form.date}
+                        disabled={busy || !!selected?.deletedAt}
+                        onChange={(value) => change("date", value)}
+                      />
+                      <h2>日报</h2>
+                    </div>
+                    <span role="status">{saveState}</span>
+                  </div>
+                  <div className="report-actions report-document-actions">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPreview(!preview)}
+                    >
+                      {preview ? "继续编辑" : "预览"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void copy()}
+                    >
+                      <Copy />
+                      复制日报
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={download}
+                      disabled={exporting}
+                    >
+                      <Download />
+                      {exporting ? "请选择保存位置…" : "导出 Markdown"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => void lifecycle()}
+                    >
+                      <Trash2 />
+                      {selected?.deletedAt ? "恢复" : "删除"}
+                    </Button>
+                  </div>
                 </div>
                 {metrics && (
                   <div className="report-metrics">
@@ -639,20 +647,11 @@ function DailyReportsView() {
                     </div>
                     <div>
                       <strong>
-                        {metrics.total
-                          ? Math.round((metrics.done / metrics.total) * 100)
-                          : 0}
-                        %
-                      </strong>
-                      <span>事项完成率</span>
-                    </div>
-                    <div>
-                      <strong>
                         {Object.entries(metrics.quantities)
                           .map(([unit, n]) => `${Number(n.toFixed(6))} ${unit}`)
                           .join(" / ") || "未填写"}
                       </strong>
-                      <span>当日新增完成量（按单位分别统计）</span>
+                      <span>今日完成量</span>
                     </div>
                   </div>
                 )}
@@ -667,36 +666,6 @@ function DailyReportsView() {
                     className="report-fields"
                     disabled={busy || !!selected?.deletedAt}
                   >
-                    <div className="report-meta">
-                      <label>
-                        日报日期
-                        <Input
-                          type="date"
-                          value={form.date}
-                          onChange={(e) => change("date", e.target.value)}
-                        />
-                      </label>
-                      <label>
-                        状态
-                        <select
-                          value={form.status}
-                          onChange={(e) =>
-                            change(
-                              "status",
-                              e.target.value as DailyReportInput["status"],
-                            )
-                          }
-                        >
-                          {Object.entries(reportStatusLabels).map(
-                            ([value, label]) => (
-                              <option key={value} value={value}>
-                                {label}
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </label>
-                    </div>
                     <div className="report-section-heading">
                       <h3>工作事项</h3>
                       <div>
@@ -727,9 +696,12 @@ function DailyReportsView() {
                         </Button>
                       </div>
                     </div>
-                    <p className="report-help">
-                      完成量只填今天新增的数量；累计进度填写截至今天的百分比。跨天推进同一件事时，请接续历史事项，便于后续按事项汇总。
-                    </p>
+                    <details className="report-inline-help">
+                      <summary>如何记录完成量？</summary>
+                      <p>
+                        完成量填写当天新增数量，进度填写累计百分比。同一事项跨天推进时，使用“接续历史事项”。
+                      </p>
+                    </details>
                     {historyOpen && (
                       <div className="report-history">
                         <div className="report-section-heading">
@@ -929,22 +901,44 @@ function DailyReportsView() {
                         添加事项，记录每件事情的结果和完成情况。
                       </div>
                     )}
-                    {Object.entries(reportSections).map(([key, label]) => (
-                      <label className="report-section" key={key}>
-                        {label}
-                        <Textarea
-                          value={form[key as keyof typeof reportSections]}
-                          maxLength={20000}
-                          placeholder={`${label}，支持 Markdown 列表、格式和链接…`}
-                          onChange={(e) =>
-                            change(
-                              key as keyof typeof reportSections,
-                              e.target.value,
-                            )
-                          }
-                        />
-                      </label>
-                    ))}
+                    <section
+                      className="report-supplements"
+                      aria-label="日报补充内容"
+                    >
+                      <h3>
+                        补充内容 <span>按需填写</span>
+                      </h3>
+                      {Object.entries(reportSections).map(([key, label]) => (
+                        <details
+                          className="report-supplement"
+                          key={`${selected?.id}:${key}`}
+                          defaultOpen={Boolean(
+                            form[key as keyof typeof reportSections],
+                          )}
+                        >
+                          <summary>
+                            {label}
+                            {form[key as keyof typeof reportSections] && (
+                              <span>已填写</span>
+                            )}
+                          </summary>
+                          <label className="report-section">
+                            <span className="sr-only">{label}</span>
+                            <Textarea
+                              value={form[key as keyof typeof reportSections]}
+                              maxLength={20000}
+                              placeholder={`补充${label}…`}
+                              onChange={(event) =>
+                                change(
+                                  key as keyof typeof reportSections,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+                        </details>
+                      ))}
+                    </section>
                     <div className="report-bottom">
                       <span>修改后自动保存 · 空白数量表示未填写，不计为 0</span>
                       <Button onClick={() => void flush()} disabled={!dirty}>
@@ -988,15 +982,14 @@ function DailyReportsView() {
             >
               <label className="report-backfill-date">
                 补写日期
-                <Input
-                  aria-label="补写日期"
-                  type="date"
-                  required
+                <DatePicker
+                  label="补写日期"
+                  placement="bottom"
                   max={today()}
                   value={backfillDate}
                   disabled={busy}
-                  onChange={(event) => {
-                    setBackfillDate(event.target.value);
+                  onChange={(value) => {
+                    setBackfillDate(value);
                     setBackfillError("");
                   }}
                 />

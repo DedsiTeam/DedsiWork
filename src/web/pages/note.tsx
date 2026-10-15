@@ -1,8 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { Link, useBlocker, useNavigate, useParams } from "react-router";
 import * as Dialog from "@radix-ui/react-alert-dialog";
 import {
   App,
+  Path,
+  PointerEvent as CanvasPointerEvent,
   Box,
   Group,
   Rect,
@@ -16,6 +23,7 @@ import {
 } from "leafer-editor";
 import {
   ArrowLeft,
+  ArrowUpRight,
   Type,
   ImagePlus,
   Square,
@@ -28,6 +36,9 @@ import {
   Minus,
   Plus,
   Bold,
+  TextAlignStart,
+  TextAlignCenter,
+  TextAlignEnd,
   Layers2,
   ArrowUpToLine,
   ArrowDownToLine,
@@ -54,8 +65,17 @@ import {
   fontStacks,
   type CanvasContent,
   type CanvasNode,
+  type Connector,
   type CanvasNote,
 } from "../../shared/canvas-note";
+import {
+  connectorBendPoint,
+  connectorPath,
+  connectorStyle,
+  lineSettings,
+} from "../canvas-connector";
+import { findAttachment, resolveAttachment } from "../canvas-attachments";
+import { ConnectorProperties } from "../components/connector-properties";
 import "../notes.css";
 type Scene = {
   app: App;
@@ -63,13 +83,25 @@ type Scene = {
   entries: Map<string, { data: CanvasNode; node: UI }>;
   snapshot: () => CanvasContent;
   add: (data: CanvasNode) => void;
+  sync: (autoAttach?: boolean) => void;
 };
 const empty: CanvasContent = { nodes: [] };
 function regular(kind: CanvasNode["kind"]) {
   return kind === "circle" || kind === "equilateral";
 }
 function isShape(kind: CanvasNode["kind"]) {
-  return kind !== "text" && kind !== "image";
+  return kind !== "text" && kind !== "image" && kind !== "connector";
+}
+function shapeDimensions(data: CanvasNode): CanvasNode {
+  if (!isShape(data.kind)) return data;
+  // Store shape size as geometry, never as a transform that stretches its text.
+  return {
+    ...data,
+    width: Math.min(20000, Math.max(1, data.width * Math.abs(data.scaleX))),
+    height: Math.min(20000, Math.max(1, data.height * Math.abs(data.scaleY))),
+    scaleX: 1,
+    scaleY: 1,
+  };
 }
 function labelStyle(data: CanvasNode) {
   const triangle = data.kind === "triangle" || data.kind === "equilateral";
@@ -94,7 +126,7 @@ function labelStyle(data: CanvasNode) {
     fontFamily: fontStacks[data.fontFamily],
     fontWeight: data.bold ? ("bold" as const) : ("normal" as const),
     fill: data.textColor,
-    textAlign: "center" as const,
+    textAlign: data.textAlign ?? "center",
     verticalAlign: "middle" as const,
     textOverflow: "ellipsis" as const,
     hittable: false,
@@ -117,6 +149,7 @@ function shapeStyle(data: CanvasNode) {
   };
 }
 function makeNode(data: CanvasNode): UI {
+  data = shapeDimensions(data);
   const common = {
     id: data.id,
     x: data.x,
@@ -131,9 +164,31 @@ function makeNode(data: CanvasNode): UI {
     stroke: data.stroke,
     strokeWidth: data.strokeWidth,
   };
+  if (data.kind === "connector")
+    return new Path({
+      ...common,
+      width: undefined,
+      height: undefined,
+      ...connectorStyle(data),
+      hitRadius: 10,
+      editConfig: {
+        resizeable: false,
+        rotateable: false,
+        hideResizeLines: true,
+      },
+    });
   if (data.kind === "text")
     return new Text({
       ...common,
+      width: undefined,
+      height: undefined,
+      textWrap: "none",
+      textAlign: data.textAlign ?? "left",
+      editConfig: {
+        resizeable: false,
+        rotateable: false,
+        hideResizeLines: true,
+      },
       text: data.text,
       fontSize: data.fontSize,
       fontFamily: fontStacks[data.fontFamily],
@@ -151,7 +206,8 @@ function makeNode(data: CanvasNode): UI {
     hitBox: true,
     hitChildren: false,
     textBox: true,
-    editConfig: { editSize: "scale", lockRatio: regular(data.kind) },
+    resizeChildren: false,
+    editConfig: { editSize: "size", lockRatio: regular(data.kind) },
   });
   const background =
     data.kind === "ellipse" || data.kind === "circle"
@@ -172,12 +228,22 @@ function readNode(data: CanvasNode, node: UI): CanvasNode {
       : shape
         ? ((node as Box).children[1] as Text)
         : null;
-  return {
+  return shapeDimensions({
     ...data,
     x: node.x,
     y: node.y,
-    width: node.width,
-    height: node.height,
+    width:
+      data.kind === "text"
+        ? Math.min(20000, Math.max(1, node.getBounds("box", "inner").width))
+        : data.kind === "connector"
+          ? data.width
+          : node.width,
+    height:
+      data.kind === "text"
+        ? Math.min(20000, Math.max(1, node.getBounds("box", "inner").height))
+        : data.kind === "connector"
+          ? data.height
+          : node.height,
     scaleX: node.scaleX,
     scaleY: node.scaleY,
     rotation: node.rotation,
@@ -191,6 +257,10 @@ function readNode(data: CanvasNode, node: UI): CanvasNode {
     ...(label
       ? {
           text: label.text,
+          textAlign:
+            label.textAlign === "center" || label.textAlign === "right"
+              ? label.textAlign
+              : "left",
           fontSize: label.fontSize,
           bold: label.fontWeight === "bold",
           ...(shape && typeof label.fill === "string"
@@ -198,14 +268,28 @@ function readNode(data: CanvasNode, node: UI): CanvasNode {
             : {}),
         }
       : {}),
-  };
+  });
 }
 function applyNode(node: UI, data: CanvasNode) {
+  data = shapeDimensions(data);
+  if (data.kind === "connector") {
+    node.set({
+      x: data.x,
+      y: data.y,
+      scaleX: data.scaleX,
+      scaleY: data.scaleY,
+      rotation: data.rotation,
+      width: undefined,
+      height: undefined,
+      ...connectorStyle(data),
+    });
+    return;
+  }
   node.set({
     x: data.x,
     y: data.y,
-    width: data.width,
-    height: data.height,
+    width: data.kind === "text" ? undefined : data.width,
+    height: data.kind === "text" ? undefined : data.height,
     scaleX: data.scaleX,
     scaleY: data.scaleY,
     rotation: data.rotation,
@@ -221,6 +305,7 @@ function applyNode(node: UI, data: CanvasNode) {
       fontFamily: fontStacks[data.fontFamily],
       fontWeight: data.bold ? "bold" : "normal",
       fill: data.fill,
+      textAlign: data.textAlign ?? "left",
     });
 }
 async function imageData(file: File) {
@@ -269,7 +354,23 @@ export function NotePage() {
     [gap, setGap] = useState(24),
     [removeTarget, setRemoveTarget] = useState<string[] | null>(null),
     [count, setCount] = useState(0),
-    [zoom, setZoom] = useState(100);
+    [zoom, setZoom] = useState(100),
+    [drawing, setDrawing] = useState(false),
+    [drawStarted, setDrawStarted] = useState(false);
+  const [, refreshViewport] = useState(0);
+  const drawState = useRef<{
+    active: boolean;
+    start: { x: number; y: number } | null;
+    preview: Path | null;
+  }>({ active: false, start: null, preview: null });
+  const createConnector = useRef(
+    (start: { x: number; y: number }, end: { x: number; y: number }) => {},
+  );
+  const draggingEndpoint = useRef<{
+    id: string;
+    end: "start" | "end" | "bend";
+    pointerId: number;
+  } | null>(null);
   const host = useRef<HTMLDivElement>(null),
     scene = useRef<Scene | null>(null),
     fileInput = useRef<HTMLInputElement>(null),
@@ -330,14 +431,14 @@ export function NotePage() {
       sky: {},
       editor: {
         keyEvent: false,
-        editSize: "scale",
+        editSize: "size",
         multipleSelect: true,
         boxSelect: true,
         skipNested: true,
         flipable: false,
         skewable: false,
         pointSize: 8,
-        stroke: "#6560b5",
+        stroke: "#0d0c22",
       },
       move: { holdSpaceKey: true },
       wheel: { zoomMode: true },
@@ -346,10 +447,110 @@ export function NotePage() {
     const group = new Group();
     app.tree.add(group);
     const entries: Scene["entries"] = new Map();
+    let syncing = false,
+      followFrame = 0;
+    const sync = (autoAttach = false) => {
+      if (syncing) return;
+      syncing = true;
+      try {
+        for (const entry of entries.values()) {
+          if (!isShape(entry.data.kind)) continue;
+          const data = readNode(entry.data, entry.node);
+          const background = (entry.node as Box).children[0];
+          if (
+            entry.node.scaleX !== 1 ||
+            entry.node.scaleY !== 1 ||
+            background.width !== data.width ||
+            background.height !== data.height
+          ) {
+            applyNode(entry.node, data);
+          }
+          entry.data = data;
+        }
+        app.tree.updateLayout();
+        for (const entry of entries.values()) {
+          if (entry.data.kind !== "connector") continue;
+          const data = readNode(entry.data, entry.node),
+            line = { ...lineSettings(data) };
+          const oldStart = group.getInnerPoint(
+              entry.node.getWorldPoint({ x: 0, y: 0 }),
+            ),
+            oldEnd = group.getInnerPoint(
+              entry.node.getWorldPoint({ x: line.endX, y: line.endY }),
+            );
+          if (line.startBinding && !entries.has(line.startBinding.nodeId))
+            line.startBinding = undefined;
+          if (line.endBinding && !entries.has(line.endBinding.nodeId))
+            line.endBinding = undefined;
+          if (autoAttach) {
+            if (!line.startBinding)
+              line.startBinding = findAttachment(
+                entries.values(),
+                group,
+                oldStart,
+                26,
+              ).binding;
+            if (!line.endBinding)
+              line.endBinding = findAttachment(
+                entries.values(),
+                group,
+                oldEnd,
+                26,
+              ).binding;
+          }
+          const start =
+              resolveAttachment(line.startBinding, entries, group) || oldStart,
+            end = resolveAttachment(line.endBinding, entries, group) || oldEnd;
+          if (!line.startBinding && !line.endBinding) {
+            entry.data = { ...data, line };
+            continue;
+          }
+          const dx = end.x - start.x,
+            dy = end.y - start.y;
+          if (Math.abs(dx) > 20000 || Math.abs(dy) > 20000) continue;
+          // Preserve a manually positioned bend in canvas coordinates.
+          if (line.bend) {
+            const bend = group.getInnerPoint(
+              entry.node.getWorldPoint(line.bend),
+            );
+            line.bend = {
+              x: Math.max(-20000, Math.min(20000, bend.x - start.x)),
+              y: Math.max(-20000, Math.min(20000, bend.y - start.y)),
+            };
+          }
+          const next = {
+            ...data,
+            x: start.x,
+            y: start.y,
+            width: Math.max(1, Math.abs(dx)),
+            height: Math.max(1, Math.abs(dy)),
+            scaleX: 1,
+            scaleY: 1,
+            rotation: 0,
+            line: { ...line, endX: dx, endY: dy },
+          };
+          if (JSON.stringify(data) !== JSON.stringify(next)) {
+            entry.data = next;
+            applyNode(entry.node, next);
+          }
+        }
+      } finally {
+        syncing = false;
+      }
+    };
     const changed = () => {
+      if (syncing) return;
+      if (!followFrame)
+        followFrame = requestAnimationFrame(() => {
+          followFrame = 0;
+          if (active) sync();
+        });
       clearTimeout(timer);
       timer = setTimeout(() => {
-        if (active) change.current();
+        if (active) {
+          sync();
+          change.current();
+        }
       }, 50);
     };
     const add = (data: CanvasNode) => {
@@ -362,13 +563,17 @@ export function NotePage() {
           child.on(PropertyEvent.CHANGE, changed);
     };
     canvasContentSchema.parse(initial).nodes.forEach(add);
-    const snapshot = () => ({
-      nodes: group.children.map((node) => {
-        const entry = entries.get(node.id)!;
-        return readNode(entry.data, entry.node);
-      }),
-    });
-    scene.current = { app, group, entries, snapshot, add };
+    const snapshot = () => {
+      sync();
+      return {
+        nodes: group.children.map((node) => {
+          const entry = entries.get(node.id)!;
+          return readNode(entry.data, entry.node);
+        }),
+      };
+    };
+    scene.current = { app, group, entries, snapshot, add, sync };
+    sync(true);
     baseline.current = JSON.stringify(snapshot());
     setCount(entries.size);
     app.editor.on(EditorEvent.SELECT, () => {
@@ -379,12 +584,88 @@ export function NotePage() {
       app.editor.config.lockRatio = values.some(
         (n) => regular(n.kind) || Math.abs(n.rotation % 90) > 0.0001,
       );
+      app.editor.config.resizeable = !values.some(
+        (n) => n.kind === "text" || n.kind === "connector",
+      );
+      app.editor.config.rotateable = !values.some(
+        (n) => n.kind === "text" || n.kind === "connector",
+      );
+      // SELECT runs before Leafer creates the editing tool. Its normal
+      // selection lifecycle will build the controls using this configuration.
       setSelection(values);
       setSelected(values.length === 1 ? values[0] : null);
     });
     app.tree.zoomLayer.on(PropertyEvent.CHANGE, () => {
-      if (active) setZoom(Math.round(app.tree.zoomLayer.scaleX * 100));
+      if (active) {
+        setZoom(Math.round(app.tree.zoomLayer.scaleX * 100));
+        refreshViewport((v) => v + 1);
+      }
     });
+    app.on(CanvasPointerEvent.TAP, (event: CanvasPointerEvent) => {
+      const draft = drawState.current;
+      if (!draft.active || event.spaceKey || !event.left) return;
+      const point = findAttachment(
+        entries.values(),
+        group,
+        event.getInnerPoint(group),
+      ).point;
+      if (!draft.start) {
+        draft.start = point;
+        setDrawStarted(true);
+        draft.preview = new Path({
+          x: point.x,
+          y: point.y,
+          ...connectorStyle(
+            canvasNodeSchema.parse({
+              id: crypto.randomUUID(),
+              kind: "connector",
+              x: 0,
+              y: 0,
+              width: 1,
+              height: 1,
+              stroke: "#0d0c22",
+              strokeWidth: 2,
+              line: { endX: 1, endY: 1 },
+            }),
+          ),
+          hittable: false,
+          opacity: 0.7,
+        });
+        app.tree.add(draft.preview);
+      } else if (
+        Math.hypot(point.x - draft.start.x, point.y - draft.start.y) >= 4
+      )
+        createConnector.current(draft.start, point);
+    });
+    app.on(CanvasPointerEvent.MOVE, (event: CanvasPointerEvent) => {
+      const draft = drawState.current;
+      if (!draft.active || !draft.start || !draft.preview) return;
+      const point = findAttachment(
+          entries.values(),
+          group,
+          event.getInnerPoint(group),
+        ).point,
+        endX = point.x - draft.start.x,
+        endY = point.y - draft.start.y;
+      if (Math.abs(endX) > 20000 || Math.abs(endY) > 20000) return;
+      draft.preview.set({
+        path: connectorPath({
+          type: "straight",
+          endX,
+          endY,
+          startArrow: "none",
+          endArrow: "triangle",
+          style: "solid",
+        }),
+      });
+    });
+    const cancelDraw = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && drawState.current.active) {
+        event.preventDefault();
+        stopDrawing();
+      }
+    };
+    window.addEventListener("keydown", cancelDraw);
     const observer = new ResizeObserver(() => {
       if (host.current && active)
         app.resize({
@@ -394,19 +675,168 @@ export function NotePage() {
     });
     observer.observe(host.current!);
     app.waitViewCompleted(() => {
-      if (active && entries.size) app.tree.zoom("fit", 64);
+      if (active) {
+        app.tree.zoom(1);
+        setZoom(100);
+      }
     });
     return () => {
       active = false;
       clearTimeout(timer);
+      cancelAnimationFrame(followFrame);
       observer.disconnect();
+      window.removeEventListener("keydown", cancelDraw);
+      drawState.current = { active: false, start: null, preview: null };
       scene.current = null;
       app.destroy();
     };
   }, [initial, loading]);
+  function stopDrawing() {
+    const draft = drawState.current;
+    draft.preview?.destroy();
+    drawState.current = { active: false, start: null, preview: null };
+    if (scene.current) scene.current.app.editor.config.selector = true;
+    setDrawing(false);
+    setDrawStarted(false);
+  }
+  function beginDrawing() {
+    const s = scene.current;
+    if (!s || busy) return;
+    if (drawing) {
+      stopDrawing();
+      return;
+    }
+    if (s.entries.size >= 200) {
+      notify("每个无边记最多 200 个元素", "error");
+      return;
+    }
+    s.app.editor.cancel();
+    s.app.editor.config.selector = false;
+    drawState.current.active = true;
+    setDrawing(true);
+    setDrawStarted(false);
+  }
+  createConnector.current = (start, end) => {
+    const s = scene.current;
+    if (!s) return;
+    const startSnap = findAttachment(s.entries.values(), s.group, start),
+      endSnap = findAttachment(s.entries.values(), s.group, end);
+    start = startSnap.point;
+    end = endSnap.point;
+    const endX = end.x - start.x,
+      endY = end.y - start.y;
+    if (Math.hypot(endX, endY) < 4) {
+      notify("请选择不同的连线起点和终点", "error");
+      return;
+    }
+    if (Math.abs(endX) > 20000 || Math.abs(endY) > 20000) {
+      notify("连线跨度过大，请缩短距离", "error");
+      return;
+    }
+    stopDrawing();
+    add("connector", {
+      x: start.x,
+      y: start.y,
+      width: Math.max(1, Math.abs(endX)),
+      height: Math.max(1, Math.abs(endY)),
+      stroke: "#0d0c22",
+      strokeWidth: 2,
+      line: {
+        type: "straight",
+        endX,
+        endY,
+        startArrow: "none",
+        endArrow: "triangle",
+        style: "solid",
+        startBinding: startSnap.binding,
+        endBinding: endSnap.binding,
+      },
+    });
+  };
+  function moveEndpoint(
+    id: string,
+    end: "start" | "end",
+    point: { x: number; y: number },
+  ) {
+    const s = scene.current,
+      entry = s?.entries.get(id);
+    if (!s || !entry || busy) return;
+    const data = readNode(entry.data, entry.node),
+      line = lineSettings(data);
+    const start = s.group.getInnerPoint(
+      entry.node.getWorldPoint({ x: 0, y: 0 }),
+    );
+    const finish = s.group.getInnerPoint(
+      entry.node.getWorldPoint({ x: line.endX, y: line.endY }),
+    );
+    const snap = findAttachment(s.entries.values(), s.group, point);
+    const a = end === "start" ? snap.point : start,
+      b = end === "end" ? snap.point : finish;
+    const bend = line.bend
+      ? s.group.getInnerPoint(entry.node.getWorldPoint(line.bend))
+      : undefined;
+    if (Math.hypot(b.x - a.x, b.y - a.y) < 4) return;
+    const next = canvasNodeSchema.safeParse({
+      ...data,
+      x: a.x,
+      y: a.y,
+      scaleX: 1,
+      scaleY: 1,
+      rotation: 0,
+      width: Math.max(1, Math.abs(b.x - a.x)),
+      height: Math.max(1, Math.abs(b.y - a.y)),
+      line: {
+        ...line,
+        endX: b.x - a.x,
+        endY: b.y - a.y,
+        ...(end === "start"
+          ? { startBinding: snap.binding }
+          : { endBinding: snap.binding }),
+        ...(bend ? { bend: { x: bend.x - a.x, y: bend.y - a.y } } : {}),
+      },
+    });
+    if (!next.success) return;
+    entry.data = next.data;
+    applyNode(entry.node, next.data);
+    if (s.app.editor.editTool) s.app.editor.updateEditBox();
+    change.current();
+  }
+  function moveBend(id: string, point: { x: number; y: number }) {
+    const s = scene.current,
+      entry = s?.entries.get(id);
+    if (!s || !entry || busy) return;
+    const data = readNode(entry.data, entry.node),
+      line = lineSettings(data);
+    const local = entry.node.getInnerPoint(s.group.getWorldPoint(point));
+    const next = canvasNodeSchema.safeParse({
+      ...data,
+      line: { ...line, bend: local },
+    });
+    if (!next.success) return;
+    entry.data = next.data;
+    applyNode(entry.node, next.data);
+    if (s.app.editor.editTool) s.app.editor.updateEditBox();
+    change.current();
+  }
+  function dragEndpoint(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = draggingEndpoint.current,
+      s = scene.current;
+    if (!drag || !s || !host.current || event.pointerId !== drag.pointerId)
+      return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = host.current.getBoundingClientRect();
+    const point = s.group.getInnerPoint({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    });
+    if (drag.end === "bend") moveBend(drag.id, point);
+    else moveEndpoint(drag.id, drag.end, point);
+  }
   function add(kind: CanvasNode["kind"], extra: Partial<CanvasNode> = {}) {
     const s = scene.current;
     if (!s || busy) return;
+    if (kind !== "connector") stopDrawing();
     if (s.entries.size >= 200) {
       notify("每个无边记最多 200 个元素", "error");
       return;
@@ -429,7 +859,8 @@ export function NotePage() {
             : kind === "equilateral"
               ? 100 * Math.sqrt(3)
               : 120,
-      fill: kind === "text" ? "#33343b" : "#ecebfa",
+      fill: kind === "text" ? "#0d0c22" : "#ffffff",
+      stroke: "#0d0c22",
       text: kind === "text" ? "在这里写下想法" : "",
       ...extra,
     });
@@ -490,6 +921,7 @@ export function NotePage() {
     if (!next.success) return;
     entry.data = next.data;
     applyNode(entry.node, next.data);
+    scene.current.sync();
     change.current();
   }
   function remove() {
@@ -609,6 +1041,7 @@ export function NotePage() {
   async function save() {
     const s = scene.current;
     if (!s || busy) return;
+    stopDrawing();
     setError("");
     s.app.editor.closeInnerEditor();
     const result = canvasNoteInputSchema.safeParse({
@@ -650,6 +1083,7 @@ export function NotePage() {
   async function exportImage() {
     const s = scene.current;
     if (!s || busy) return;
+    stopDrawing();
     if (!s.entries.size) {
       notify("先添加一些内容再导出", "error");
       return;
@@ -769,15 +1203,37 @@ export function NotePage() {
             role="application"
             aria-label="无边记画布"
           />
+          {drawing && (
+            <div className="note-drawing-status" role="status">
+              {drawStarted ? "点击终点完成连线" : "点击画布设置连线起点"}
+              <Button variant="ghost" size="sm" onClick={stopDrawing}>
+                取消
+              </Button>
+            </div>
+          )}
           <div className="note-tools" aria-label="添加内容">
             <Button
               variant="ghost"
               size="icon-sm"
               title="选择 / 框选"
               aria-label="选择或框选"
-              onClick={() => scene.current?.app.editor.cancel()}
+              onClick={() => {
+                stopDrawing();
+                scene.current?.app.editor.cancel();
+              }}
             >
               <MousePointer2 />
+            </Button>
+            <Button
+              variant={drawing ? "secondary" : "ghost"}
+              size="icon-sm"
+              title="连线"
+              aria-label="添加连线"
+              aria-pressed={drawing}
+              disabled={busy}
+              onClick={beginDrawing}
+            >
+              <ArrowUpRight />
             </Button>
             <span className="note-tool-divider" />
             <Button
@@ -989,14 +1445,15 @@ export function NotePage() {
                   <Trash2 />
                 </Button>
               </header>
-              {selected.kind !== "image" && (
+              {selected.kind === "connector" && (
+                <ConnectorProperties
+                  value={selected}
+                  busy={busy}
+                  onChange={patch}
+                />
+              )}
+              {selected.kind !== "image" && selected.kind !== "connector" && (
                 <>
-                  <textarea
-                    aria-label="文字内容"
-                    maxLength={10000}
-                    value={selected.text}
-                    onChange={(e) => patch({ text: e.target.value })}
-                  />
                   <label className="note-font-field">
                     字体
                     <select
@@ -1042,7 +1499,48 @@ export function NotePage() {
                   </div>
                 </>
               )}
-              {selected.kind !== "image" && (
+              {selected.kind !== "image" && selected.kind !== "connector" && (
+                <div
+                  className="note-property-row note-text-alignment"
+                  role="group"
+                  aria-label="文字对齐方式"
+                >
+                  <span>文字对齐</span>
+                  <div>
+                    {(
+                      [
+                        ["left", "文字左对齐", TextAlignStart],
+                        ["center", "文字居中对齐", TextAlignCenter],
+                        ["right", "文字右对齐", TextAlignEnd],
+                      ] as const
+                    ).map(([align, label, Icon]) => (
+                      <Button
+                        key={align}
+                        variant={
+                          (selected.textAlign ??
+                            (selected.kind === "text" ? "left" : "center")) ===
+                          align
+                            ? "secondary"
+                            : "ghost"
+                        }
+                        size="icon-sm"
+                        aria-label={label}
+                        title={label}
+                        aria-pressed={
+                          (selected.textAlign ??
+                            (selected.kind === "text" ? "left" : "center")) ===
+                          align
+                        }
+                        disabled={busy}
+                        onClick={() => patch({ textAlign: align })}
+                      >
+                        <Icon />
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selected.kind !== "image" && selected.kind !== "connector" && (
                 <div className="note-property-row">
                   <label>
                     {selected.kind === "text" ? "文字颜色" : "填充"}
@@ -1067,6 +1565,27 @@ export function NotePage() {
               {isShape(selected.kind) && (
                 <div className="note-property-row">
                   <label>
+                    边框宽度
+                    <input
+                      aria-label="边框宽度"
+                      type="number"
+                      min={0}
+                      max={20}
+                      step={0.5}
+                      value={selected.strokeWidth}
+                      disabled={busy}
+                      onChange={(e) => {
+                        if (e.target.value !== "")
+                          patch({ strokeWidth: Number(e.target.value) });
+                      }}
+                    />
+                    <span>px</span>
+                  </label>
+                </div>
+              )}
+              {isShape(selected.kind) && (
+                <div className="note-property-row">
+                  <label>
                     文字颜色
                     <input
                       type="color"
@@ -1076,32 +1595,34 @@ export function NotePage() {
                   </label>
                 </div>
               )}
-              <div className="note-property-row">
-                <label>
-                  宽
-                  <input
-                    type="number"
-                    min={1}
-                    max={20000}
-                    value={Math.round(selected.width * selected.scaleX)}
-                    onChange={(e) =>
-                      patch({ width: Number(e.target.value), scaleX: 1 })
-                    }
-                  />
-                </label>
-                <label>
-                  高
-                  <input
-                    type="number"
-                    min={1}
-                    max={20000}
-                    value={Math.round(selected.height * selected.scaleY)}
-                    onChange={(e) =>
-                      patch({ height: Number(e.target.value), scaleY: 1 })
-                    }
-                  />
-                </label>
-              </div>
+              {selected.kind !== "text" && selected.kind !== "connector" && (
+                <div className="note-property-row">
+                  <label>
+                    宽
+                    <input
+                      type="number"
+                      min={1}
+                      max={20000}
+                      value={Math.round(selected.width * selected.scaleX)}
+                      onChange={(e) =>
+                        patch({ width: Number(e.target.value), scaleX: 1 })
+                      }
+                    />
+                  </label>
+                  <label>
+                    高
+                    <input
+                      type="number"
+                      min={1}
+                      max={20000}
+                      value={Math.round(selected.height * selected.scaleY)}
+                      onChange={(e) =>
+                        patch({ height: Number(e.target.value), scaleY: 1 })
+                      }
+                    />
+                  </label>
+                </div>
+              )}
               <div className="note-property-row">
                 <Button variant="ghost" size="sm" onClick={() => layer(true)}>
                   <ArrowUpToLine />
@@ -1114,6 +1635,96 @@ export function NotePage() {
               </div>
             </aside>
           )}
+          {selected?.kind === "connector" &&
+            !drawing &&
+            scene.current &&
+            [
+              ...(["start", "end"] as const),
+              ...(lineSettings(selected).type === "straight"
+                ? []
+                : ["bend" as const]),
+            ].map((end) => {
+              const entry = scene.current!.entries.get(selected.id);
+              if (!entry) return null;
+              const line = lineSettings(selected),
+                point = entry.node.getWorldPoint(
+                  end === "start"
+                    ? { x: 0, y: 0 }
+                    : end === "bend"
+                      ? connectorBendPoint(line)
+                      : { x: line.endX, y: line.endY },
+                );
+              return (
+                <button
+                  key={end}
+                  className={`note-line-endpoint${end === "bend" ? " is-bend" : line[end === "start" ? "startBinding" : "endBinding"] ? " is-bound" : ""}`}
+                  type="button"
+                  style={{ left: point.x, top: point.y }}
+                  aria-label={
+                    end === "start"
+                      ? "拖动连线起点"
+                      : end === "bend"
+                        ? "调整弯曲或拐点"
+                        : "拖动连线终点"
+                  }
+                  title={
+                    end === "start"
+                      ? "连线起点（拖离形状可解除吸附）"
+                      : end === "bend"
+                        ? "拖动调整弯曲或拐点"
+                        : "连线终点（拖离形状可解除吸附）"
+                  }
+                  disabled={busy}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    draggingEndpoint.current = {
+                      id: selected.id,
+                      end,
+                      pointerId: event.pointerId,
+                    };
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                  }}
+                  onPointerMove={dragEndpoint}
+                  onPointerUp={(event) => {
+                    if (
+                      draggingEndpoint.current?.pointerId === event.pointerId
+                    ) {
+                      dragEndpoint(event);
+                      draggingEndpoint.current = null;
+                      event.currentTarget.releasePointerCapture(
+                        event.pointerId,
+                      );
+                    }
+                  }}
+                  onPointerCancel={() => {
+                    draggingEndpoint.current = null;
+                  }}
+                  onKeyDown={(event) => {
+                    const delta = event.shiftKey ? 10 : 1,
+                      dx =
+                        event.key === "ArrowLeft"
+                          ? -delta
+                          : event.key === "ArrowRight"
+                            ? delta
+                            : 0,
+                      dy =
+                        event.key === "ArrowUp"
+                          ? -delta
+                          : event.key === "ArrowDown"
+                            ? delta
+                            : 0;
+                    if (dx || dy) {
+                      event.preventDefault();
+                      const inner = scene.current!.group.getInnerPoint(point);
+                      const value = { x: inner.x + dx, y: inner.y + dy };
+                      if (end === "bend") moveBend(selected.id, value);
+                      else moveEndpoint(selected.id, end, value);
+                    }
+                  }}
+                />
+              );
+            })}
           <div className="note-zoom">
             <Button
               variant="ghost"

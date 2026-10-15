@@ -11,9 +11,9 @@
   gap: 9px;
   width: 280px;
   padding: 9px 12px;
-  background: #f0f1f3;
+  background: rgb(13 12 34 / 0.058);
   border-radius: 7px;
-  color: #999ea7;
+  color: rgb(13 12 34 / 0.404);
   margin-bottom: 24px;
 }
 .spaces-search input {
@@ -32,16 +32,16 @@
 }
 .space-card {
   position: relative;
-  border: 1px solid #e7e8ed;
+  border: 1px solid rgb(13 12 34 / 0.095);
   border-radius: 10px;
-  background: #fff;
+  background: #ffffff;
   transition:
     border-color 0.18s,
     box-shadow 0.18s;
 }
 .space-card:hover {
-  border-color: #cdcfdc;
-  box-shadow: 0 3px 14px #22223507;
+  border-color: rgb(13 12 34 / 0.197);
+  box-shadow: 0 3px 14px rgb(13 12 34 / 0.027);
 }
 .space-card-open {
   width: 100%;
@@ -53,7 +53,7 @@
   border: 0;
   background: transparent;
   cursor: pointer;
-  color: #444751;
+  color: #0d0c22;
   border-radius: 10px;
 }
 .space-card-title {
@@ -65,7 +65,7 @@
 }
 .space-card-title svg {
   flex-shrink: 0;
-  color: #858ba1;
+  color: rgb(13 12 34 / 0.48);
 }
 .space-card-title strong {
   font-size: 14px;
@@ -78,12 +78,12 @@
   display: flex;
   gap: 8px;
   font-size: 11px;
-  color: #858a94;
+  color: rgb(13 12 34 / 0.486);
   margin-top: 9px;
 }
 .space-card-time {
   font-size: 10px;
-  color: #a3a7af;
+  color: rgb(13 12 34 / 0.366);
 }
 .space-card-more {
   position: absolute;
@@ -95,13 +95,13 @@
   place-items: center;
   border: 0;
   background: transparent;
-  color: #a0a4ad;
+  color: rgb(13 12 34 / 0.378);
   border-radius: 5px;
   cursor: pointer;
 }
 .space-card-more:hover {
-  background: #f1f1f4;
-  color: #666b78;
+  background: rgb(13 12 34 / 0.057);
+  color: rgb(13 12 34 / 0.614);
 }
 .space-menu-dismiss {
   position: fixed;
@@ -117,10 +117,10 @@
   right: 12px;
   min-width: 155px;
   padding: 5px;
-  border: 1px solid #e8e9ef;
+  border: 1px solid rgb(13 12 34 / 0.09);
   border-radius: 7px;
-  background: #fff;
-  box-shadow: 0 6px 24px #20203012;
+  background: #ffffff;
+  box-shadow: 0 6px 24px rgb(13 12 34 / 0.071);
 }
 .space-card-menu button,
 .space-switcher-menu button,
@@ -131,7 +131,7 @@
   gap: 9px;
   border: 0;
   background: transparent;
-  color: #646975;
+  color: rgb(13 12 34 / 0.623);
   font-size: 11px;
   padding: 8px 10px;
   text-align: left;
@@ -142,10 +142,10 @@
 .space-card-menu button:hover,
 .space-switcher-menu button:hover,
 .space-switcher-menu a:hover {
-  background: #f3f3f6;
+  background: rgb(13 12 34 / 0.049);
 }
 .space-card-menu .danger {
-  color: #bf6262;
+  color: #0d0c22;
 }
 .spaces-empty {
   min-height: 360px;
@@ -154,16 +154,16 @@
   align-items: center;
   justify-content: center;
   gap: 18px;
-  color: #a0a4af;
+  color: rgb(13 12 34 / 0.378);
   font-size: 12px;
 }
 .spaces-empty h2 {
   font-size: 16px;
   font-weight: 500;
-  color: #707580;
+  color: rgb(13 12 34 / 0.573);
 }
 .spaces-no-results {
-  color: #9297a1;
+  color: rgb(13 12 34 / 0.433);
   font-size: 12px;
 }
 .space-dialog {
@@ -176,9 +176,9 @@
   max-width: calc(100vw - 4rem);
   padding: 24px;
   background: white;
-  border: 1px solid #e7e8ed;
+  border: 1px solid rgb(13 12 34 / 0.095);
   border-radius: 12px;
-  box-shadow: 0 16px 60px #25253824;
+  box-shadow: 0 16px 60px rgb(13 12 34 / 0.141);
 }
 .space-dialog h2 {
   font-size: 17px;
@@ -191,11 +191,11 @@
   flex-direction: column;
   gap: 7px;
   margin: 16px 0;
-  color: #626773;
+  color: rgb(13 12 34 / 0.631);
   font-size: 12px;
 }
 .space-dialog label small {
-  color: #a4a8b0;
+  color: rgb(13 12 34 / 0.362);
   font-size: 10px;
 }
 .space-dialog input,
@@ -203,18 +203,18 @@
 .space-delete-name input {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #e3e5ec;
+  border: 1px solid rgb(13 12 34 / 0.107);
   border-radius: 6px;
   padding: 9px 10px;
   font: inherit;
-  color: #444955;
+  color: #0d0c22;
   outline: none;
-  background: #fcfcfd;
+  background: rgb(13 12 34 / 0.015);
 }
 .space-dialog input:focus,
 .space-dialog textarea:focus,
 .space-delete-name input:focus {
-  border-color: #adb2d0;
+  border-color: rgb(13 12 34 / 0.315);
 }
 .space-directory {
   display: flex;
@@ -238,12 +238,12 @@
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #666c78;
+  color: rgb(13 12 34 / 0.611);
   font-size: 12px;
   cursor: pointer;
 }
 .space-switcher-trigger:hover {
-  background: #eeeef3;
+  background: rgb(13 12 34 / 0.069);
 }
 .space-switcher-trigger span {
   flex: 1;
@@ -262,10 +262,10 @@
   max-height: 360px;
   overflow: auto;
   padding: 5px;
-  border: 1px solid #e4e6ed;
-  background: #fff;
+  border: 1px solid rgb(13 12 34 / 0.103);
+  background: #ffffff;
   border-radius: 7px;
-  box-shadow: 0 8px 28px #25253818;
+  box-shadow: 0 8px 28px rgb(13 12 34 / 0.094);
 }
 
 .topbar .space-switcher-trigger {
@@ -275,7 +275,7 @@
   padding: 0 8px;
   gap: 7px;
   font-size: 11px;
-  color: #818692;
+  color: rgb(13 12 34 / 0.502);
 }
 .topbar .space-switcher-menu {
   left: auto;
@@ -295,7 +295,7 @@
   align-items: center;
   gap: 8px;
   margin-left: auto;
-  color: #818692;
+  color: rgb(13 12 34 / 0.502);
 }
 .space-header-name {
   display: flex;
@@ -322,12 +322,12 @@
   border: 0;
   border-radius: 5px;
   background: transparent;
-  color: #9297a1;
+  color: rgb(13 12 34 / 0.433);
   cursor: pointer;
 }
 .space-header-exit:hover {
-  background: #eeeef3;
-  color: #626874;
+  background: rgb(13 12 34 / 0.069);
+  color: rgb(13 12 34 / 0.628);
 }
 
 .spaces-heading-actions {
@@ -337,7 +337,7 @@
 }
 .space-restore-description {
   font-size: 12px;
-  color: #9297a1;
+  color: rgb(13 12 34 / 0.433);
   line-height: 1.7;
   margin: -8px 0 16px;
 }
@@ -346,18 +346,18 @@
   flex-direction: column;
   gap: 7px;
   padding: 12px;
-  border: 1px solid #eeeef3;
+  border: 1px solid rgb(13 12 34 / 0.069);
   border-radius: 7px;
-  background: #fafafb;
-  color: #858a94;
+  background: rgb(13 12 34 / 0.02);
+  color: rgb(13 12 34 / 0.486);
   font-size: 11px;
 }
 .space-restore-summary strong {
   font-size: 12px;
-  color: #626874;
+  color: rgb(13 12 34 / 0.628);
   font-weight: 500;
 }
 .space-restore-summary > span {
-  color: #a0a4ad;
+  color: rgb(13 12 34 / 0.378);
   font-size: 10px;
 }

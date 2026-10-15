@@ -1,3 +1,4 @@
+import { dailyReportInputSchema } from "../../shared/daily-report";
 import { canvasNoteInputSchema } from "../../shared/canvas-note";
 import { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
@@ -39,6 +40,7 @@ const tables = [
   "assistant_model_links",
   "chat_history_snapshots",
   "canvas_notes",
+  "daily_reports",
 ];
 const packageSchema = z
   .object({
@@ -233,9 +235,13 @@ export class WorkspaceBackups {
             n: number;
           }
         ).n;
-        if (version !== 8 && version !== 9) throw new Error();
+        if (![8, 9, 10].includes(version)) throw new Error();
         for (const table of tables) {
-          if (table === "canvas_notes" && version === 8) continue;
+          if (
+            (table === "canvas_notes" && version === 8) ||
+            (table === "daily_reports" && version < 10)
+          )
+            continue;
           const schema = db
             .query("SELECT type FROM sqlite_master WHERE name=?")
             .get(table) as { type: string } | null;
@@ -332,12 +338,12 @@ export class WorkspaceBackups {
               .transaction(() => {
                 for (const table of tables) {
                   if (
-                    table === "canvas_notes" &&
+                    (table === "canvas_notes" || table === "daily_reports") &&
                     !source
                       .query(
-                        "SELECT name FROM sqlite_master WHERE name='canvas_notes' AND type='table'",
+                        "SELECT name FROM sqlite_master WHERE name=? AND type='table'",
                       )
-                      .get()
+                      .get(table)
                   )
                     continue;
                   const columns = (
@@ -403,6 +409,15 @@ export class WorkspaceBackups {
                     name: row.name,
                     content: JSON.parse(row.content),
                   });
+                for (const row of target
+                  .query("SELECT date,content FROM daily_reports")
+                  .all() as { date: string; content: string }[]) {
+                  const value = dailyReportInputSchema.parse(
+                    JSON.parse(row.content),
+                  );
+                  if (value.date !== row.date)
+                    throw new Error("日报日期与内容不一致");
+                }
                 if (target.query("PRAGMA foreign_key_check").all().length)
                   throw new Error("关联数据不完整");
               })

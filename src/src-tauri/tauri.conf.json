@@ -9,6 +9,7 @@
     "frontendDist": "../desktop-ui"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",

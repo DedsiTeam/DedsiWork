@@ -633,12 +633,6 @@ export function SprintsPage() {
           <Columns3 size={28} />
           <h2>{!loaded || id ? "正在读取冲刺…" : "规划下一轮工作"}</h2>
           <p>创建冲刺，设置目标，再加入这一轮要完成的工作项。</p>
-          {loaded && !id && (
-            <Button onClick={() => openModal("create")}>
-              <Plus />
-              新建冲刺
-            </Button>
-          )}
         </div>
       ) : (
         <>

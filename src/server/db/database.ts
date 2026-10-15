@@ -184,5 +184,21 @@ export function openDatabase(path: string) {
       );
     }).immediate();
   }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=10").get()
+  ) {
+    db.transaction(() => {
+      db.exec(`CREATE TABLE daily_reports (
+        id TEXT PRIMARY KEY, date TEXT NOT NULL, content TEXT NOT NULL,
+        version INTEGER NOT NULL CHECK(version>0), created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL, deleted_at TEXT
+      );
+      CREATE UNIQUE INDEX daily_reports_date ON daily_reports(date) WHERE deleted_at IS NULL;
+      CREATE INDEX daily_reports_list ON daily_reports(deleted_at,date DESC);`);
+      db.query("INSERT INTO schema_migrations VALUES (10,?)").run(
+        new Date().toISOString(),
+      );
+    }).immediate();
+  }
   return db;
 }

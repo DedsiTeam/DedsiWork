@@ -469,12 +469,6 @@ export function WorkItemsPage({
                       ? "移入回收站的工作项会显示在这里。"
                       : "记录接下来要做的事，在这里逐步推进。"}
                 </p>
-                {!loading && view === "items" && (
-                  <Button variant="outline" onClick={() => open(null)}>
-                    <Plus />
-                    创建工作项
-                  </Button>
-                )}
               </div>
             )}
             <footer className="list-footer">

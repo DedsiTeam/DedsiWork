@@ -10,10 +10,10 @@
   width: 100%;
   height: 34px;
   padding: 0 11px;
-  border: 1px solid #e2e4eb;
+  border: 1px solid rgb(13 12 34 / 0.112);
   border-radius: 6px;
-  background: #fff;
-  color: #737b8c;
+  background: #ffffff;
+  color: rgb(13 12 34 / 0.549);
   font-size: 12px;
   cursor: pointer;
   text-align: left;
@@ -22,17 +22,17 @@
     box-shadow 0.16s;
 }
 .date-picker-trigger svg {
-  color: #a1a7b4;
+  color: rgb(13 12 34 / 0.366);
   flex-shrink: 0;
 }
 .date-picker-trigger:hover {
-  border-color: #bfc4d3;
+  border-color: rgb(13 12 34 / 0.245);
 }
 .date-picker-trigger:focus-visible,
 .date-picker-trigger.is-open {
   outline: none;
-  border-color: #a3abd0;
-  box-shadow: 0 0 0 3px #555cc00a;
+  border-color: #0d0c22;
+  box-shadow: 0 0 0 3px rgb(13 12 34 / 0.039);
 }
 .date-picker-trigger:disabled {
   opacity: 0.55;
@@ -45,10 +45,10 @@
   z-index: 10;
   width: 268px;
   padding: 12px;
-  border: 1px solid #e8e9ef;
+  border: 1px solid rgb(13 12 34 / 0.09);
   border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 8px 30px #25253818;
+  background: #ffffff;
+  box-shadow: 0 8px 30px rgb(13 12 34 / 0.094);
   user-select: none;
 }
 .date-picker-heading {
@@ -58,7 +58,7 @@
   margin-bottom: 10px;
 }
 .date-picker-heading strong {
-  color: #505665;
+  color: rgb(13 12 34 / 0.701);
   font-size: 12px;
   font-weight: 550;
 }
@@ -75,12 +75,12 @@
   border: 0;
   border-radius: 5px;
   background: transparent;
-  color: #9097a4;
+  color: rgb(13 12 34 / 0.433);
   cursor: pointer;
 }
 .date-picker-heading button:hover {
-  background: #f1f2f6;
-  color: #555e7d;
+  background: rgb(13 12 34 / 0.054);
+  color: #0d0c22;
 }
 .date-picker-weekdays,
 .date-picker-days {
@@ -94,7 +94,7 @@
 .date-picker-weekdays span {
   text-align: center;
   padding: 4px 0;
-  color: #a2a8b3;
+  color: rgb(13 12 34 / 0.363);
   font-size: 10px;
 }
 .date-picker-days button {
@@ -105,16 +105,16 @@
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #626978;
+  color: rgb(13 12 34 / 0.624);
   font-size: 11px;
   cursor: pointer;
 }
 .date-picker-days button:hover:not(:disabled) {
-  background: #f0f1f8;
-  color: #515aa0;
+  background: rgb(13 12 34 / 0.057);
+  color: #0d0c22;
 }
 .date-picker-days button.other-month {
-  color: #c1c5ce;
+  color: rgb(13 12 34 / 0.241);
 }
 .date-picker-days button.today:not(.selected)::after {
   content: "";
@@ -124,19 +124,19 @@
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: #858bc6;
+  background: #0d0c22;
 }
 .date-picker-days button.selected,
 .date-picker-days button.selected:hover {
-  background: #525bb0;
-  color: #fff;
+  background: #0d0c22;
+  color: #ffffff;
 }
 .date-picker-days button:disabled {
-  color: #d4d7df;
+  color: rgb(13 12 34 / 0.166);
   cursor: default;
 }
 .date-picker-days button:focus-visible {
-  outline: 2px solid #a3abd0;
+  outline: 2px solid #0d0c22;
   outline-offset: 1px;
 }
 .date-picker-footer {
@@ -145,18 +145,18 @@
   justify-content: space-between;
   margin-top: 9px;
   padding-top: 9px;
-  border-top: 1px solid #f0f1f5;
+  border-top: 1px solid rgb(13 12 34 / 0.058);
 }
 .date-picker-footer span {
   font-size: 10px;
-  color: #a1a7b3;
+  color: rgb(13 12 34 / 0.367);
 }
 .date-picker-footer button {
   border: 0;
   border-radius: 4px;
-  background: #f2f3f8;
+  background: rgb(13 12 34 / 0.049);
   padding: 4px 9px;
-  color: #7b83a0;
+  color: rgb(13 12 34 / 0.512);
   font-size: 10px;
   cursor: pointer;
 }
@@ -176,8 +176,8 @@
   justify-content: space-between;
   padding-top: 10px;
   margin-top: 10px;
-  border-top: 1px solid #f0f1f5;
-  color: #9299a7;
+  border-top: 1px solid rgb(13 12 34 / 0.058);
+  color: rgb(13 12 34 / 0.425);
   font-size: 11px;
 }
 .date-picker-time > div {
@@ -189,13 +189,13 @@
   height: 26px;
   width: 48px;
   padding: 0 4px;
-  border: 1px solid #e5e7ee;
+  border: 1px solid rgb(13 12 34 / 0.099);
   border-radius: 5px;
-  background: #fafafb;
-  color: #70798b;
+  background: rgb(13 12 34 / 0.02);
+  color: rgb(13 12 34 / 0.558);
   font-size: 11px;
 }
 .date-picker-footer .date-picker-done {
-  background: #525bb0;
-  color: #fff;
+  background: #0d0c22;
+  color: #ffffff;
 }

@@ -21,6 +21,46 @@ export const fontStacks: Record<(typeof fontOptions)[number]["value"], string> =
     Georgia: 'Georgia, "Songti SC", serif',
     monospace: 'Menlo, Consolas, "PingFang SC", monospace',
   };
+export const connectorSchema = z
+  .object({
+    type: z
+      .enum(["straight", "curve", "polyline", "rounded"])
+      .default("straight"),
+    endX: z.number().finite().min(-20000).max(20000),
+    endY: z.number().finite().min(-20000).max(20000),
+    startArrow: z
+      .enum(["none", "angle", "triangle", "circle", "diamond"])
+      .default("none"),
+    endArrow: z
+      .enum(["none", "angle", "triangle", "circle", "diamond"])
+      .default("triangle"),
+    style: z.enum(["solid", "dotted", "dashed"]).default("solid"),
+    startBinding: z
+      .object({
+        nodeId: z.uuid(),
+        u: z.number().min(0).max(1),
+        v: z.number().min(0).max(1),
+      })
+      .strict()
+      .optional(),
+    endBinding: z
+      .object({
+        nodeId: z.uuid(),
+        u: z.number().min(0).max(1),
+        v: z.number().min(0).max(1),
+      })
+      .strict()
+      .optional(),
+    bend: z
+      .object({
+        x: z.number().finite().min(-20000).max(20000),
+        y: z.number().finite().min(-20000).max(20000),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type Connector = z.infer<typeof connectorSchema>;
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 export const canvasNodeSchema = z
   .object({
@@ -33,6 +73,7 @@ export const canvasNodeSchema = z
       "triangle",
       "circle",
       "equilateral",
+      "connector",
     ]),
     x: z.number().finite().min(-100000).max(100000),
     y: z.number().finite().min(-100000).max(100000),
@@ -41,8 +82,8 @@ export const canvasNodeSchema = z
     scaleX: z.number().finite().min(0.01).max(100).default(1),
     scaleY: z.number().finite().min(0.01).max(100).default(1),
     rotation: z.number().finite().min(-36000).max(36000).default(0),
-    fill: color.default("#e9e8fa"),
-    stroke: color.default("#a5a1cf"),
+    fill: color.default("#ffffff"),
+    stroke: color.default("#0d0c22"),
     strokeWidth: z.number().min(0).max(20).default(1),
     text: z.string().max(10000).default(""),
     fontSize: z.number().min(8).max(200).default(24),
@@ -59,7 +100,9 @@ export const canvasNodeSchema = z
         "monospace",
       ])
       .default("system"),
-    textColor: color.default("#33343b"),
+    textColor: color.default("#0d0c22"),
+    textAlign: z.enum(["left", "center", "right"]).optional(),
+    line: connectorSchema.optional(),
     src: z
       .string()
       .max(2800000)
@@ -68,6 +111,12 @@ export const canvasNodeSchema = z
   })
   .strict()
   .superRefine((node, ctx) => {
+    if (node.kind === "connector" && (!node.line || node.strokeWidth < 0.5))
+      ctx.addIssue({
+        code: "custom",
+        message: "连线需要有效的端点和至少 0.5 px 的线宽",
+        path: ["line"],
+      });
     if (node.kind === "image" && !node.src)
       ctx.addIssue({
         code: "custom",
@@ -123,4 +172,5 @@ export const nodeLabels = {
   triangle: "三角形",
   circle: "正圆",
   equilateral: "正三角形",
+  connector: "连线",
 };

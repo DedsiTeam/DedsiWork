@@ -14,6 +14,7 @@ type Info = {
   databasePath: string;
   mcpUrl: string;
   credentialsPath: string;
+  writeToken: string;
   runtime: string;
 };
 export function ServiceInfo() {
@@ -92,7 +93,7 @@ export function ServiceInfo() {
                 </div>
                 <p className="muted text-sm">
                   使用 readToken 允许查询，或使用 writeToken
-                  允许创建与修改。令牌只从本地凭据文件读取。
+                  允许创建与修改。下方配置已填入本地 writeToken。
                 </p>
               </CardContent>
             </Card>
@@ -101,7 +102,8 @@ export function ServiceInfo() {
             <CardHeader>
               <CardTitle>在 MCP 客户端中配置</CardTitle>
               <CardDescription>
-                将实际令牌填入客户端支持的 Authorization 请求头设置。
+                已填入本地 writeToken，可直接复制到客户端的 Authorization
+                请求头设置。
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -111,7 +113,7 @@ export function ServiceInfo() {
                     url: info.mcpUrl,
                     transport: "streamable-http",
                     headers: {
-                      Authorization: "Bearer <writeToken 或 readToken>",
+                      Authorization: `Bearer ${info.writeToken}`,
                     },
                   },
                   null,

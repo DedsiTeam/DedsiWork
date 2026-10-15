@@ -1,3 +1,5 @@
+import { ReportAI } from "./services/report-ai";
+import { DailyReports } from "./services/daily-reports";
 import { CanvasNotes } from "./services/canvas-notes";
 import { WorkspaceBackups } from "./services/workspace-backups";
 import { mkdirSync } from "node:fs";
@@ -36,17 +38,25 @@ export function createApp(options: {
     const assistant = new AssistantService(db, service, domainModels);
     const chat = new CodexChat(db, dirname(path), () => workspaces.get(id));
     const mcp = createMcp(service, sprints);
+    const dailyReports = new DailyReports(db),
+      reportAI = new ReportAI(dailyReports);
     return {
       db,
       service,
       sprints,
       domainModels,
       notes: new CanvasNotes(db),
+      dailyReports,
+      reportAI,
       assistant,
       chat,
       mcp,
       async close() {
-        await Promise.allSettled([chat.close(), assistant.close()]);
+        await Promise.allSettled([
+          chat.close(),
+          assistant.close(),
+          reportAI.close(),
+        ]);
         await mcp.close();
         db.close();
       },
@@ -227,6 +237,8 @@ export function createApp(options: {
         sprints,
         domainModels,
         notes,
+        dailyReports,
+        reportAI,
         assistant,
         chat,
       } = scoped(req);
@@ -255,6 +267,71 @@ export function createApp(options: {
           });
         throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
       }
+      if (
+        url.pathname === "/api/v1/daily-reports/ai/status" &&
+        req.method === "GET"
+      )
+        return reply({ data: await reportAI.status(actor) });
+      if (
+        url.pathname === "/api/v1/daily-reports/ai/login" &&
+        req.method === "POST"
+      )
+        return reply({ data: await reportAI.signIn(actor) });
+      if (
+        url.pathname === "/api/v1/daily-reports/ai/jobs" &&
+        req.method === "POST"
+      )
+        return reply({ data: reportAI.generate(await json(req), actor) }, 202);
+      const reportAIJob =
+        /^\/api\/v1\/daily-reports\/ai\/jobs\/([^/]+)(?:\/(cancel))?$/.exec(
+          url.pathname,
+        );
+      if (reportAIJob) {
+        if (!reportAIJob[2] && req.method === "GET")
+          return reply({ data: reportAI.get(reportAIJob[1]!, actor) });
+        if (reportAIJob[2] && req.method === "POST")
+          return reply({ data: await reportAI.cancel(reportAIJob[1]!, actor) });
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
+      if (url.pathname === "/api/v1/daily-reports/summary") {
+        if (req.method === "GET")
+          return reply({ data: dailyReports.summary(url.searchParams) });
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
+      if (url.pathname === "/api/v1/daily-reports") {
+        if (req.method === "GET")
+          return reply(dailyReports.list(url.searchParams));
+        if (req.method === "POST")
+          return reply(
+            { data: dailyReports.save(null, await json(req), actor) },
+            201,
+          );
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
+      const reportMatch =
+        /^\/api\/v1\/daily-reports\/([^/]+)(?:\/(restore))?$/.exec(
+          url.pathname,
+        );
+      if (reportMatch) {
+        const id = reportMatch[1]!;
+        if (reportMatch[2] && req.method === "POST")
+          return reply({
+            data: dailyReports.lifecycle(id, await json(req), true, actor),
+          });
+        if (!reportMatch[2]) {
+          if (req.method === "GET")
+            return reply({ data: dailyReports.get(id) });
+          if (req.method === "PUT")
+            return reply({
+              data: dailyReports.save(id, await json(req), actor),
+            });
+          if (req.method === "DELETE")
+            return reply({
+              data: dailyReports.lifecycle(id, await json(req), false, actor),
+            });
+        }
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
       if (url.pathname === "/api/v1/summary" && req.method === "GET")
         return reply({ data: service.summary() });
       if (url.pathname === "/api/v1/info" && req.method === "GET")
@@ -265,6 +342,11 @@ export function createApp(options: {
             databasePath: workspaces.path(workspaceId),
             mcpUrl: `${base.origin}/mcp?workspace=${workspaceId}`,
             credentialsPath: options.credentialsPath || "",
+            // Only the paired local UI may reveal the write credential.
+            // Bearer clients, especially read-only ones, must not obtain it.
+            ...(actor.source === "web"
+              ? { writeToken: options.credentials.writeToken }
+              : {}),
             runtime: `Bun ${Bun.version}`,
           },
         });

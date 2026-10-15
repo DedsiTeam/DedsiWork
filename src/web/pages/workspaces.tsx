@@ -307,10 +307,7 @@ export function WorkspacesPage() {
         <div className="spaces-empty">
           <FolderOpen size={32} strokeWidth={1.3} />
           <h2>创建第一个工作空间</h2>
-          <Button variant="outline" onClick={() => edit(null)}>
-            <Plus />
-            新建工作空间
-          </Button>
+          <p>点击右上角“新建工作空间”，开始记录和安排你的工作。</p>
         </div>
       ) : (
         <div className="spaces-grid">
@@ -620,7 +617,8 @@ export function WorkspacesPage() {
               {removing?.counts.items} 个工作项、{removing?.counts.sprints}{" "}
               个冲刺、{removing?.counts.notes || 0} 个无边记和{" "}
               {removing?.counts.models}{" "}
-              个领域模型将从本应用永久删除。本地工作目录保留。
+              个领域模型，以及该空间的数据库、附件和内部文件将被物理删除，无法撤销。
+              关联的本地代码目录和已导出的备份文件保留。
             </AlertDialog.Description>
             <label className="space-delete-name">
               输入工作空间名称确认

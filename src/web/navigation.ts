@@ -5,6 +5,7 @@ import {
   ListTodo,
   Boxes,
   StickyNote,
+  CalendarDays,
 } from "lucide-react";
 export const navigation = [
   {
@@ -27,6 +28,12 @@ export const navigation = [
     label: "无边记",
     icon: StickyNote,
     children: [{ to: "/notes", label: "无边记", icon: StickyNote }],
+  },
+  {
+    id: "daily-reports",
+    label: "日报管理",
+    icon: CalendarDays,
+    children: [{ to: "/daily-reports", label: "日报管理", icon: CalendarDays }],
   },
   {
     id: "system",

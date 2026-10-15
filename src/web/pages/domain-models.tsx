@@ -145,14 +145,6 @@ export function DomainModelsPage() {
                 ? "试试其他名称或关键词。"
                 : "在一个模型中组织五类设计项，并定义每个字段的类型和说明。"}
             </p>
-            {!q && (
-              <Button asChild>
-                <Link to="/domain-models/new">
-                  <Plus />
-                  新建领域模型
-                </Link>
-              </Button>
-            )}
           </div>
         ) : (
           !error && (

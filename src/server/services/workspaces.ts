@@ -3,6 +3,7 @@ import {
   existsSync,
   mkdirSync,
   realpathSync,
+  rmSync,
   statSync,
   unlinkSync,
 } from "node:fs";
@@ -40,20 +41,24 @@ export class WorkspaceStore {
             .get()
         )
           return;
-        const now = new Date().toISOString();
-        const state: Workspace = {
-          id: defaultId,
-          name: "默认工作空间",
-          description: "",
-          directory: "",
-          version: 1,
-          createdAt: now,
-          updatedAt: now,
-          lastOpenedAt: null,
-        };
-        this.db
-          .query("INSERT INTO workspaces VALUES (?,?,NULL)")
-          .run(defaultId, JSON.stringify(state));
+        // Only migrate a database from an older installation. A fresh install
+        // starts with no spaces; users create their own from the manager page.
+        if (existsSync(this.legacyPath)) {
+          const now = new Date().toISOString();
+          const state: Workspace = {
+            id: defaultId,
+            name: "默认工作空间",
+            description: "",
+            directory: "",
+            version: 1,
+            createdAt: now,
+            updatedAt: now,
+            lastOpenedAt: null,
+          };
+          this.db
+            .query("INSERT INTO workspaces VALUES (?,?,NULL)")
+            .run(defaultId, JSON.stringify(state));
+        }
         this.db
           .query("INSERT INTO workspace_meta VALUES ('initialized','1')")
           .run();
@@ -207,17 +212,32 @@ export class WorkspaceStore {
         "工作空间已更新，请刷新后重试",
         409,
       );
-    this.db
-      .query("UPDATE workspaces SET deleted_at=? WHERE id=?")
-      .run(new Date().toISOString(), id);
-    // Only app database files belong to this operation, never the working directory.
-    for (const suffix of ["", "-shm", "-wal"]) {
-      try {
-        unlinkSync(this.path(id) + suffix);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    // Services must be closed first. Only remove application-owned data, never
+    // current.directory, which may be a shared source checkout or a home folder.
+    // Keep the catalog entry until cleanup succeeds so failed deletion can retry.
+    if (id === defaultId) {
+      // The migrated default space shares the data root with the global catalog
+      // and credentials. Remove only its database and fallback chat directory.
+      for (const suffix of ["", "-shm", "-wal", "-journal"]) {
+        try {
+          unlinkSync(this.path(id) + suffix);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        }
       }
+      rmSync(join(this.dataDir, "chat-workspace"), {
+        recursive: true,
+        force: true,
+      });
     }
+    // Includes database sidecars, chat working files and any space attachments.
+    rmSync(join(this.dataDir, "workspaces", id), {
+      recursive: true,
+      force: true,
+    });
+    this.db.exec("PRAGMA secure_delete=ON");
+    this.db.query("DELETE FROM workspaces WHERE id=?").run(id);
+    this.db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
     return { id };
   }
   async chooseDirectory(actor: Actor) {

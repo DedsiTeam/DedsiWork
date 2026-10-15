@@ -34,9 +34,9 @@
   min-height: 0;
   display: flex;
   overflow: hidden;
-  border: 1px solid #e6e7ec;
+  border: 1px solid rgb(13 12 34 / 0.099);
   border-radius: 9px;
-  background: #fff;
+  background: #ffffff;
 }
 .assistant-conversation {
   flex: 1;
@@ -49,18 +49,18 @@
   align-items: center;
   gap: 18px;
   padding: 10px 20px;
-  border-bottom: 1px solid #eeeef3;
+  border-bottom: 1px solid rgb(13 12 34 / 0.069);
   flex-shrink: 0;
 }
 .assistant-stages > span {
   font-size: 11px;
-  color: #b0b3bc;
+  color: rgb(13 12 34 / 0.315);
 }
 .assistant-stages > span.active {
-  color: #555c8a;
+  color: #0d0c22;
 }
 .assistant-stages > span.done {
-  color: #668773;
+  color: rgb(13 12 34 / 0.533);
 }
 .assistant-stages > button {
   margin-left: auto;
@@ -74,7 +74,7 @@
 }
 .assistant-message-text {
   white-space: pre-wrap;
-  color: #626874;
+  color: rgb(13 12 34 / 0.628);
   font-size: 12px;
   line-height: 1.8;
   overflow-wrap: anywhere;
@@ -85,9 +85,9 @@
 .assistant-result {
   margin: 16px 0;
   padding: 16px;
-  border: 1px solid #e6e7ec;
+  border: 1px solid rgb(13 12 34 / 0.099);
   border-radius: 8px;
-  background: #fafafd;
+  background: rgb(13 12 34 / 0.02);
 }
 .assistant-card-heading {
   display: flex;
@@ -99,24 +99,24 @@
 .assistant-card-heading > strong {
   font-size: 12px;
   font-weight: 550;
-  color: #555c78;
+  color: rgb(13 12 34 / 0.674);
 }
 .assistant-card-heading > span {
   font-size: 10px;
-  color: #a0a5ae;
+  color: rgb(13 12 34 / 0.375);
 }
 .assistant-draft {
   margin: 10px 0;
   padding: 12px;
-  border: 1px solid #ececf1;
+  border: 1px solid rgb(13 12 34 / 0.077);
   border-radius: 6px;
-  background: #fff;
+  background: #ffffff;
 }
 .assistant-draft-check {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #9297a1;
+  color: rgb(13 12 34 / 0.433);
   font-size: 10px;
   margin-bottom: 8px;
 }
@@ -125,11 +125,11 @@
   width: 100%;
   height: 31px;
   padding: 0 9px;
-  border: 1px solid #e2e4eb;
+  border: 1px solid rgb(13 12 34 / 0.112);
   border-radius: 5px;
-  background: #fff;
+  background: #ffffff;
   font-size: 12px;
-  color: #535762;
+  color: rgb(13 12 34 / 0.697);
 }
 .assistant-draft-options {
   display: flex;
@@ -140,27 +140,27 @@
 .assistant-draft-options select {
   height: 27px;
   padding: 0 8px;
-  border: 1px solid #e6e7ec;
+  border: 1px solid rgb(13 12 34 / 0.099);
   border-radius: 5px;
-  color: #858a94;
-  background: #fff;
+  color: rgb(13 12 34 / 0.486);
+  background: #ffffff;
   font-size: 11px;
 }
 .assistant-draft-options > span {
-  color: #a0a5ae;
+  color: rgb(13 12 34 / 0.375);
   font-size: 10px;
 }
 .assistant-draft > textarea,
 .assistant-model-action > textarea {
   width: 100%;
   padding: 9px;
-  border: 1px solid #e2e4eb;
+  border: 1px solid rgb(13 12 34 / 0.112);
   border-radius: 5px;
-  background: #fff;
+  background: #ffffff;
   font: inherit;
   font-size: 12px;
   line-height: 1.8;
-  color: #626874;
+  color: rgb(13 12 34 / 0.628);
   resize: vertical;
 }
 .assistant-result > strong {
@@ -168,7 +168,7 @@
   align-items: center;
   gap: 7px;
   margin-bottom: 10px;
-  color: #668773;
+  color: rgb(13 12 34 / 0.533);
   font-weight: 550;
   font-size: 12px;
 }
@@ -177,7 +177,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 0;
-  color: #555c8a;
+  color: #0d0c22;
   font-size: 12px;
   text-decoration: none;
 }
@@ -189,13 +189,13 @@
   align-items: center;
   gap: 8px;
   padding: 9px 0;
-  color: #626874;
+  color: rgb(13 12 34 / 0.628);
   font-size: 12px;
 }
 .assistant-source-picker > label > small {
   margin-left: auto;
   font-size: 10px;
-  color: #a0a5ae;
+  color: rgb(13 12 34 / 0.375);
 }
 .assistant-source-pages {
   display: flex;
@@ -203,7 +203,7 @@
   align-items: center;
   gap: 8px;
   font-size: 10px;
-  color: #a0a5ae;
+  color: rgb(13 12 34 / 0.375);
 }
 .assistant-source-tags {
   display: flex;
@@ -216,16 +216,16 @@
   align-items: center;
   gap: 8px;
   padding: 4px 7px;
-  border: 1px solid #e6e7ec;
+  border: 1px solid rgb(13 12 34 / 0.099);
   border-radius: 4px;
-  background: #fff;
-  color: #9297a1;
+  background: #ffffff;
+  color: rgb(13 12 34 / 0.433);
   font-size: 10px;
 }
 .assistant-source-tags button {
   background: none;
   border: 0;
-  color: #9297a1;
+  color: rgb(13 12 34 / 0.433);
   cursor: pointer;
 }
 .assistant-action-row {
@@ -235,11 +235,11 @@
   align-items: center;
 }
 .assistant-action-row > span {
-  color: #a0a5ae;
+  color: rgb(13 12 34 / 0.375);
   font-size: 10px;
 }
 .assistant-conversation .chat-composer-actions > span {
-  color: #a0a5ae;
+  color: rgb(13 12 34 / 0.375);
   font-size: 10px;
 }
 .assistant-provenance {
@@ -248,18 +248,18 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 16px;
-  color: #9297a1;
+  color: rgb(13 12 34 / 0.433);
   font-size: 11px;
 }
 .assistant-provenance a,
 .assistant-context-link {
-  color: #858ba4;
+  color: rgb(13 12 34 / 0.479);
   text-decoration: none;
   font-size: 11px;
 }
 .assistant-provenance a:hover,
 .assistant-context-link:hover {
-  color: #555c8a;
+  color: #0d0c22;
   text-decoration: underline;
 }
 .assistant-context-bar {
@@ -286,9 +286,9 @@
   gap: 16px;
   margin: 12px 0 20px;
   padding: 12px 14px;
-  border: 1px solid #e6e7ec;
+  border: 1px solid rgb(13 12 34 / 0.099);
   border-radius: 8px;
-  background: #fafafd;
+  background: rgb(13 12 34 / 0.02);
 }
 .chat-proposal > div {
   min-width: 0;
@@ -302,7 +302,7 @@
 }
 .chat-proposal span {
   font-size: 11px;
-  color: #9297a1;
+  color: rgb(13 12 34 / 0.433);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -313,7 +313,7 @@
 
 .chat-proposal {
   max-width: 680px;
-  background: #fafafb;
+  background: rgb(13 12 34 / 0.02);
 }
 .chat-proposal strong {
   display: flex;
@@ -322,12 +322,12 @@
   overflow-wrap: anywhere;
 }
 .chat-proposal strong svg {
-  color: #7b80a0;
+  color: rgb(13 12 34 / 0.521);
   flex-shrink: 0;
 }
 .chat-proposal small {
   font-size: 10px;
-  color: #a0a4ad;
+  color: rgb(13 12 34 / 0.378);
 }
 .chat-draft-status {
   display: flex;
@@ -336,9 +336,9 @@
   margin: 8px 0 20px;
   padding: 12px 14px;
   max-width: 680px;
-  border: 1px solid #eeeef2;
+  border: 1px solid rgb(13 12 34 / 0.069);
   border-radius: 8px;
-  color: #9297a1;
+  color: rgb(13 12 34 / 0.433);
   font-size: 11px;
-  background: #fafafb;
+  background: rgb(13 12 34 / 0.02);
 }

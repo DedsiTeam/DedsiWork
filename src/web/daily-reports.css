@@ -1,0 +1,596 @@
+.reports-content {
+  min-width: 0;
+}
+.report-subtitle {
+  margin: 8px 0 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.report-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.report-toolbar > input {
+  width: 260px;
+}
+.report-toolbar > input[type="month"] {
+  width: 170px;
+}
+.report-layout {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.report-list,
+.report-editor {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  min-width: 0;
+}
+.report-list {
+  overflow: hidden;
+}
+.report-list-heading {
+  display: flex;
+  justify-content: space-between;
+  padding: 18px;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.report-list-heading span,
+.report-list-item small {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+.report-list-item {
+  display: block;
+  text-align: left;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 18px;
+  cursor: pointer;
+  color: inherit;
+}
+.report-list-item:hover {
+  background: var(--muted);
+}
+.report-list-item.is-selected {
+  background: var(--accent);
+  box-shadow: inset 3px 0 var(--primary);
+}
+.report-list-item > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.report-list-item strong {
+  font-size: 14px;
+}
+.report-list-item span {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+.report-list-item p {
+  margin: 10px 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.report-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 4px;
+  font-size: 12px;
+}
+.report-editor {
+  padding: 24px;
+}
+.report-editor-heading,
+.report-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.report-editor-heading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.report-editor-heading > span {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.report-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+.report-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) 2fr;
+  background: var(--muted);
+  border-radius: 10px;
+  padding: 18px;
+  gap: 16px;
+  margin: 20px 0;
+}
+.report-metrics strong,
+.report-metrics span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.report-metrics strong {
+  font-size: 21px;
+  margin-bottom: 6px;
+}
+.report-metrics span {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.report-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.report-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  min-width: 0;
+}
+.report-fields select {
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--input);
+  border-radius: 6px;
+  background: var(--card);
+  padding: 0 10px;
+  color: var(--foreground);
+}
+.report-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+.report-section-heading h3 {
+  font-size: 15px;
+  margin: 0;
+}
+.report-section-heading > div {
+  display: flex;
+  gap: 8px;
+}
+.report-help {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.report-matter {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.report-matter-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.report-matter-title > span {
+  background: var(--accent);
+  color: var(--primary);
+  border-radius: 5px;
+  padding: 4px 7px;
+  font-size: 12px;
+}
+.report-matter-text {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.report-matter-numbers {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.report-section {
+  margin-top: 22px;
+}
+.report-fields textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.report-section textarea {
+  min-height: 110px;
+}
+.report-add-hint,
+.report-history {
+  padding: 18px;
+  border: 1px dashed var(--input);
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.report-history > button {
+  margin: 8px 8px 0 0;
+  max-width: 100%;
+  white-space: normal;
+  height: auto;
+}
+.report-bottom {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.report-empty {
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+.report-empty h2 {
+  font-size: 18px;
+  color: var(--muted-foreground);
+}
+.report-empty p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+.report-empty-small {
+  padding: 18px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.report-preview {
+  line-height: 1.85;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.report-preview h1 {
+  font-size: 23px;
+}
+.report-preview h2 {
+  font-size: 18px;
+  margin-top: 25px;
+}
+.report-preview h3 {
+  font-size: 15px;
+}
+@media (max-width: 1100px) {
+  .report-layout {
+    grid-template-columns: 225px minmax(0, 1fr);
+    gap: 14px;
+  }
+  .report-matter-numbers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .report-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .report-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .report-list {
+    max-height: 320px;
+    overflow: auto;
+  }
+  .report-editor {
+    padding: 16px;
+  }
+  .report-matter-text {
+    grid-template-columns: 1fr;
+  }
+  .report-toolbar > input {
+    flex: 1;
+    min-width: 140px;
+  }
+  .report-bottom {
+    flex-wrap: wrap;
+  }
+}
+.report-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+}
+.report-matter-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+.report-matter-link a,
+.period-matter a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.report-work-picker {
+  width: min(560px, calc(100vw - 40px)) !important;
+}
+.report-work-picker-list {
+  max-height: 330px;
+  overflow: auto;
+  margin: 14px 0;
+}
+.report-work-picker-list > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.report-work-picker-list > button:hover {
+  background: var(--accent);
+}
+.report-work-picker-list strong {
+  font-size: 13px;
+}
+.report-work-picker-list span {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+.period-content .report-toolbar {
+  align-items: end;
+}
+.period-content .report-toolbar > label {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.period-content label.period-filter {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 8px;
+  color: var(--muted-foreground);
+}
+.period-content .period-filter input {
+  width: 14px;
+  height: 14px;
+}
+.period-editor {
+  max-width: 1200px;
+}
+.period-heading {
+  font-size: 18px;
+  margin: 28px 0 18px;
+}
+.period-matter {
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: 10px;
+  margin: 16px 0;
+}
+.period-matter h3 {
+  font-size: 16px;
+  margin: 0;
+}
+.period-matter a {
+  font-size: 12px;
+}
+.period-matter-summary {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  line-height: 1.8;
+}
+.period-data-warning {
+  background: #fff8e8;
+  color: #826326;
+  font-size: 12px;
+  padding: 10px 14px;
+  border-radius: 7px;
+  line-height: 1.8;
+}
+.period-day {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 14px;
+}
+.period-day > div:first-child {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+}
+.period-draft {
+  font-size: 10px;
+  background: var(--accent);
+  color: var(--primary);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: 10px;
+}
+.period-day-content {
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.period-day-content > div > span {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.period-day-content p {
+  margin: 5px 0 12px;
+}
+.period-day-content > p {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.period-week {
+  margin-top: 30px;
+}
+.period-week h2 {
+  font-size: 18px;
+}
+.period-week > .report-section-heading > span {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.period-overview > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.period-overview > div > span:last-child {
+  grid-column: 1/-1;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.period-source {
+  border-top: 1px solid var(--border);
+  padding: 14px 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.period-source summary {
+  cursor: pointer;
+  color: var(--muted-foreground);
+}
+.period-source h4 {
+  font-size: 13px;
+  margin: 12px 0 4px;
+}
+@media (max-width: 760px) {
+  .period-day {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .period-overview > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .period-matter {
+    padding: 14px;
+  }
+}
+.report-ai-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+  background: var(--card);
+}
+.report-ai-panel h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+  color: var(--primary);
+}
+.report-ai-options {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(160px, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+.report-ai-options label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.report-ai-options select {
+  height: 36px;
+  border: 1px solid var(--input);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: var(--card);
+  color: var(--foreground);
+}
+.report-ai-panel .report-actions {
+  align-items: center;
+}
+.report-ai-text {
+  min-height: 420px;
+  resize: vertical;
+  font-size: 13px;
+  line-height: 1.85;
+}
+.report-ai-candidate {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin: 14px 0;
+}
+.report-ai-candidate summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--primary);
+}
+.report-ai-candidate > button {
+  margin: 12px 8px 0 0;
+}
+@media (max-width: 760px) {
+  .report-ai-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .report-ai-panel {
+    padding: 14px;
+  }
+}
+.report-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.report-backfill-date {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}

@@ -118,14 +118,6 @@ export function NotesPage() {
         <div className="notes-empty">
           <StickyNote size={28} />
           <h2>{q ? "没有找到匹配的无边记" : "留一个地方，放下你的想法"}</h2>
-          {!q && (
-            <Button variant="outline" asChild>
-              <Link to="/notes/new">
-                <Plus />
-                新建无边记
-              </Link>
-            </Button>
-          )}
         </div>
       ) : (
         <div className="notes-grid">

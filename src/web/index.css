@@ -169,7 +169,7 @@ button:disabled {
   margin-bottom: 10px;
   letter-spacing: 1.5px;
 }
-nav {
+.sidebar nav {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -280,7 +280,7 @@ nav {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
-  padding: 0 2rem;
+  padding: 0 1rem;
   color: #9397a1;
   font-size: 11px;
 }
@@ -305,7 +305,7 @@ nav {
 }
 .workspace-content,
 .settings-content {
-  padding: 2rem;
+  padding: 1rem;
   width: 100%;
   max-width: none;
   margin: 0;

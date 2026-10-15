@@ -1,3 +1,4 @@
+import { DatePicker } from "../components/date-picker";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useSearchParams } from "react-router";
@@ -45,15 +46,29 @@ import {
 import "../sprints.css";
 const columns = flowStatuses;
 const today = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = (type: string) =>
+    parts.find((part) => part.type === type)!.value;
+  return `${value("year")}-${value("month")}-${value("day")}`;
 };
-const blank = () => ({
-  name: "",
-  goal: "",
-  startDate: today(),
-  endDate: today(),
-});
+const blank = () => {
+  // Work on the China calendar date using UTC arithmetic, independent of OS timezone.
+  const monday = new Date(`${today()}T00:00:00Z`);
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  const sunday = new Date(monday);
+  sunday.setUTCDate(sunday.getUTCDate() + 6);
+  return {
+    name: "",
+    goal: "",
+    startDate: monday.toISOString().slice(0, 10),
+    endDate: sunday.toISOString().slice(0, 10),
+  };
+};
 const eventLabels: Record<string, string> = {
   created: "创建冲刺",
   updated: "修改冲刺信息",
@@ -857,37 +872,34 @@ export function SprintsPage() {
                   />
                 </label>
                 <div className="field-grid">
-                  <label className="field">
+                  <div className="field">
                     开始日期
-                    <Input
-                      type="date"
-                      required
+                    <DatePicker
+                      label="开始日期"
+                      disabled={busy}
                       value={form.startDate}
-                      onInput={(e) => {
-                        const value = e.currentTarget.value;
-                        setForm((prev) => ({ ...prev, startDate: value }));
-                      }}
-                      onChange={(e) =>
-                        setForm({ ...form, startDate: e.target.value })
+                      onChange={(value) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          startDate: value,
+                          endDate:
+                            previous.endDate < value ? value : previous.endDate,
+                        }))
                       }
                     />
-                  </label>
-                  <label className="field">
+                  </div>
+                  <div className="field">
                     结束日期
-                    <Input
-                      type="date"
-                      required
+                    <DatePicker
+                      label="结束日期"
+                      disabled={busy}
                       min={form.startDate}
                       value={form.endDate}
-                      onInput={(e) => {
-                        const value = e.currentTarget.value;
-                        setForm((prev) => ({ ...prev, endDate: value }));
-                      }}
-                      onChange={(e) =>
-                        setForm({ ...form, endDate: e.target.value })
+                      onChange={(value) =>
+                        setForm((previous) => ({ ...previous, endDate: value }))
                       }
                     />
-                  </label>
+                  </div>
                 </div>
               </fieldset>
               <div className="sprint-modal-actions">

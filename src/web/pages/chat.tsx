@@ -1,6 +1,6 @@
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useNavigate, useSearchParams } from "react-router";
-import { chatProposals } from "../../shared/chat-proposal";
+import { chatProposals, chatProposalContent } from "../../shared/chat-proposal";
 import type { AssistantFlow } from "../../shared/assistant";
 import type { WorkItem } from "../../shared/work-item";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -14,10 +14,14 @@ import {
   ImagePlus,
   LoaderCircle,
   MessageSquare,
+  History,
+  Folder,
   Plus,
   RefreshCw,
   Square,
   Trash2,
+  Boxes,
+  ListTodo,
   X,
 } from "lucide-react";
 import { api } from "../api";
@@ -31,7 +35,6 @@ import type {
   ChatSummary,
 } from "../../shared/chat";
 
-const selectionKey = "dedsiwork:chat-selected";
 function stored(key: string) {
   try {
     return localStorage.getItem(key) || "";
@@ -63,9 +66,24 @@ async function openLink(url: string) {
 }
 
 export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
-  const { notify } = useWorkspace();
+  const { notify, workspace } = useWorkspace();
+  const selectionKey = `dedsiwork:${workspace?.id}:chat-selected`;
+  const cwdKey = `dedsiwork:${workspace?.id}:chat-cwd`;
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
+  useEffect(() => {
+    if (!historyOpen && !directoryOpen) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setHistoryOpen(false);
+        setDirectoryOpen(false);
+      }
+    };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  }, [historyOpen, directoryOpen]);
   const [openingProposal, setOpeningProposal] = useState("");
   const [selected, setSelected] = useState(() => stored(selectionKey));
   const selectedRef = useRef(selected);
@@ -82,7 +100,9 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [revision, setRevision] = useState(0);
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
-  const [cwd, setCwd] = useState(() => stored("dedsiwork:chat-cwd"));
+  const [cwd, setCwd] = useState(
+    () => stored(cwdKey) || workspace?.directory || "",
+  );
   const [model, setModel] = useState("");
   const [sending, setSending] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -175,6 +195,8 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   }, []);
   const busy = sending || Boolean(snapshot?.running);
   function select(id: string) {
+    setHistoryOpen(false);
+    setDirectoryOpen(false);
     draft.current.set(selected, { text, images });
     selectedRef.current = id;
     setSelected(id);
@@ -190,7 +212,7 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
     setImages(next?.images || []);
   }
   useEffect(() => {
-    store("dedsiwork:chat-cwd", cwd);
+    store(cwdKey, cwd);
   }, [cwd]);
   useEffect(() => {
     const controller = new AbortController();
@@ -498,6 +520,28 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
       <div className="page-heading">
         <div className="chat-heading">
           {!embedded && <h1>AI 助手</h1>}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="历史对话"
+            title="历史对话"
+            aria-expanded={historyOpen}
+            aria-controls="chat-history-panel"
+            onClick={() => setHistoryOpen((value) => !value)}
+          >
+            <History />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={sending || deleting}
+            onClick={() => select("")}
+          >
+            <Plus />
+            新对话
+          </Button>
           <span className={`chat-connection${status?.ready ? " ready" : ""}`}>
             {connecting ? (
               <LoaderCircle className="ai-spin" size={12} />
@@ -551,80 +595,66 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
         </div>
       )}
       <section className="chat-workbench" aria-label="Codex 对话">
-        <aside className="chat-history" aria-label="对话历史">
-          <Button variant="ghost" disabled={sending} onClick={() => select("")}>
-            <Plus />
-            新对话
-          </Button>
-          <div className="chat-history-list">
-            {chats.map((chat) => (
-              <div
-                key={chat.id}
-                className={`chat-history-row${selected === chat.id ? " active" : ""}`}
-              >
+        {historyOpen && (
+          <>
+            <button
+              type="button"
+              className="chat-history-dismiss"
+              aria-label="关闭历史对话"
+              onClick={() => setHistoryOpen(false)}
+            />
+            <aside
+              id="chat-history-panel"
+              className="chat-history"
+              aria-label="对话历史"
+            >
+              <div className="chat-history-heading">
+                <strong>历史对话</strong>
                 <button
-                  className="chat-history-select"
-                  disabled={sending || deleting}
-                  onClick={() => select(chat.id)}
-                  title={chat.title}
+                  type="button"
+                  aria-label="关闭历史对话"
+                  onClick={() => setHistoryOpen(false)}
                 >
-                  <MessageSquare size={13} />
-                  <span>{chat.title}</span>
-                </button>
-                <button
-                  className="chat-history-delete"
-                  aria-label={`删除对话：${chat.title}`}
-                  title="删除对话"
-                  disabled={sending || deleting}
-                  onClick={() => {
-                    setDeleteError("");
-                    setDeleteTarget(chat);
-                  }}
-                >
-                  <Trash2 size={12} />
+                  <X size={13} />
                 </button>
               </div>
-            ))}
-          </div>
-        </aside>
-        <div className="chat-conversation">
-          <div className="chat-session-bar">
-            <span title={snapshot?.chat.cwd || cwd || status?.defaultWorkspace}>
-              {snapshot ? snapshot.chat.title : "新对话"}
-            </span>
-            <div className="chat-session-options">
-              {snapshot ? (
-                <span className="chat-workdir" title={snapshot.chat.cwd}>
-                  {snapshot.chat.cwd}
-                </span>
-              ) : (
-                <input
-                  aria-label="工作目录"
-                  placeholder="工作目录（可选，填写完整路径）"
-                  value={cwd}
-                  disabled={busy}
-                  onChange={(event) => setCwd(event.target.value)}
-                />
+              {chats.length === 0 && (
+                <p className="chat-history-empty">暂无历史对话</p>
               )}
-              {status?.models.length ? (
-                <select
-                  aria-label="选择模型"
-                  value={model || snapshot?.chat.model || ""}
-                  disabled={busy || loading}
-                  onChange={(event) => setModel(event.target.value)}
-                >
-                  {!snapshot?.chat.model && (
-                    <option value="">Codex 默认模型</option>
-                  )}
-                  {status.models.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-            </div>
-          </div>
+              <div className="chat-history-list">
+                {chats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={`chat-history-row${selected === chat.id ? " active" : ""}`}
+                  >
+                    <button
+                      className="chat-history-select"
+                      disabled={sending || deleting}
+                      onClick={() => select(chat.id)}
+                      title={chat.title}
+                    >
+                      <MessageSquare size={13} />
+                      <span>{chat.title}</span>
+                    </button>
+                    <button
+                      className="chat-history-delete"
+                      aria-label={`删除对话：${chat.title}`}
+                      title="删除对话"
+                      disabled={sending || deleting}
+                      onClick={() => {
+                        setDeleteError("");
+                        setDeleteTarget(chat);
+                      }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          </>
+        )}
+        <div className="chat-conversation">
           <div
             className="chat-scroll"
             ref={scroll}
@@ -665,10 +695,30 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                     onLinkError={(message) => notify(message, "error")}
                   />
                   {item.role === "assistant" &&
+                    (chatProposalContent(item.text).pending ||
+                      chatProposalContent(item.text).invalid) && (
+                      <div className="chat-draft-status" role="status">
+                        {snapshot.running &&
+                        chatProposalContent(item.text).pending ? (
+                          <>
+                            <LoaderCircle size={13} className="ai-spin" />
+                            正在整理草稿…
+                          </>
+                        ) : (
+                          "草稿尚未完整，请让助手重新整理后再预览。"
+                        )}
+                      </div>
+                    )}
+                  {item.role === "assistant" &&
                     chatProposals(item.text).map(({ index, proposal }) => (
                       <section className="chat-proposal" key={index}>
                         <div>
                           <strong>
+                            {proposal.kind === "work_items" ? (
+                              <ListTodo size={14} />
+                            ) : (
+                              <Boxes size={14} />
+                            )}
                             {proposal.kind === "work_items"
                               ? `工作项草稿 · ${proposal.items.length} 项`
                               : proposal.model.name}
@@ -678,8 +728,9 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                               ? proposal.items
                                   .map((item) => item.title)
                                   .join(" · ")
-                              : "领域模型草稿"}
+                              : `领域模型草稿 · ${proposal.model.elements.length} 个设计项 · ${proposal.model.elements.reduce((count, element) => count + element.fields.length, 0)} 个字段`}
                           </span>
+                          <small>预览修改后确认保存</small>
                         </div>
                         <Button
                           size="sm"
@@ -791,7 +842,89 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                 >
                   <ImagePlus />
                 </Button>
-                <span>Enter 发送 · Shift + Enter 换行</span>
+                <div
+                  className="chat-directory-control"
+                  onBlur={(event) => {
+                    if (
+                      !event.currentTarget.contains(event.relatedTarget as Node)
+                    )
+                      setDirectoryOpen(false);
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="chat-directory-button"
+                    disabled={Boolean(snapshot) || busy}
+                    title={
+                      snapshot?.chat.cwd ||
+                      cwd ||
+                      status?.defaultWorkspace ||
+                      "默认目录"
+                    }
+                    aria-label="设置工作目录"
+                    aria-expanded={directoryOpen}
+                    onClick={() => setDirectoryOpen((value) => !value)}
+                  >
+                    <Folder size={13} />
+                    <span>
+                      {(
+                        snapshot?.chat.cwd ||
+                        cwd ||
+                        status?.defaultWorkspace ||
+                        ""
+                      )
+                        .replace(/[\\/]+$/, "")
+                        .split(/[\\/]/)
+                        .pop() || "默认目录"}
+                    </span>
+                  </button>
+                  {directoryOpen && (
+                    <div className="chat-directory-popover">
+                      <label>
+                        工作目录
+                        <input
+                          autoFocus
+                          aria-label="工作目录完整路径"
+                          placeholder="填写完整路径，留空使用默认目录"
+                          value={cwd}
+                          onChange={(event) => setCwd(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              setDirectoryOpen(false);
+                            }
+                          }}
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setDirectoryOpen(false)}
+                      >
+                        完成
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {status?.models.length ? (
+                  <select
+                    className="chat-model-select"
+                    aria-label="选择模型"
+                    value={model || snapshot?.chat.model || ""}
+                    disabled={busy || loading}
+                    onChange={(event) => setModel(event.target.value)}
+                  >
+                    {!snapshot?.chat.model && (
+                      <option value="">Codex 默认模型</option>
+                    )}
+                    {status.models.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
               </div>
               {busy ? (
                 <Button
@@ -883,10 +1016,7 @@ function ChatMessage({
               ),
             }}
           >
-            {chatProposals(item.text).reduce(
-              (text, entry) => text.replace(entry.block, ""),
-              item.text,
-            )}
+            {chatProposalContent(item.text).text}
           </Markdown>
         )}
         {item.images?.map((image, index) => (

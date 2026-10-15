@@ -1,6 +1,8 @@
+import { WorkspaceSwitcher } from "./components/workspace-switcher";
+import type { Workspace } from "../shared/workspace";
 import { useCallback, useEffect, useState } from "react";
-import { Outlet, useMatches, useLocation } from "react-router";
-import { api, setCsrf } from "./api";
+import { Outlet, useMatches, useLocation, useNavigate } from "react-router";
+import { api, setCsrf, setApiWorkspace, getApiWorkspace } from "./api";
 import { Mark, Pairing } from "./components/workspace";
 import { Sidebar } from "./components/sidebar";
 import { useWindowDrag } from "./components/window-drag";
@@ -8,6 +10,34 @@ import { WorkspaceContext, type Summary } from "./workspace-context";
 import { Check, AlertTriangle, X } from "lucide-react";
 export function App() {
   const windowDrag = useWindowDrag();
+  const navigate = useNavigate();
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [spaceReady, setSpaceReady] = useState(false);
+  const location = useLocation();
+  const manager =
+    location.pathname === "/workspaces" || location.pathname === "/";
+  const updateWorkspace = useCallback(
+    (value: Workspace) => setWorkspace(value),
+    [],
+  );
+  const openWorkspace = useCallback(
+    async (id: string) => {
+      const { data } = await api<{ data: Workspace }>(
+        `/api/v1/workspaces/${id}/open`,
+        { method: "POST" },
+      );
+      sessionStorage.setItem("dedsiwork:active-space", id);
+      setApiWorkspace(id);
+      setWorkspace(data);
+      setSummary({ total: 0, inProgress: 0, done: 0, trash: 0 });
+      setSpaceReady(true);
+      navigate("/assistant");
+    },
+    [navigate],
+  );
+  const leaveWorkspace = useCallback(() => {
+    navigate("/workspaces");
+  }, [navigate]);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [notification, setNotification] = useState<{
     id: string;
@@ -34,14 +64,17 @@ export function App() {
     done: 0,
     trash: 0,
   });
-  const location = useLocation();
   const matches = useMatches();
   const title =
     (matches.at(-1)?.handle as { title?: string } | undefined)?.title ||
     "页面不存在";
   const refreshSummary = useCallback(() => {
+    const id = getApiWorkspace();
+    if (!id) return;
     void api<{ data: Summary }>("/api/v1/summary")
-      .then((result) => setSummary(result.data))
+      .then((result) => {
+        if (getApiWorkspace() === id) setSummary(result.data);
+      })
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -55,11 +88,57 @@ export function App() {
     window.addEventListener("session-expired", expired);
     return () => window.removeEventListener("session-expired", expired);
   }, []);
+  // Clear selection only on entry to the list. Selecting a card can update
+  // workspace state before navigation commits; that must not clear the new space.
+  useEffect(() => {
+    if (!authenticated || !manager) return;
+    setApiWorkspace("");
+    setWorkspace(null);
+    sessionStorage.removeItem("dedsiwork:active-space");
+  }, [authenticated, manager]);
+  useEffect(() => {
+    if (!authenticated) return;
+    if (manager) {
+      setSpaceReady(true);
+      return;
+    }
+    const requested = new URLSearchParams(location.search).get("workspace");
+    if (workspace && (!requested || workspace.id === requested)) {
+      setSpaceReady(true);
+      return;
+    }
+    const id = requested || sessionStorage.getItem("dedsiwork:active-space");
+    if (!id) {
+      setSpaceReady(true);
+      navigate("/workspaces", { replace: true });
+      return;
+    }
+    const controller = new AbortController();
+    api<{ data: Workspace }>(`/api/v1/workspaces/${id}`, {
+      signal: controller.signal,
+    })
+      .then(({ data }) => {
+        if (controller.signal.aborted) return;
+        sessionStorage.setItem("dedsiwork:active-space", id);
+        setApiWorkspace(id);
+        setWorkspace(data);
+        setSpaceReady(true);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setApiWorkspace("");
+          sessionStorage.removeItem("dedsiwork:active-space");
+          setSpaceReady(true);
+          navigate("/workspaces", { replace: true });
+        }
+      });
+    return () => controller.abort();
+  }, [authenticated, manager, workspace, navigate, location.search]);
   useEffect(() => {
     document.title = `${title} · DedsiWork`;
     window.scrollTo({ top: 0 });
     if (authenticated) refreshSummary();
-  }, [authenticated, location.pathname, refreshSummary, title]);
+  }, [authenticated, location.pathname, refreshSummary, title, workspace?.id]);
   useEffect(() => {
     if (!authenticated) return;
     const refresh = () => {
@@ -83,13 +162,28 @@ export function App() {
     return <Pairing onConnected={() => setAuthenticated(true)} />;
   return (
     <WorkspaceContext.Provider
-      value={{ summary, setSummary, refreshSummary, notify }}
+      value={{
+        workspace,
+        openWorkspace,
+        leaveWorkspace,
+        updateWorkspace,
+        summary,
+        setSummary,
+        refreshSummary,
+        notify,
+      }}
     >
-      <div className="app-shell">
-        <Sidebar />
+      <div className={`app-shell${manager ? " space-manager-shell" : ""}`}>
+        {!manager && workspace && <Sidebar key={workspace.id} />}
         <main className="main-area">
-          <header className="topbar" {...windowDrag} />
-          <Outlet />
+          <header className="topbar" {...windowDrag}>
+            {!manager && <WorkspaceSwitcher />}
+          </header>
+          {spaceReady && (manager || workspace) ? (
+            <Outlet key={manager ? "manager" : workspace!.id} />
+          ) : (
+            <div className="workspace-content">正在打开工作空间…</div>
+          )}
         </main>
         {notification && (
           <div

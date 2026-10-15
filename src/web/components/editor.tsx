@@ -1,3 +1,4 @@
+import { DatePicker } from "./date-picker";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useBlocker } from "react-router";
 import { useEffect, useRef, useState } from "react";
@@ -354,11 +355,13 @@ export function Editor({
             </div>
             <div className="field">
               <Label htmlFor="due-at">截止时间</Label>
-              <Input
+              <DatePicker
                 id="due-at"
-                type="datetime-local"
+                label="截止时间"
                 value={due}
-                onChange={(e) => setDue(e.target.value)}
+                onChange={setDue}
+                withTime
+                clearable
               />
             </div>
           </div>

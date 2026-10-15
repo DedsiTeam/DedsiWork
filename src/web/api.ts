@@ -1,3 +1,10 @@
+let workspaceId = "";
+export function setApiWorkspace(id: string) {
+  workspaceId = id;
+}
+export function getApiWorkspace() {
+  return workspaceId;
+}
 let csrf = "";
 export function setCsrf(value: string) {
   csrf = value;
@@ -20,6 +27,7 @@ export async function api<T>(
     headers: {
       "Content-Type": "application/json",
       "X-CSRF-Token": csrf,
+      ...(workspaceId ? { "X-Workspace-Id": workspaceId } : {}),
       ...options.headers,
     },
   });

@@ -1,3 +1,4 @@
+import type { Workspace } from "../shared/workspace";
 import {
   createContext,
   useContext,
@@ -11,6 +12,10 @@ export type Summary = {
   trash: number;
 };
 export const WorkspaceContext = createContext<{
+  workspace: Workspace | null;
+  openWorkspace: (id: string) => Promise<void>;
+  leaveWorkspace: () => void;
+  updateWorkspace: (workspace: Workspace) => void;
   summary: Summary;
   setSummary: Dispatch<SetStateAction<Summary>>;
   refreshSummary: () => void;

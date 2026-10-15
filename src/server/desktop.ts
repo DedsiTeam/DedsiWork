@@ -50,7 +50,7 @@ async function handle(req: Request) {
     return new Response(null, {
       status: 303,
       headers: {
-        Location: "/work-items",
+        Location: "/workspaces",
         "Set-Cookie": paired.headers.get("set-cookie")!,
         "Cache-Control": "no-store",
         "Referrer-Policy": "no-referrer",

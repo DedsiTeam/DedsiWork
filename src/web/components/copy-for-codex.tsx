@@ -1,3 +1,4 @@
+import { getApiWorkspace } from "../api";
 import { useState } from "react";
 import { Copy } from "lucide-react";
 import DOMPurify from "dompurify";
@@ -61,7 +62,7 @@ export function CopyForCodex({
       `类型：${typeLabels[item.type]}；状态：${statusLabels[item.status]}；优先级：${priorityLabels[item.priority]}`,
       `阻塞原因：${item.blockedReason || "无"}`,
       `截止时间：${item.dueAt || "未设置"}`,
-      `工作项链接：${window.location.origin}/work-items/${item.id}`,
+      `工作项链接：${window.location.origin}/work-items/${item.id}?workspace=${getApiWorkspace()}`,
       "",
       "描述：",
       plainDescription(item.description) || "（暂无描述）",

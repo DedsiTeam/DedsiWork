@@ -160,5 +160,29 @@ export function openDatabase(path: string) {
       );
     }).immediate();
   }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=8").get()
+  ) {
+    db.transaction(() => {
+      db.exec(
+        "CREATE TABLE chat_history_snapshots(chat_id TEXT PRIMARY KEY REFERENCES codex_chats(id) ON DELETE CASCADE,history TEXT NOT NULL,restored INTEGER NOT NULL DEFAULT 0,thread_id TEXT,complete INTEGER NOT NULL DEFAULT 0)",
+      );
+      db.query("INSERT INTO schema_migrations VALUES (8,?)").run(
+        new Date().toISOString(),
+      );
+    }).immediate();
+  }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=9").get()
+  ) {
+    db.transaction(() => {
+      db.exec(
+        "CREATE TABLE canvas_notes(id TEXT PRIMARY KEY,name TEXT NOT NULL,content TEXT NOT NULL,version INTEGER NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL); CREATE INDEX canvas_notes_updated ON canvas_notes(updated_at DESC,id DESC)",
+      );
+      db.query("INSERT INTO schema_migrations VALUES (9,?)").run(
+        new Date().toISOString(),
+      );
+    }).immediate();
+  }
   return db;
 }

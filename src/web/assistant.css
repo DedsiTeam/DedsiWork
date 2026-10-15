@@ -310,3 +310,35 @@
 .chat-proposal button {
   flex-shrink: 0;
 }
+
+.chat-proposal {
+  max-width: 680px;
+  background: #fafafb;
+}
+.chat-proposal strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-wrap: anywhere;
+}
+.chat-proposal strong svg {
+  color: #7b80a0;
+  flex-shrink: 0;
+}
+.chat-proposal small {
+  font-size: 10px;
+  color: #a0a4ad;
+}
+.chat-draft-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 0 20px;
+  padding: 12px 14px;
+  max-width: 680px;
+  border: 1px solid #eeeef2;
+  border-radius: 8px;
+  color: #9297a1;
+  font-size: 11px;
+  background: #fafafb;
+}

@@ -883,3 +883,47 @@
 .work-item-blocked {
   color: #a96b26;
 }
+
+.work-view-tabs {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 3px;
+  width: fit-content;
+  border-radius: 7px;
+  background: #f0f0f4;
+}
+.work-view-tabs a {
+  display: inline-flex;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 5px;
+  text-decoration: none;
+  color: #8a8f9a;
+  font-size: 11px;
+  transition:
+    background 0.16s,
+    color 0.16s;
+}
+.work-view-tabs a:hover {
+  color: #626874;
+}
+.work-view-tabs a.active {
+  background: #fff;
+  color: #505777;
+  box-shadow: 0 1px 3px #22223508;
+}
+.work-view-tabs a span {
+  font-size: 10px;
+  color: #a0a5ae;
+}
+.work-view-tabs a.active span {
+  color: #858ba4;
+}

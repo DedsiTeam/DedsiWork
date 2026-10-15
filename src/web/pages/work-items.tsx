@@ -25,7 +25,7 @@ import {
   type WorkItem,
   type Page,
 } from "../../shared/work-item";
-import { useNavigate } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { useWorkspace } from "../workspace-context";
 import { Status } from "../components/workspace";
 export function WorkItemsPage({
@@ -199,13 +199,7 @@ export function WorkItemsPage({
         <div className="page-heading">
           <div>
             <h1>
-              {view === "trash"
-                ? "回收站"
-                : status === "in_progress"
-                  ? "进行中的工作"
-                  : status === "done"
-                    ? "已完成的工作"
-                    : "全部工作项"}
+              工作项
               <span className="title-count">{result.meta.total}</span>
             </h1>
           </div>
@@ -221,6 +215,36 @@ export function WorkItemsPage({
         <div className="work-layout">
           <section className="list-panel" aria-label="工作项列表">
             <div className="list-toolbar">
+              <nav className="work-view-tabs" aria-label="工作项视图">
+                {[
+                  { to: "/work-items", label: "全部", count: summary.total },
+                  {
+                    to: "/work-items/in-progress",
+                    label: "进行中",
+                    count: summary.inProgress,
+                  },
+                  {
+                    to: "/work-items/completed",
+                    label: "已完成",
+                    count: summary.done,
+                  },
+                  {
+                    to: "/work-items/trash",
+                    label: "回收站",
+                    count: summary.trash,
+                  },
+                ].map((tab) => (
+                  <NavLink
+                    key={tab.to}
+                    to={tab.to}
+                    end
+                    className={({ isActive }) => (isActive ? "active" : "")}
+                  >
+                    {tab.label}
+                    <span>{tab.count}</span>
+                  </NavLink>
+                ))}
+              </nav>
               <div className="search-field">
                 <Search size={16} />
                 <Input

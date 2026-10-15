@@ -1,3 +1,6 @@
+import { NotesPage } from "./pages/notes";
+import { NotePage } from "./pages/note";
+import { WorkspacesPage } from "./pages/workspaces";
 import { createBrowserRouter, Link, Navigate } from "react-router";
 import { App } from "./App";
 import { WorkItemsPage } from "./pages/work-items";
@@ -13,12 +16,24 @@ export const router = createBrowserRouter([
     path: "/",
     Component: App,
     children: [
+      { path: "notes", Component: NotesPage, handle: { title: "无边记" } },
+      {
+        path: "notes/new",
+        element: <NotePage key="new-note" />,
+        handle: { title: "新建无边记" },
+      },
+      { path: "notes/:id", Component: NotePage, handle: { title: "无边记" } },
       {
         path: "work-items/sprints",
         Component: SprintsPage,
         handle: { title: "冲刺看板" },
       },
-      { index: true, element: <Navigate to="/work-items" replace /> },
+      { index: true, element: <Navigate to="/workspaces" replace /> },
+      {
+        path: "workspaces",
+        Component: WorkspacesPage,
+        handle: { title: "工作空间" },
+      },
       {
         path: "assistant",
         Component: AssistantPage,

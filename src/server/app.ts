@@ -1,3 +1,7 @@
+import { CanvasNotes } from "./services/canvas-notes";
+import { WorkspaceBackups } from "./services/workspace-backups";
+import { mkdirSync } from "node:fs";
+import { WorkspaceStore } from "./services/workspaces";
 import { z } from "zod";
 import { Auth } from "./auth";
 import type { Credentials } from "./config";
@@ -19,14 +23,55 @@ export function createApp(options: {
   origin: string;
   credentialsPath?: string;
 }) {
-  const db = openDatabase(options.dbPath),
-    service = new WorkItemService(new WorkItemRepository(db));
-  const sprints = new SprintService(db, service);
-  const auth = new Auth(options.credentials),
-    mcp = createMcp(service, sprints);
-  const domainModels = new DomainModelService(db);
-  const assistant = new AssistantService(db, service, domainModels);
-  const chat = new CodexChat(db, dirname(options.dbPath));
+  const workspaces = new WorkspaceStore(options.dbPath);
+  const auth = new Auth(options.credentials);
+  const backups = new WorkspaceBackups(workspaces);
+  function createBundle(id: string) {
+    const path = workspaces.path(id);
+    mkdirSync(dirname(path), { recursive: true });
+    const db = openDatabase(path),
+      service = new WorkItemService(new WorkItemRepository(db));
+    const sprints = new SprintService(db, service),
+      domainModels = new DomainModelService(db);
+    const assistant = new AssistantService(db, service, domainModels);
+    const chat = new CodexChat(db, dirname(path), () => workspaces.get(id));
+    const mcp = createMcp(service, sprints);
+    return {
+      db,
+      service,
+      sprints,
+      domainModels,
+      notes: new CanvasNotes(db),
+      assistant,
+      chat,
+      mcp,
+      async close() {
+        await Promise.allSettled([chat.close(), assistant.close()]);
+        await mcp.close();
+        db.close();
+      },
+    };
+  }
+  const bundles = new Map<string, ReturnType<typeof createBundle>>();
+  const deletingSpaces = new Set<string>();
+  function bundle(id: string) {
+    workspaces.get(id);
+    if (deletingSpaces.has(id))
+      throw new AppError("WORKSPACE_BUSY", "工作空间正在处理，请稍后重试", 409);
+    if (!bundles.has(id)) bundles.set(id, createBundle(id));
+    return bundles.get(id)!;
+  }
+  // Keep the existing data file intact; its complete contents become the default space.
+  const initialId = workspaces.first();
+  const initial = initialId ? bundle(initialId) : null;
+  function scoped(req: Request) {
+    const id =
+      req.headers.get("x-workspace-id") ||
+      new URL(req.url).searchParams.get("workspace") ||
+      workspaces.legacyId();
+    if (!id) throw new AppError("WORKSPACE_REQUIRED", "请先选择工作空间", 400);
+    return { id, ...bundle(id) };
+  }
   const base = new URL(options.origin);
   const allowedHosts = new Set([base.host, `localhost:${base.port}`]);
   const origins = new Set([base.origin, `http://localhost:${base.port}`]);
@@ -75,6 +120,7 @@ export function createApp(options: {
         return reply({ data: { csrf: auth.csrf(req) } });
       if (url.pathname === "/mcp") {
         const actor = auth.actor(req, requestId, true);
+        const { mcp } = scoped(req);
         return await mcp.fetch(req, {
           authInfo: {
             token: "verified",
@@ -89,6 +135,126 @@ export function createApp(options: {
           404,
         );
       const actor = auth.actor(req, requestId);
+      if (url.pathname === "/api/v1/workspaces") {
+        if (req.method === "GET") return reply({ data: workspaces.list() });
+        if (req.method === "POST")
+          return reply(
+            { data: workspaces.create(await json(req), actor) },
+            201,
+          );
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
+      if (
+        url.pathname === "/api/v1/workspaces/select-directory" &&
+        req.method === "POST"
+      )
+        return reply({ data: await workspaces.chooseDirectory(actor) });
+      if (
+        url.pathname === "/api/v1/workspaces/restore-preview" &&
+        req.method === "POST"
+      )
+        return reply({ data: await backups.preview(actor) });
+      if (
+        url.pathname === "/api/v1/workspaces/restore" &&
+        req.method === "POST"
+      )
+        return reply({ data: backups.restore(await json(req), actor) }, 201);
+      if (
+        url.pathname === "/api/v1/workspaces/restore-discard" &&
+        req.method === "POST"
+      )
+        return reply({ data: backups.discard(await json(req), actor) });
+      const backup = /^\/api\/v1\/workspaces\/([^/]+)\/backup$/.exec(
+        url.pathname,
+      );
+      if (backup && req.method === "POST") {
+        const id = z.uuid().parse(backup[1]);
+        const value = bundle(id);
+        deletingSpaces.add(id);
+        try {
+          return reply({
+            data: await backups.backup(id, value.db, value.chat, actor),
+          });
+        } finally {
+          deletingSpaces.delete(id);
+        }
+      }
+      const space = /^\/api\/v1\/workspaces\/([^/]+)(?:\/(open))?$/.exec(
+        url.pathname,
+      );
+      if (space) {
+        const id = z.uuid().parse(space[1]);
+        if (space[2] && req.method === "POST")
+          return reply({ data: workspaces.open(id, actor) });
+        if (!space[2] && req.method === "GET")
+          return reply({ data: workspaces.get(id) });
+        if (!space[2] && req.method === "PUT")
+          return reply({ data: workspaces.update(id, await json(req), actor) });
+        if (!space[2] && req.method === "DELETE") {
+          const input = await json(req);
+          // Validate before shutting down any active services.
+          const current = workspaces.get(id);
+          z.object({
+            confirmed: z.literal(true),
+            name: z.literal(current.name),
+            expectedVersion: z.literal(current.version),
+          })
+            .strict()
+            .parse(input);
+          if (!actor.writable)
+            throw new AppError("FORBIDDEN", "需要写入权限", 403);
+          if (deletingSpaces.has(id))
+            throw new AppError(
+              "WORKSPACE_BUSY",
+              "工作空间正在处理，请稍后重试",
+              409,
+            );
+          deletingSpaces.add(id);
+          try {
+            await bundles.get(id)?.close();
+            bundles.delete(id);
+            return reply({ data: workspaces.remove(id, input, actor) });
+          } finally {
+            deletingSpaces.delete(id);
+          }
+        }
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
+      const {
+        id: workspaceId,
+        db,
+        service,
+        sprints,
+        domainModels,
+        notes,
+        assistant,
+        chat,
+      } = scoped(req);
+      if (
+        url.pathname === "/api/v1/notes/export-image" &&
+        req.method === "POST"
+      )
+        return reply({ data: await notes.exportImage(await json(req), actor) });
+      if (url.pathname === "/api/v1/notes") {
+        if (req.method === "GET") return reply(notes.list(url.searchParams));
+        if (req.method === "POST")
+          return reply({ data: notes.save(null, await json(req), actor) }, 201);
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
+      const noteMatch = /^\/api\/v1\/notes\/([^/]+)$/.exec(url.pathname);
+      if (noteMatch) {
+        if (req.method === "GET")
+          return reply({ data: notes.get(noteMatch[1]!) });
+        if (req.method === "PUT")
+          return reply({
+            data: notes.save(noteMatch[1]!, await json(req), actor),
+          });
+        if (req.method === "DELETE")
+          return reply({
+            data: notes.remove(noteMatch[1]!, await json(req), actor),
+          });
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
       if (url.pathname === "/api/v1/summary" && req.method === "GET")
         return reply({ data: service.summary() });
       if (url.pathname === "/api/v1/info" && req.method === "GET")
@@ -96,8 +262,8 @@ export function createApp(options: {
           data: {
             name: "DedsiWork",
             version: "0.1.0",
-            databasePath: options.dbPath,
-            mcpUrl: `${base.origin}/mcp`,
+            databasePath: workspaces.path(workspaceId),
+            mcpUrl: `${base.origin}/mcp?workspace=${workspaceId}`,
             credentialsPath: options.credentialsPath || "",
             runtime: `Bun ${Bun.version}`,
           },
@@ -383,14 +549,16 @@ export function createApp(options: {
   }
   return {
     handle,
-    service,
-    sprints,
-    db,
-    startAI: () => chat.start(),
+    service: initial?.service,
+    sprints: initial?.sprints,
+    db: initial?.db,
+    startAI: () => initial?.chat.start() || Promise.resolve(),
     close: async () => {
-      await Promise.allSettled([chat.close(), assistant.close()]);
-      await mcp.close();
-      db.close();
+      await Promise.allSettled(
+        [...bundles.values()].map((value) => value.close()),
+      );
+      backups.close();
+      workspaces.close();
     },
   };
 }

@@ -3,7 +3,7 @@ import type { Workspace } from "../shared/workspace";
 import { useCallback, useEffect, useState } from "react";
 import { Outlet, useMatches, useLocation, useNavigate } from "react-router";
 import { api, setCsrf, setApiWorkspace, getApiWorkspace } from "./api";
-import { Mark, Pairing } from "./components/workspace";
+import { Mark, LocalConnection } from "./components/workspace";
 import { Sidebar } from "./components/sidebar";
 import { useWindowDrag } from "./components/window-drag";
 import { WorkspaceContext, type Summary } from "./workspace-context";
@@ -78,13 +78,17 @@ export function App() {
       .catch(() => {});
   }, []);
   useEffect(() => {
-    api<{ data: { csrf: string } }>("/auth/session")
-      .then((result) => {
-        setCsrf(result.data.csrf);
-        setAuthenticated(true);
-      })
-      .catch(() => setAuthenticated(false));
-    const expired = () => setAuthenticated(false);
+    const connect = () => {
+      setAuthenticated(null);
+      void api<{ data: { csrf: string } }>("/auth/session")
+        .then((result) => {
+          setCsrf(result.data.csrf);
+          setAuthenticated(true);
+        })
+        .catch(() => setAuthenticated(false));
+    };
+    connect();
+    const expired = connect;
     window.addEventListener("session-expired", expired);
     return () => window.removeEventListener("session-expired", expired);
   }, []);
@@ -159,7 +163,7 @@ export function App() {
       </div>
     );
   if (!authenticated)
-    return <Pairing onConnected={() => setAuthenticated(true)} />;
+    return <LocalConnection onConnected={() => setAuthenticated(true)} />;
   return (
     <WorkspaceContext.Provider
       value={{

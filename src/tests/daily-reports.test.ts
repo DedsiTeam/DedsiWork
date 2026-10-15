@@ -223,6 +223,62 @@ test("read-only actors cannot create, change, delete or restore", () => {
     service.lifecycle(report.id, { expectedVersion: 1 }, true, reader),
   ).toThrow("需要写入权限");
 });
+test("permanent deletion requires trash, confirmation, write access and current version", () => {
+  const report = service.save(null, input(), actor);
+  const target = { expectedVersion: report.version, confirmed: true };
+  expect(() => service.purge(report.id, target, actor)).toThrow(
+    "只能永久删除回收站中的日报",
+  );
+  const deleted = service.lifecycle(
+    report.id,
+    { expectedVersion: report.version },
+    false,
+    actor,
+  );
+  const replacement = service.save(null, input(), actor);
+  expect(() => service.purge(report.id, target, actor)).toThrow("日报已更新");
+  expect(() =>
+    service.purge(report.id, { expectedVersion: deleted.version }, actor),
+  ).toThrow();
+  expect(() =>
+    service.purge(
+      report.id,
+      { expectedVersion: deleted.version, confirmed: false },
+      actor,
+    ),
+  ).toThrow();
+  expect(() =>
+    service.purge(
+      report.id,
+      { expectedVersion: deleted.version, confirmed: true },
+      { ...actor, writable: false },
+    ),
+  ).toThrow("需要写入权限");
+  expect(service.get(report.id).version).toBe(deleted.version);
+  expect(
+    service.purge(
+      report.id,
+      { expectedVersion: deleted.version, confirmed: true },
+      actor,
+    ),
+  ).toEqual({ id: report.id });
+  expect(
+    db.query("SELECT id FROM daily_reports WHERE id=?").get(report.id),
+  ).toBeNull();
+  expect(
+    service.list(new URLSearchParams({ deleted: "true" })).meta.total,
+  ).toBe(0);
+  expect(service.get(replacement.id).deletedAt).toBeNull();
+  expect(() => service.get(report.id)).toThrow("日报不存在");
+  expect(() =>
+    service.lifecycle(
+      report.id,
+      { expectedVersion: deleted.version },
+      true,
+      actor,
+    ),
+  ).toThrow("日报不存在");
+});
 test("REST routes preserve workspace isolation, auth, method and version boundaries", async () => {
   const credentials = {
     pairingCode: "report-test-pairing",
@@ -329,6 +385,72 @@ test("REST routes preserve workspace isolation, auth, method and version boundar
         )
       ).status,
     ).toBe(405);
+    const purgePath = `/api/v1/daily-reports/${report.id}/purge`;
+    const target = { expectedVersion: 4, confirmed: true };
+    expect((await request(purgePath, "GET", undefined, a)).status).toBe(405);
+    expect(
+      (await request(purgePath, "POST", { ...target, expectedVersion: 3 }, a))
+        .status,
+    ).toBe(409);
+    expect(
+      (
+        await request(
+          `/api/v1/daily-reports/${report.id}`,
+          "DELETE",
+          { expectedVersion: 3 },
+          a,
+        )
+      ).status,
+    ).toBe(200);
+    expect((await request(purgePath, "POST", target, b)).status).toBe(404);
+    expect(
+      (await request(purgePath, "POST", target, a, credentials.readToken))
+        .status,
+    ).toBe(403);
+    expect(
+      (await request(purgePath, "POST", { expectedVersion: 4 }, a)).status,
+    ).toBe(400);
+    expect(
+      (await request(purgePath, "POST", { ...target, expectedVersion: 3 }, a))
+        .status,
+    ).toBe(409);
+    const connected = await app.handle(new Request(`${origin}/auth/session`));
+    const cookie = connected.headers.get("set-cookie")!.split(";")[0]!;
+    const csrf = (await connected.json()).data.csrf;
+    const webPurge = (headers: Record<string, string>) =>
+      app.handle(
+        new Request(origin + purgePath, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Workspace-Id": a,
+            ...headers,
+          },
+          body: JSON.stringify(target),
+        }),
+      );
+    expect((await webPurge({})).status).toBe(401);
+    expect((await webPurge({ Cookie: cookie })).status).toBe(403);
+    expect(
+      (await webPurge({ Cookie: cookie, "X-CSRF-Token": csrf })).status,
+    ).toBe(200);
+    expect(
+      (await request(`/api/v1/daily-reports/${report.id}`, "GET", undefined, a))
+        .status,
+    ).toBe(404);
+    expect(
+      (
+        await request(
+          `/api/v1/daily-reports/${report.id}/restore`,
+          "POST",
+          { expectedVersion: 4 },
+          a,
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (await request("/api/v1/daily-reports", "GET", undefined, b)).status,
+    ).toBe(200);
   } finally {
     await app.close();
   }

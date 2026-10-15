@@ -18,6 +18,9 @@ export class Auth {
     this.attempts.push(Date.now());
     if (!same(code, this.credentials.pairingCode))
       throw new AppError("INVALID_PAIRING", "配对码不正确", 401);
+    return this.createSession();
+  }
+  private createSession() {
     for (const [id, s] of this.sessions)
       if (s.expires < Date.now()) this.sessions.delete(id);
     if (this.sessions.size >= 100)
@@ -41,6 +44,15 @@ export class Auth {
   }
   csrf(req: Request) {
     return this.session(req).csrf;
+  }
+  connect(req: Request) {
+    try {
+      return { csrf: this.csrf(req) };
+    } catch (error) {
+      if (!(error instanceof AppError) || error.code !== "UNAUTHORIZED")
+        throw error;
+      return this.createSession();
+    }
   }
   actor(req: Request, requestId: string, mcpOnly = false): Actor {
     const token = req.headers.get("authorization")?.replace(/^Bearer /, "");

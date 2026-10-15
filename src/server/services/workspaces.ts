@@ -9,8 +9,7 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { homedir } from "node:os";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { chooseWorkspaceDirectory } from "../directory-picker";
 import { z } from "zod";
 import { AppError } from "../../shared/errors";
 import {
@@ -242,22 +241,7 @@ export class WorkspaceStore {
   }
   async chooseDirectory(actor: Actor) {
     this.access(actor);
-    if (process.platform !== "darwin")
-      throw new AppError("UNSUPPORTED_PLATFORM", "请填写本地目录的完整路径");
-    try {
-      const { stdout } = await promisify(execFile)("/usr/bin/osascript", [
-        "-e",
-        'POSIX path of (choose folder with prompt "选择工作空间目录")',
-      ]);
-      return { directory: stdout.trim() };
-    } catch (error) {
-      if (String((error as { stderr?: string }).stderr).includes("-128"))
-        return { directory: "" };
-      throw new AppError(
-        "DIRECTORY_PICKER_FAILED",
-        "无法打开目录选择器，请手动填写路径",
-      );
-    }
+    return { directory: await chooseWorkspaceDirectory() };
   }
   close() {
     this.db.close();

@@ -10,7 +10,10 @@
 }
 html,
 body,
-#root,
+#root {
+  min-height: 100%;
+  background: #ffffff !important;
+}
 .app-shell,
 .app-shell .main-area,
 .app-shell .topbar,
@@ -18,8 +21,9 @@ body,
 .app-shell .sidebar-header,
 .workspace-content,
 .settings-content,
-.chat-workbench {
-  background: #ffffff;
+.chat-workbench,
+.spaces-page {
+  background: #ffffff !important;
 }
 :is(
   .space-card,

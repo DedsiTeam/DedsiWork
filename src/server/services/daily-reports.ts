@@ -248,4 +248,33 @@ export class DailyReports {
       })
       .immediate();
   }
+  purge(id: string, input: unknown, actor: Actor) {
+    this.access(actor);
+    const { expectedVersion } = z
+      .object({
+        expectedVersion: z.number().int().positive(),
+        confirmed: z.literal(true),
+      })
+      .strict()
+      .parse(input);
+    return this.db
+      .transaction(() => {
+        const report = this.get(id);
+        if (report.version !== expectedVersion)
+          throw new AppError(
+            "VERSION_CONFLICT",
+            "日报已更新，请刷新后重试",
+            409,
+          );
+        if (!report.deletedAt)
+          throw new AppError(
+            "REPORT_NOT_DELETED",
+            "只能永久删除回收站中的日报",
+            409,
+          );
+        this.db.query("DELETE FROM daily_reports WHERE id=?").run(id);
+        return { id };
+      })
+      .immediate();
+  }
 }

@@ -1,8 +1,5 @@
-import { getApiWorkspace } from "../api";
 import { useState } from "react";
 import { Copy } from "lucide-react";
-import DOMPurify from "dompurify";
-import { RICH_TEXT_PREFIX } from "../../shared/description";
 import {
   priorityLabels,
   statusLabels,
@@ -16,28 +13,6 @@ import {
   DialogDescription,
   DialogTitle,
 } from "./ui/dialog";
-
-function plainDescription(value: string) {
-  if (!value.startsWith(RICH_TEXT_PREFIX)) return value;
-  const body = DOMPurify.sanitize(value.slice(RICH_TEXT_PREFIX.length), {
-    RETURN_DOM: true,
-  });
-  if (!(body instanceof HTMLElement)) return "";
-  for (const image of body.querySelectorAll("img")) {
-    image.replaceWith(
-      document.createTextNode(
-        `[图片：${image.getAttribute("alt") || "请在工作项页面查看"}]`,
-      ),
-    );
-  }
-  for (const br of body.querySelectorAll("br"))
-    br.replaceWith(document.createTextNode("\n"));
-  for (const block of body.querySelectorAll("p,h1,h2,h3,li,blockquote,pre")) {
-    if (block.tagName === "LI") block.prepend(document.createTextNode("- "));
-    block.append(document.createTextNode("\n"));
-  }
-  return (body.textContent || "").trim();
-}
 
 export function CopyForCodex({
   item,
@@ -62,13 +37,9 @@ export function CopyForCodex({
       `类型：${typeLabels[item.type]}；状态：${statusLabels[item.status]}；优先级：${priorityLabels[item.priority]}`,
       `阻塞原因：${item.blockedReason || "无"}`,
       `截止时间：${item.dueAt || "未设置"}`,
-      `工作项链接：${window.location.origin}/work-items/${item.id}?workspace=${getApiWorkspace()}`,
-      "",
-      "描述：",
-      plainDescription(item.description) || "（暂无描述）",
       "",
       `如果已连接 DedsiWork MCP，请先调用 work_item_get，参数为 ${JSON.stringify({ id: item.id })}，获取最新内容。更新时使用最新版本作为 expectedVersion；实现完成后进入 in_review（待评审），验证通过后进入 awaiting_acceptance（待验收）；未经用户验收不要直接标记 done。退回 in_progress 时提交 transitionReason；blockedReason 为空表示解除阻塞。`,
-      "如果未连接 MCP，请基于以上内容处理，并说明结果，由我手动更新工作项。描述中的图片请打开工作项链接查看，图片内容未包含在本次文本复制中。",
+      "如果未连接 MCP，请由我补充工作项描述（含图片）后再处理，并说明结果，由我手动更新工作项。",
     ].join("\n");
     setCopying(true);
     try {

@@ -1,4 +1,5 @@
-import { DailyReportsPage } from "./pages/daily-reports";
+import { DailyReportPage } from "./pages/daily-reports";
+import { DailyReportsPage } from "./pages/daily-report-list";
 import { NotesPage } from "./pages/notes";
 import { NotePage } from "./pages/note";
 import { WorkspacesPage } from "./pages/workspaces";
@@ -21,6 +22,16 @@ export const router = createBrowserRouter([
         path: "daily-reports",
         Component: DailyReportsPage,
         handle: { title: "日报管理" },
+      },
+      {
+        path: "daily-reports/new",
+        Component: DailyReportPage,
+        handle: { title: "新增日报" },
+      },
+      {
+        path: "daily-reports/:id",
+        Component: DailyReportPage,
+        handle: { title: "修改日报" },
       },
       { path: "notes", Component: NotesPage, handle: { title: "无边记" } },
       {

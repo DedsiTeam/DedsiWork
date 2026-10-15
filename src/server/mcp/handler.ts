@@ -1,3 +1,4 @@
+import { version } from "../../package.json";
 import { MAX_REQUEST_BODY_SIZE } from "../../shared/description";
 import {
   createMcpHandler,
@@ -35,7 +36,7 @@ export function createMcp(service: WorkItemService, sprints: SprintService) {
         writable: ctx.authInfo?.scopes.includes("write") || false,
         requestId: crypto.randomUUID(),
       };
-      const server = new McpServer({ name: "dedsiwork", version: "0.1.0" });
+      const server = new McpServer({ name: "dedsiwork", version });
       function tool<S extends z.ZodObject>(
         name: string,
         description: string,

@@ -30,17 +30,44 @@ afterAll(async () => {
   await app.close();
 });
 async function webSession() {
-  const response = await fetch(`${origin}/auth/pair`, {
-    method: "POST",
-    headers: { Origin: origin, "Content-Type": "application/json" },
-    body: JSON.stringify({ code: credentials.pairingCode }),
-  });
+  const response = await fetch(`${origin}/auth/session`);
   expect(response.status).toBe(200);
   return {
     cookie: response.headers.get("set-cookie")!.split(";")[0]!,
     csrf: (await response.json()).data.csrf as string,
   };
 }
+test("local browsers connect without a pairing code and reuse or renew sessions", async () => {
+  const { cookie, csrf } = await webSession();
+  const reused = await fetch(`${origin}/auth/session`, {
+    headers: { Cookie: cookie },
+  });
+  expect((await reused.json()).data.csrf).toBe(csrf);
+  expect(reused.headers.get("set-cookie")).toBeNull();
+  expect(
+    (
+      await fetch(`${origin}/api/v1/workspaces`, {
+        headers: { Cookie: cookie },
+      })
+    ).status,
+  ).toBe(200);
+  const renewed = await fetch(`${origin}/auth/session`, {
+    headers: { Cookie: "dedsiwork_session=expired-session" },
+  });
+  expect(renewed.status).toBe(200);
+  expect(renewed.headers.get("set-cookie")).toContain(
+    "HttpOnly; SameSite=Strict",
+  );
+  for (const headers of [
+    new Headers({ Origin: "https://untrusted.example" }),
+    new Headers({ "Sec-Fetch-Site": "cross-site" }),
+    new Headers({ Host: "evil.example" }),
+  ]) {
+    const rejected = await fetch(`${origin}/auth/session`, { headers });
+    expect(rejected.status).toBe(403);
+    expect(rejected.headers.get("set-cookie")).toBeNull();
+  }
+});
 async function client(token = credentials.writeToken, modern = false) {
   const result = new Client(
     { name: "dedsiwork-integration-test", version: "1.0.0" },

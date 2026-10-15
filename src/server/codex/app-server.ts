@@ -1,3 +1,4 @@
+import { version } from "../../package.json";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { accessSync, constants, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -204,7 +205,7 @@ export class CodexAppServer<T = DomainModelInput> {
     );
     try {
       await this.rpc("initialize", {
-        clientInfo: { name: "dedsiwork", title: "DedsiWork", version: "0.1.0" },
+        clientInfo: { name: "dedsiwork", title: "DedsiWork", version },
         capabilities: {
           experimentalApi: true,
           requestAttestation: false,

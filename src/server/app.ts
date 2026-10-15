@@ -1,3 +1,4 @@
+import { version } from "../package.json";
 import { ReportExports } from "./services/report-exports";
 import { ReportAI } from "./services/report-ai";
 import { DailyReports } from "./services/daily-reports";
@@ -128,8 +129,16 @@ export function createApp(options: {
           "Set-Cookie": result.cookie,
         });
       }
-      if (url.pathname === "/auth/session" && req.method === "GET")
-        return reply({ data: { csrf: auth.csrf(req) } });
+      if (url.pathname === "/auth/session" && req.method === "GET") {
+        if (req.headers.get("sec-fetch-site") === "cross-site")
+          throw new AppError("INVALID_ORIGIN", "不允许来自其他网站的请求", 403);
+        const result = auth.connect(req);
+        return reply(
+          { data: { csrf: result.csrf } },
+          200,
+          "cookie" in result ? { "Set-Cookie": result.cookie } : undefined,
+        );
+      }
       if (url.pathname === "/mcp") {
         const actor = auth.actor(req, requestId, true);
         const { mcp } = scoped(req);
@@ -318,12 +327,16 @@ export function createApp(options: {
         throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
       }
       const reportMatch =
-        /^\/api\/v1\/daily-reports\/([^/]+)(?:\/(restore))?$/.exec(
+        /^\/api\/v1\/daily-reports\/([^/]+)(?:\/(restore|purge))?$/.exec(
           url.pathname,
         );
       if (reportMatch) {
         const id = reportMatch[1]!;
-        if (reportMatch[2] && req.method === "POST")
+        if (reportMatch[2] === "purge" && req.method === "POST")
+          return reply({
+            data: dailyReports.purge(id, await json(req), actor),
+          });
+        if (reportMatch[2] === "restore" && req.method === "POST")
           return reply({
             data: dailyReports.lifecycle(id, await json(req), true, actor),
           });
@@ -347,7 +360,7 @@ export function createApp(options: {
         return reply({
           data: {
             name: "DedsiWork",
-            version: "0.1.0",
+            version,
             databasePath: workspaces.path(workspaceId),
             mcpUrl: `${base.origin}/mcp?workspace=${workspaceId}`,
             credentialsPath: options.credentialsPath || "",

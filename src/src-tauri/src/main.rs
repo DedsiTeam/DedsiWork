@@ -259,12 +259,13 @@ fn main() {
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                     .disable_drag_drop_handler()
                     .devtools(false)
+                    .transparent(false)
+                    .background_color(tauri::webview::Color(255, 255, 255, 255))
+                    .theme(Some(tauri::Theme::Light))
                     .initialization_script(include_str!("context-menu.js"))
                     .title("DedsiWork");
             #[cfg(target_os = "macos")]
             let window = window
-                .transparent(false)
-                .theme(Some(tauri::Theme::Light))
                 .title_bar_style(tauri::TitleBarStyle::Overlay)
                 .hidden_title(true)
                 .traffic_light_position(tauri::LogicalPosition::new(16.0, 20.0));

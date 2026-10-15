@@ -1,5 +1,15 @@
 # DedsiWork
 
+## 0.0.2 更新
+
+- 日报改为卡片列表，新增和修改使用独立填报页面，保留自动保存及未保存离开提醒。
+- 日报回收站支持永久删除，删除确认改为兼容桌面客户端的应用内弹窗。
+- 工作空间目录选择同时支持 macOS 和 Windows。
+- 应用窗口与页面使用不透明白色背景。
+- 本地浏览器自动连接，无需输入配对码；MCP 继续使用令牌认证。
+- 简化复制给 Codex 的内容，移除工作项链接与描述正文；移除周报、月报日期选择器上方提示。
+- 安装包、服务信息与 MCP 统一使用 `0.0.2` 版本号。升级沿用原应用标识及数据目录。
+
 ## Tauri 桌面版（Windows x64 / macOS）
 
 ### macOS 开发启动
@@ -43,35 +53,35 @@ bun run desktop:info
 
 桌面版从 `0.0.1` 开始发布。仓库的 `Build Desktop Installers` workflow 在推送 `v*` 标签时自动生成 Windows x64 NSIS 安装包，以及 macOS Apple Silicon、Intel 两种 DMG 安装包，也支持在 GitHub Actions 页面通过 `Run workflow` 手动运行。
 
-提交并推送版本变更与 workflow 后，首次发布执行：
+提交并推送版本变更与 workflow 后，发布 `0.0.2` 执行：
 
 ```sh
-git tag v0.0.1
-git push origin v0.0.1
+git tag v0.0.2
+git push origin v0.0.2
 ```
 
 推送版本标签后，三个平台全部构建成功才会自动发布 GitHub Release。打开 [版本下载页](https://github.com/DedsiTeam/DedsiWork/releases)，选择对应版本，在发布说明中点击系统下载链接，或在 Assets 直接下载安装包：
 
-- `DedsiWork-v0.0.1-Windows-x64.exe`：Windows 64 位。
-- `DedsiWork-v0.0.1-macOS-AppleSilicon.dmg`：M 系列芯片 Mac。
-- `DedsiWork-v0.0.1-macOS-Intel.dmg`：Intel Mac。
+- `DedsiWork-v0.0.2-Windows-x64.exe`：Windows 64 位。
+- `DedsiWork-v0.0.2-macOS-AppleSilicon.dmg`：M 系列芯片 Mac。
+- `DedsiWork-v0.0.2-macOS-Intel.dmg`：Intel Mac。
 
 Release 安装包不受 Actions Artifacts 的 7 天保留期限制。重新运行同一标签的 workflow 会更新该版本的安装包和发布说明。
 
 手动运行分支上的 workflow 只打包，不创建 Release。测试下载步骤：登录 GitHub，打开仓库 → Actions → Build Desktop Installers → 点击对应运行记录 → 在页面底部的 Artifacts 下载 ZIP，解压得到安装包：
 
-- `DedsiWork-Windows-x64-v0.0.1`：Windows `.exe` 安装包。
-- `DedsiWork-macOS-AppleSilicon-v0.0.1`：M 系列芯片 Mac 的 `.dmg` 安装包。
-- `DedsiWork-macOS-Intel-v0.0.1`：Intel Mac 的 `.dmg` 安装包。
+- `DedsiWork-Windows-x64-v0.0.2`：Windows `.exe` 安装包。
+- `DedsiWork-macOS-AppleSilicon-v0.0.2`：M 系列芯片 Mac 的 `.dmg` 安装包。
+- `DedsiWork-macOS-Intel-v0.0.2`：Intel Mac 的 `.dmg` 安装包。
 
 产物保留 7 天，过期后可重新手动运行 workflow。打开 DMG 后将 DedsiWork 拖入 Applications。macOS CI 使用 ad-hoc 签名，尚未配置 Apple Developer ID 签名与公证；首次打开可能需要在“系统设置 → 隐私与安全性”允许打开。
 
-后续发布需同步更新 `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock` 中应用包的版本，再推送对应标签（例如 `v0.0.2`）。workflow 会检查标签与应用版本是否一致。
+后续发布需同步更新 `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock` 中应用包的版本，再推送对应标签（例如 `v0.0.3`）。workflow 会检查标签与应用版本是否一致。
 
 ### 运行行为
 
 - 打开应用时启动附带服务；服务就绪后，窗口自动连接网页并建立桌面会话，无需手动输入配对码。
-- 默认网页 `http://127.0.0.1:3210`、API `/api/v1`、MCP `/mcp` 同时可用。外部浏览器仍使用配对码；MCP 仍要求 Bearer Token。
+- 默认网页 `http://127.0.0.1:3210`、API `/api/v1`、MCP `/mcp` 同时可用。外部浏览器自动建立本地会话，无需配对码；MCP 仍要求 Bearer Token。
 - 桌面自动登录使用短时、一次性的随机启动令牌，不写入日志，不暴露 MCP 令牌。网页没有 shell、文件系统等 Tauri IPC 权限。
 - 点击窗口关闭按钮或按 Alt+F4 时，窗口隐藏到系统托盘，网页、API 和 MCP 继续运行，窗口会话保留。点击托盘图标可重新打开窗口。
 - 只有选择托盘“退出 DedsiWork”才正常退出应用：Rust 通过专用 stdin 管道通知服务关闭 SQLite，并等待退出；超时后只终止自己启动的子进程。父进程意外退出造成管道断开时，服务也会自行退出。
@@ -117,15 +127,21 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-打开 [本地工作空间](http://127.0.0.1:3210)。首次启动会自动创建 SQLite 数据库和本地凭据文件。打开启动日志显示的 `access.json`，将其中的 `pairingCode` 粘贴到网页，即可建立有效期为 24 小时的浏览器会话。服务重启后需要重新配对。
+打开 [本地工作空间](http://127.0.0.1:3210) 即可直接使用，无需输入配对码。首次启动会自动创建 SQLite 数据库和本地凭据文件；浏览器自动建立有效期为 24 小时的会话，服务重启或会话过期后自动重新连接，保留当前页面地址。
 
-开发模式默认数据目录为本项目的 `data`，不会自动填充演示数据。可使用 PowerShell 读取配对码：
-
-```powershell
-(Get-Content .\data\access.json | ConvertFrom-Json).pairingCode
-```
+开发模式默认数据目录为本项目的 `data`，不会自动填充演示数据。
 
 `access.json` 包含本地配对码、只读 MCP 令牌 `readToken`、读写 MCP 令牌 `writeToken`。文件只保存于本机并已加入忽略规则。不要将它复制进源码或发布文件。
+
+## 日报管理
+
+`/daily-reports` 以卡片展示日报日期、内容摘要、事项与完成数量，支持搜索、月份筛选及分页。点击「新增日报」进入 `/daily-reports/new` 独立填报页，可选择日期补写；首次点击保存才创建记录，保存成功后转到 `/daily-reports/:id` 修改页。点击卡片或「修改」进入同一修改页，保留自动保存、立即保存、未保存离开提醒、历史事项接续、工作项关联、预览、复制及导出。返回列表保留筛选条件；刷新或直接打开详情链接仍可加载对应工作空间中的日报。
+
+周报、月报继续从日报记录汇总，来源日报按钮跳转到独立修改页，返回时恢复原报告类型。
+
+### 日报回收站
+
+日报删除后进入回收站，可恢复或永久删除。打开回收站中的日报，点击「永久删除」并确认后，记录从当前工作空间数据库中物理移除，无法恢复。永久删除接口为 `POST /api/v1/daily-reports/:id/purge`，请求体为 `{expectedVersion, confirmed: true}`；仅允许删除回收站中的当前版本，沿用写权限及 CSRF 校验。
 
 ## 第一版功能
 
@@ -136,7 +152,7 @@ bun run dev
 - 乐观并发控制：旧版本写入返回 409，不覆盖其他入口的修改。
 - 创建请求幂等处理：相同身份和请求键不会重复创建。
 - 18 个 MCP 工具：7 个工作项工具与 11 个冲刺工具，共用网页业务规则。
-- 本地浏览器配对、CSRF 检查、MCP 只读或读写令牌、Host 与 Origin 校验。
+- 本地浏览器自动连接、CSRF 检查、MCP 只读或读写令牌、Host 与 Origin 校验。
 
 界面采用紧凑的个人桌面工作台布局：中性浅色背景、深灰标题、蓝色主要操作与选中态；主内容区四周固定 `2rem`，不使用响应式断点。工作项和领域模型使用内容列表，数量显示在标题旁，辅助操作在悬停或键盘聚焦时显示。筛选项可收起，侧栏折叠状态与菜单展开状态保存在本机。shadcn/ui 组件源码位于 `web/components/ui`，主题位于 `web/index.css`，桌面样式位于 `web/product.css`。
 
@@ -280,7 +296,7 @@ src/                       本项目根目录
 
 ### Web 页面与路由
 
-使用 React Router 的 `createBrowserRouter` 和嵌套 `Outlet`。`web/App.tsx` 负责配对、公共布局和工作空间统计，具体业务页面位于 `web/pages/`。
+使用 React Router 的 `createBrowserRouter` 和嵌套 `Outlet`。`web/App.tsx` 负责本地自动连接、公共布局和工作空间统计，具体业务页面位于 `web/pages/`。
 
 | 页面 | 地址 |
 | --- | --- |
@@ -292,7 +308,7 @@ src/                       本项目根目录
 | 查看与修改工作项 | `/work-items/:id` |
 | 服务与 MCP | `/settings/service` |
 
-根地址自动跳转到全部工作项。页面支持直接打开、刷新和浏览器前进后退；编辑页根据地址中的 ID 从服务读取数据，配对后仍保留原目标地址。未保存时，通过菜单、返回按钮或浏览器后退离开会出现确认框；刷新、关闭页面仍使用浏览器的未保存提醒。
+根地址自动跳转到全部工作项。页面支持直接打开、刷新和浏览器前进后退；编辑页根据地址中的 ID 从服务读取数据，自动连接后仍保留原目标地址。未保存时，通过菜单、返回按钮或浏览器后退离开会出现确认框；刷新、关闭页面仍使用浏览器的未保存提醒。
 
 左侧菜单按功能模块分组，可折叠。新增功能时，在 `web/pages/` 添加页面，在 `web/router.tsx` 注册带 `handle.title` 的路由，再在 `web/navigation.ts` 添加菜单分组或子项；公共布局不必改动。菜单使用 `NavLink`，支持高亮和在新标签页打开。保留原有浅色主题与品牌配色。
 
@@ -412,7 +428,7 @@ AI 助手现仅保留自由对话，移除「需求到模型」模式及切换�
 
 ### 工作空间管理
 
-软件启动进入「工作空间」管理页。每个工作空间独立拥有 AI 对话、工作项与回收站、冲刺、领域模型、活动和 AI 草稿。卡片支持搜索、打开、编辑和删除，按最近打开排序；名称必填，说明与本地工作目录可选，macOS 可调用文件夹选择器。打开后默认进入 AI 助手，侧栏顶部可切换、编辑或返回管理页。
+软件启动进入「工作空间」管理页。每个工作空间独立拥有 AI 对话、工作项与回收站、冲刺、领域模型、活动和 AI 草稿。卡片支持搜索、打开、编辑和删除，按最近打开排序；名称必填，说明与本地工作目录可选，macOS 与 Windows 均可调用系统文件夹选择器（Windows 使用系统自带的 Windows PowerShell）。新建、编辑及恢复工作空间共用目录选择器，支持中文和带空格的路径，取消选择保留原目录，也可手动填写完整路径。打开后默认进入 AI 助手，侧栏顶部可切换、编辑或返回管理页。
 
 首次升级自动创建「默认工作空间」，完整沿用原 `dedsiwork.sqlite`，无需复制或重建原业务记录。工作空间目录登记于 `workspaces.sqlite`；新增空间使用 `data/workspaces/<id>/dedsiwork.sqlite`，业务 schema 继续使用原有迁移。已删除空间不会在下次启动时重新创建。Codex 登录凭据为全局，工作目录、背景说明、历史索引和 UI 对话选择按空间独立。
 

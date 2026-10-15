@@ -176,18 +176,16 @@ export function PeriodReports({
           上一{type === "weekly" ? "周" : "月"}
         </Button>
         {type === "weekly" ? (
-          <label>
-            选择周内任意一天
+          <div>
             <DatePicker
               label="周报日期"
               placement="bottom"
               value={anchor}
               onChange={setAnchor}
             />
-          </label>
+          </div>
         ) : (
-          <label>
-            选择月份
+          <div>
             <DatePicker
               label="月报月份"
               mode="month"
@@ -195,7 +193,7 @@ export function PeriodReports({
               value={anchor.slice(0, 7)}
               onChange={(value) => setAnchor(value ? value + "-01" : "")}
             />
-          </label>
+          </div>
         )}
         <Button variant="outline" disabled={!anchor} onClick={() => move(1)}>
           下一{type === "weekly" ? "周" : "月"}

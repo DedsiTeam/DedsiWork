@@ -10,7 +10,7 @@ import {
 import type { PeriodReport } from "../shared/period-report";
 import type { ModelGenerationJob } from "../shared/domain-model-ai";
 import type { Actor } from "../server/services/work-items";
-import { createApp } from "../server/app";
+import { createTestApp } from "./helpers/app";
 const actor: Actor = {
   source: "web",
   identity: "report-ai-test",
@@ -195,7 +195,7 @@ test("API denies read-only AI operations and cross-workspace job access without 
       writeToken: "report-ai-write-000000000000000000000",
     },
     origin = "http://127.0.0.1:3241",
-    app = createApp({ dbPath: ":memory:", credentials, origin });
+    app = createTestApp({ credentials, origin });
   const req = (
     path: string,
     method = "GET",

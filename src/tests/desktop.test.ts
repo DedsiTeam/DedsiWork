@@ -91,7 +91,7 @@ desktopTest(
         redirect: "manual",
       });
       expect(paired.status).toBe(303);
-      expect(paired.headers.get("location")).toBe("/work-items");
+      expect(paired.headers.get("location")).toBe("/workspaces");
       const cookie = paired.headers.get("set-cookie")!.split(";")[0]!;
       expect(
         (await fetch(`${origin}/auth/session`, { headers: { Cookie: cookie } }))
@@ -103,12 +103,25 @@ desktopTest(
       const credentials = JSON.parse(
         readFileSync(resolve(folder, "access.json"), "utf8"),
       );
+      const created = await fetch(`${origin}/api/v1/workspaces`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${credentials.writeToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Desktop smoke test" }),
+      });
+      expect(created.status).toBe(201);
+      const workspace = (await created.json()).data;
       const mcp = new Client({ name: "desktop-smoke", version: "1" });
       try {
         await mcp.connect(
           new StreamableHTTPClientTransport(new URL(`${origin}/mcp`), {
             requestInit: {
-              headers: { Authorization: `Bearer ${credentials.readToken}` },
+              headers: {
+                Authorization: `Bearer ${credentials.readToken}`,
+                "X-Workspace-Id": workspace.id,
+              },
             },
           }),
         );
@@ -119,7 +132,11 @@ desktopTest(
       child.stdin.write("shutdown\n");
       await child.stdin.flush();
       expect(await child.exited).toBe(0);
-      expect(existsSync(resolve(folder, "dedsiwork.sqlite"))).toBe(true);
+      expect(
+        existsSync(
+          resolve(folder, "workspaces", workspace.id, "dedsiwork.sqlite"),
+        ),
+      ).toBe(true);
       await expect(fetch(`${origin}/healthz`)).rejects.toThrow();
     } finally {
       child.kill();

@@ -6,7 +6,13 @@ import { PeriodReports } from "../components/period-reports";
 import { ReportWorkItemPicker } from "../components/report-work-item-picker";
 import type { WorkItem } from "../../shared/work-item";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link, useBlocker } from "react-router";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -29,6 +35,24 @@ import {
   type ReportMatter,
 } from "../../shared/daily-report";
 import "../daily-reports.css";
+function ReportSupplement({
+  defaultOpen,
+  children,
+}: {
+  defaultOpen: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <details
+      className="report-supplement"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      {children}
+    </details>
+  );
+}
 function today() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -909,8 +933,7 @@ function DailyReportsView() {
                         补充内容 <span>按需填写</span>
                       </h3>
                       {Object.entries(reportSections).map(([key, label]) => (
-                        <details
-                          className="report-supplement"
+                        <ReportSupplement
                           key={`${selected?.id}:${key}`}
                           defaultOpen={Boolean(
                             form[key as keyof typeof reportSections],
@@ -936,7 +959,7 @@ function DailyReportsView() {
                               }
                             />
                           </label>
-                        </details>
+                        </ReportSupplement>
                       ))}
                     </section>
                     <div className="report-bottom">

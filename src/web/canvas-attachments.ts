@@ -48,20 +48,20 @@ function boundary(kind: CanvasNode["kind"], w: number, h: number, p: Point) {
       [w - r, h - r, 0],
       [r, h - r, Math.PI / 2],
       [r, r, Math.PI],
-    ])
+    ] as const)
       for (let i = 0; i <= 12; i++) {
         const a = start + (i * Math.PI) / 24;
         vertices.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
       }
     inside = p.x >= 0 && p.x <= w && p.y >= 0 && p.y <= h;
   }
-  let near = vertices[0],
+  let near = vertices[0]!,
     distance = Infinity;
   for (let i = 0; i < vertices.length; i++) {
     const q = closestSegment(
         p,
-        vertices[i],
-        vertices[(i + 1) % vertices.length],
+        vertices[i]!,
+        vertices[(i + 1) % vertices.length]!,
       ),
       d = Math.hypot(q.x - p.x, q.y - p.y);
     if (d < distance) {
@@ -93,8 +93,8 @@ export function findAttachment(
   // The last drawn shape wins when boundaries overlap at the same distance.
   for (const entry of [...entries].reverse()) {
     if (!shape(entry.data.kind)) continue;
-    const w = entry.node.width,
-      h = entry.node.height;
+    const w = entry.node.width ?? entry.data.width,
+      h = entry.node.height ?? entry.data.height;
     if (w <= 0 || h <= 0) continue;
     const local = entry.node.getInnerPoint(world),
       { near, inside } = boundary(entry.data.kind, w, h, local),
@@ -124,8 +124,8 @@ export function resolveAttachment(
   if (!entry || !shape(entry.data.kind)) return null;
   return group.getInnerPoint(
     entry.node.getWorldPoint({
-      x: entry.node.width * binding.u,
-      y: entry.node.height * binding.v,
+      x: (entry.node.width ?? entry.data.width) * binding.u,
+      y: (entry.node.height ?? entry.data.height) * binding.v,
     }),
   );
 }

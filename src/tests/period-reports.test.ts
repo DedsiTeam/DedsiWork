@@ -13,7 +13,7 @@ import { openDatabase } from "../server/db/database";
 import { DailyReports } from "../server/services/daily-reports";
 import { WorkItemService, type Actor } from "../server/services/work-items";
 import { WorkItemRepository } from "../server/repositories/work-items";
-import { createApp } from "../server/app";
+import { createTestApp } from "./helpers/app";
 const actor: Actor = {
   source: "web",
   identity: "report-test",
@@ -263,7 +263,7 @@ test("summary REST endpoint honors workspace scope and read-only tokens", async 
     writeToken: "report-period-write-00000000000000000",
   };
   const origin = "http://127.0.0.1:3237",
-    app = createApp({ dbPath: ":memory:", credentials, origin });
+    app = createTestApp({ credentials, origin });
   const request = (
     path: string,
     method = "GET",

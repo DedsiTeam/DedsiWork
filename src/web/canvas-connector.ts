@@ -42,13 +42,14 @@ export function connectorBendPoint(line: Connector) {
 function roundedPath(points: { x: number; y: number }[], rounded: boolean) {
   const list = points.filter(
     (p, i) =>
-      !i || Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) > 0.001,
+      !i || Math.hypot(p.x - points[i - 1]!.x, p.y - points[i - 1]!.y) > 0.001,
   );
-  let path = `M ${list[0].x} ${list[0].y}`;
+  if (!list.length) return "";
+  let path = `M ${list[0]!.x} ${list[0]!.y}`;
   for (let i = 1; i < list.length - 1; i++) {
-    const a = list[i - 1],
-      b = list[i],
-      c = list[i + 1],
+    const a = list[i - 1]!,
+      b = list[i]!,
+      c = list[i + 1]!,
       before = Math.hypot(b.x - a.x, b.y - a.y),
       after = Math.hypot(c.x - b.x, c.y - b.y);
     if (!rounded) {
@@ -58,7 +59,7 @@ function roundedPath(points: { x: number; y: number }[], rounded: boolean) {
     const r = Math.min(16, before / 2, after / 2);
     path += ` L ${b.x - ((b.x - a.x) / before) * r} ${b.y - ((b.y - a.y) / before) * r} Q ${b.x} ${b.y} ${b.x + ((c.x - b.x) / after) * r} ${b.y + ((c.y - b.y) / after) * r}`;
   }
-  const last = list[list.length - 1];
+  const last = list[list.length - 1]!;
   return path + ` L ${last.x} ${last.y}`;
 }
 export function connectorPath(line: Connector) {

@@ -87,7 +87,9 @@ function IconChoices<V extends string>({
     else if (event.key === "End") next = options.length - 1;
     else return;
     event.preventDefault();
-    onChange(options[next].value);
+    const option = options[next];
+    if (!option) return;
+    onChange(option.value);
     event.currentTarget.parentElement
       ?.querySelectorAll<HTMLButtonElement>("button")
       [next]?.focus();

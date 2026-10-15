@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ReportExports } from "../server/services/report-exports";
 import type { Actor } from "../server/services/work-items";
-import { createApp } from "../server/app";
+import { createTestApp } from "./helpers/app";
 const actor: Actor = {
   source: "web",
   identity: "export-test",
@@ -130,7 +130,7 @@ test("export endpoint enforces permissions and rejects direct destination paths"
       writeToken: "report-export-write-0000000000000000",
     },
     origin = "http://127.0.0.1:3242",
-    app = createApp({ dbPath: ":memory:", credentials, origin });
+    app = createTestApp({ credentials, origin });
   const req = (
     path: string,
     method: string,

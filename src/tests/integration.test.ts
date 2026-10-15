@@ -4,7 +4,7 @@ import {
   Client,
   StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
-import { createApp } from "../server/app";
+import { createTestApp } from "./helpers/app";
 import type { WorkItem } from "../shared/work-item";
 
 const credentials = {
@@ -12,7 +12,7 @@ const credentials = {
   readToken: "read-only-test-token-0000000000000000",
   writeToken: "write-test-token-00000000000000000000",
 };
-let app: ReturnType<typeof createApp>,
+let app: ReturnType<typeof createTestApp>,
   server: ReturnType<typeof Bun.serve>,
   origin: string;
 beforeAll(() => {
@@ -23,7 +23,7 @@ beforeAll(() => {
     fetch: (req) => app.handle(req),
   });
   origin = `http://127.0.0.1:${server.port}`;
-  app = createApp({ dbPath: ":memory:", credentials, origin });
+  app = createTestApp({ credentials, origin }, true);
 });
 afterAll(async () => {
   await server.stop(true);
@@ -283,11 +283,11 @@ test("rich descriptions round trip between browser API and MCP", async () => {
 });
 
 test("trash purge endpoint enforces auth, CSRF, versions and atomic batch deletion", async () => {
-  const a = app.service.create(
+  const a = app.service!.create(
     { title: "purge-http-a" },
     { source: "web", identity: "test", writable: true, requestId: "test" },
   );
-  const b = app.service.create(
+  const b = app.service!.create(
     { title: "purge-http-b" },
     { source: "web", identity: "test", writable: true, requestId: "test" },
   );
@@ -297,8 +297,8 @@ test("trash purge endpoint enforces auth, CSRF, versions and atomic batch deleti
     writable: true,
     requestId: "test",
   };
-  app.service.remove(a.id, 1, actor);
-  app.service.remove(b.id, 1, actor);
+  app.service!.remove(a.id, 1, actor);
+  app.service!.remove(b.id, 1, actor);
   const body = JSON.stringify({
     items: [
       { id: a.id, expectedVersion: 2 },
@@ -328,8 +328,8 @@ test("trash purge endpoint enforces auth, CSRF, versions and atomic batch deleti
   const response = await send({ Cookie: cookie, "X-CSRF-Token": csrf });
   expect(response.status).toBe(200);
   expect((await response.json()).data.count).toBe(2);
-  expect(() => app.service.get(a.id, true)).toThrow();
-  expect(() => app.service.get(b.id, true)).toThrow();
+  expect(() => app.service!.get(a.id, true)).toThrow();
+  expect(() => app.service!.get(b.id, true)).toThrow();
 });
 
 test("sprint REST and MCP share lifecycle, ordering, conflicts and read permissions", async () => {
@@ -629,7 +629,7 @@ test("empty sprint deletion works across REST and MCP and requires confirmation"
       (await fetch(`${origin}/api/v1/sprints/${sprint.id}`, { headers }))
         .status,
     ).toBe(404);
-    const empty = app.sprints.create(
+    const empty = app.sprints!.create(
       { name: "REST delete", startDate: "2026-10-14", endDate: "2026-10-27" },
       { source: "web", identity: "test", writable: true, requestId: "test" },
     );

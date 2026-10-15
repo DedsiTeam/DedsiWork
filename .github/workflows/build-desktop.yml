@@ -60,6 +60,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Check types
+        run: bun run typecheck
+
+      - name: Build frontend
+        run: bun run build
+
       - name: Build Windows installer
         if: runner.os == 'Windows'
         run: bun run desktop:build
@@ -69,6 +75,9 @@ jobs:
         env:
           APPLE_SIGNING_IDENTITY: "-"
         run: bun run desktop:build
+
+      - name: Test application and compiled desktop service
+        run: bun test tests
 
       - name: Upload installer
         uses: actions/upload-artifact@v4

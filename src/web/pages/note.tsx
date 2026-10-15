@@ -221,7 +221,7 @@ function makeNode(data: CanvasNode): UI {
 }
 function readNode(data: CanvasNode, node: UI): CanvasNode {
   const shape = isShape(data.kind),
-    background = shape ? (node as Box).children[0] : node;
+    background = shape ? ((node as Box).children[0] ?? node) : node;
   const label =
     data.kind === "text"
       ? (node as Text)
@@ -230,23 +230,23 @@ function readNode(data: CanvasNode, node: UI): CanvasNode {
         : null;
   return shapeDimensions({
     ...data,
-    x: node.x,
-    y: node.y,
+    x: node.x ?? data.x,
+    y: node.y ?? data.y,
     width:
       data.kind === "text"
         ? Math.min(20000, Math.max(1, node.getBounds("box", "inner").width))
         : data.kind === "connector"
           ? data.width
-          : node.width,
+          : (node.width ?? data.width),
     height:
       data.kind === "text"
         ? Math.min(20000, Math.max(1, node.getBounds("box", "inner").height))
         : data.kind === "connector"
           ? data.height
-          : node.height,
-    scaleX: node.scaleX,
-    scaleY: node.scaleY,
-    rotation: node.rotation,
+          : (node.height ?? data.height),
+    scaleX: node.scaleX ?? data.scaleX,
+    scaleY: node.scaleY ?? data.scaleY,
+    rotation: node.rotation ?? data.rotation,
     fill: typeof background.fill === "string" ? background.fill : data.fill,
     stroke:
       typeof background.stroke === "string" ? background.stroke : data.stroke,
@@ -256,12 +256,12 @@ function readNode(data: CanvasNode, node: UI): CanvasNode {
         : data.strokeWidth,
     ...(label
       ? {
-          text: label.text,
+          text: String(label.text ?? data.text),
           textAlign:
             label.textAlign === "center" || label.textAlign === "right"
               ? label.textAlign
               : "left",
-          fontSize: label.fontSize,
+          fontSize: label.fontSize ?? data.fontSize,
           bold: label.fontWeight === "bold",
           ...(shape && typeof label.fill === "string"
             ? { textColor: label.fill }
@@ -296,8 +296,8 @@ function applyNode(node: UI, data: CanvasNode) {
   });
   if (isShape(data.kind)) {
     const box = node as Box;
-    box.children[0].set(shapeStyle(data));
-    box.children[1].set(labelStyle(data));
+    box.children[0]?.set(shapeStyle(data));
+    box.children[1]?.set(labelStyle(data));
   } else if (data.kind === "text")
     node.set({
       text: data.text,
@@ -413,11 +413,11 @@ export function NotePage() {
     setDirty(JSON.stringify(s.snapshot()) !== baseline.current);
     setCount(s.entries.size);
     const values = s.app.editor.list.flatMap((node) => {
-      const entry = s.entries.get(node.id);
+      const entry = s.entries.get(node.id ?? "");
       return entry ? [readNode(entry.data, entry.node)] : [];
     });
     setSelection(values);
-    setSelected(values.length === 1 ? values[0] : null);
+    setSelected(values.length === 1 ? values[0]! : null);
   };
   useEffect(() => {
     if (!initial || !host.current || loading || error) return;
@@ -456,7 +456,7 @@ export function NotePage() {
         for (const entry of entries.values()) {
           if (!isShape(entry.data.kind)) continue;
           const data = readNode(entry.data, entry.node);
-          const background = (entry.node as Box).children[0];
+          const background = (entry.node as Box).children[0] ?? entry.node;
           if (
             entry.node.scaleX !== 1 ||
             entry.node.scaleY !== 1 ||
@@ -567,7 +567,7 @@ export function NotePage() {
       sync();
       return {
         nodes: group.children.map((node) => {
-          const entry = entries.get(node.id)!;
+          const entry = entries.get(node.id ?? "")!;
           return readNode(entry.data, entry.node);
         }),
       };
@@ -578,7 +578,7 @@ export function NotePage() {
     setCount(entries.size);
     app.editor.on(EditorEvent.SELECT, () => {
       const values = app.editor.list.flatMap((node) => {
-        const entry = entries.get(node.id);
+        const entry = entries.get(node.id ?? "");
         return entry ? [readNode(entry.data, entry.node)] : [];
       });
       app.editor.config.lockRatio = values.some(
@@ -593,11 +593,11 @@ export function NotePage() {
       // SELECT runs before Leafer creates the editing tool. Its normal
       // selection lifecycle will build the controls using this configuration.
       setSelection(values);
-      setSelected(values.length === 1 ? values[0] : null);
+      setSelected(values.length === 1 ? values[0]! : null);
     });
     app.tree.zoomLayer.on(PropertyEvent.CHANGE, () => {
       if (active) {
-        setZoom(Math.round(app.tree.zoomLayer.scaleX * 100));
+        setZoom(Math.round((app.tree.zoomLayer.scaleX ?? 1) * 100));
         refreshViewport((v) => v + 1);
       }
     });
@@ -954,7 +954,7 @@ export function NotePage() {
     s.app.editor.closeInnerEditor();
     s.app.tree.updateLayout();
     const entries = s.app.editor.list.flatMap((node) => {
-      const entry = s.entries.get(node.id);
+      const entry = s.entries.get(node.id ?? "");
       return entry
         ? [{ entry, bounds: entry.node.getBounds("box", s.group) }]
         : [];
@@ -975,8 +975,8 @@ export function NotePage() {
           a.bounds[position] - b.bounds[position] ||
           a.entry.data.id.localeCompare(b.entry.data.id),
       );
-      const first = sorted[0].bounds[position],
-        last = sorted[sorted.length - 1].bounds;
+      const first = sorted[0]!.bounds[position],
+        last = sorted[sorted.length - 1]!.bounds;
       const space = custom
         ? gap
         : (last[position] +
@@ -990,8 +990,10 @@ export function NotePage() {
       for (const item of sorted) {
         const delta = cursor - item.bounds[position];
         moves.set(item.entry.data.id, {
-          x: item.entry.node.x + (horizontal ? delta : 0),
-          y: item.entry.node.y + (horizontal ? 0 : delta),
+          x:
+            (item.entry.node.x ?? item.entry.data.x) + (horizontal ? delta : 0),
+          y:
+            (item.entry.node.y ?? item.entry.data.y) + (horizontal ? 0 : delta),
         });
         cursor += item.bounds[size] + space;
       }
@@ -1014,8 +1016,8 @@ export function NotePage() {
                 ? (top + bottom - b.height) / 2 - b.y
                 : 0;
         moves.set(entry.data.id, {
-          x: entry.node.x + dx,
-          y: entry.node.y + dy,
+          x: (entry.node.x ?? entry.data.x) + dx,
+          y: (entry.node.y ?? entry.data.y) + dy,
         });
       }
     }

@@ -10,7 +10,7 @@ import {
   reportMetrics,
 } from "../shared/daily-report";
 import type { Actor } from "../server/services/work-items";
-import { createApp } from "../server/app";
+import { createTestApp } from "./helpers/app";
 const actor: Actor = {
   source: "web",
   identity: "test",
@@ -230,7 +230,7 @@ test("REST routes preserve workspace isolation, auth, method and version boundar
     writeToken: "report-write-token-0000000000000000000",
   };
   const origin = "http://127.0.0.1:3219",
-    app = createApp({ dbPath: ":memory:", credentials, origin });
+    app = createTestApp({ credentials, origin });
   async function request(
     path: string,
     method = "GET",

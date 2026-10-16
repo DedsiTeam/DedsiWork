@@ -1,3 +1,4 @@
+import { BusinessActionPreview } from "../components/business-action-preview";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Check, Plus } from "lucide-react";
@@ -75,6 +76,8 @@ function ProposalEditor({ id }: { id: string }) {
       ),
     );
   }
+  if (flow?.businessAction)
+    return <BusinessActionPreview flow={flow} onChange={setFlow} />;
   if (flow?.modelDraft && !flow.modelId)
     return (
       <div className="workspace-content assistant-preview">
@@ -103,7 +106,13 @@ function ProposalEditor({ id }: { id: string }) {
   return (
     <div className="workspace-content assistant-proposal-editor">
       <div className="page-heading">
-        <h1>{flow?.modelId ? "领域模型已保存" : "预览工作项"}</h1>
+        <h1>
+          {flow?.modelId
+            ? "领域模型已保存"
+            : flow?.intent === "development"
+              ? "预览研发任务"
+              : "预览工作项"}
+        </h1>
         <Button asChild variant="outline">
           <Link to="/assistant">返回对话</Link>
         </Button>
@@ -113,6 +122,24 @@ function ProposalEditor({ id }: { id: string }) {
         <p className="message" role="alert">
           {error}
         </p>
+      )}
+      {flow?.intent === "development" && (
+        <section
+          className="assistant-development-sources"
+          aria-label="研发任务来源"
+        >
+          <p>根据以下需求与领域模型生成，确认后保存为任务工作项：</p>
+          {flow.sources.map((item) => (
+            <Link key={item.id} to={`/work-items/${item.id}`}>
+              {item.title} · 版本 {item.version}
+            </Link>
+          ))}
+          {flow.sourceModels?.map((model) => (
+            <Link key={model.id} to={`/domain-models/${model.id}`}>
+              {model.name} · 版本 {model.version}
+            </Link>
+          ))}
+        </section>
       )}
       {flow?.modelId ? (
         <Button asChild>
@@ -125,9 +152,18 @@ function ProposalEditor({ id }: { id: string }) {
             工作项已创建
           </strong>
           {flow.createdItems.map((item) => (
-            <Link key={item.id} to={`/work-items/${item.id}`}>
-              {item.title}
-            </Link>
+            <div key={item.id} className="assistant-development-result">
+              <Link to={`/work-items/${item.id}`}>{item.title}</Link>
+              {flow.intent === "development" && (
+                <Button asChild variant="outline">
+                  <Link
+                    to={`/development-tasks/new?${new URLSearchParams({ items: item.id, models: (flow.sourceModels || []).map((model) => model.id).join(",") })}`}
+                  >
+                    创建研发任务
+                  </Link>
+                </Button>
+              )}
+            </div>
           ))}
         </section>
       ) : (
@@ -163,7 +199,7 @@ function ProposalEditor({ id }: { id: string }) {
                   <select
                     aria-label="类型"
                     value={draft.type}
-                    disabled={saving}
+                    disabled={saving || flow?.intent === "development"}
                     onChange={(event) =>
                       edit(draft.draftId, {
                         type: event.target.value as AssistantDraft["type"],

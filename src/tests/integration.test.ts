@@ -68,15 +68,22 @@ test("local browsers connect without a pairing code and reuse or renew sessions"
     expect(rejected.headers.get("set-cookie")).toBeNull();
   }
 });
-async function client(token = credentials.writeToken, modern = false) {
+async function client(
+  token = credentials.writeToken,
+  modern = false,
+  workspace?: string,
+) {
   const result = new Client(
     { name: "dedsiwork-integration-test", version: "1.0.0" },
     { versionNegotiation: { mode: modern ? "auto" : "legacy" } },
   );
   await result.connect(
-    new StreamableHTTPClientTransport(new URL(`${origin}/mcp`), {
-      requestInit: { headers: { Authorization: `Bearer ${token}` } },
-    }),
+    new StreamableHTTPClientTransport(
+      new URL(`${origin}/mcp${workspace ? `?workspace=${workspace}` : ""}`),
+      {
+        requestInit: { headers: { Authorization: `Bearer ${token}` } },
+      },
+    ),
   );
   return result;
 }
@@ -145,7 +152,7 @@ test("web create → actual MCP client read and update → web sees result and c
   const mcp = await client();
   try {
     const tools = await mcp.listTools();
-    expect(tools.tools.length).toBe(18);
+    expect(tools.tools.length).toBe(42);
     const found = toolResult<WorkItem>(
       await mcp.callTool({ name: "work_item_get", arguments: { id: item.id } }),
     );
@@ -263,7 +270,7 @@ test("oversized bodies rejected by HTTP server", async () => {
 test("modern protocol negotiation supports tool discovery and read calls", async () => {
   const mcp = await client(credentials.readToken, true);
   try {
-    expect((await mcp.listTools()).tools.length).toBe(18);
+    expect((await mcp.listTools()).tools.length).toBe(42);
     expect(
       (await mcp.callTool({ name: "work_item_list", arguments: {} })).isError,
     ).not.toBe(true);
@@ -697,4 +704,192 @@ test("development reminders require authentication and acknowledging requires CS
     },
   );
   expect(response.status).toBe(403);
+});
+
+test("domain model MCP shares HTTP data, validation, versions and write permissions", async () => {
+  const mcp = await client(),
+    reader = await client(credentials.readToken);
+  const model = {
+    name: "MCP Model",
+    description: "MCP integration",
+    elements: [
+      {
+        id: crypto.randomUUID(),
+        kind: "aggregate_root",
+        name: "Order",
+        description: "",
+        fields: [],
+      },
+    ],
+  };
+  try {
+    expect(
+      (
+        await reader.callTool({
+          name: "domain_model_create",
+          arguments: { model },
+        })
+      ).isError,
+    ).toBe(true);
+    expect(
+      (
+        await mcp.callTool({
+          name: "domain_model_create",
+          arguments: { model: { ...model, elements: [] } },
+        })
+      ).isError,
+    ).toBe(true);
+    const created = toolResult<any>(
+      await mcp.callTool({ name: "domain_model_create", arguments: { model } }),
+    );
+    const response = await fetch(
+      `${origin}/api/v1/domain-models/${created.id}`,
+      {
+        headers: { Authorization: `Bearer ${credentials.readToken}` },
+      },
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).data.name).toBe(model.name);
+    const spaceResponse = await fetch(`${origin}/api/v1/workspaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${credentials.writeToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "MCP isolated workspace" }),
+    });
+    const space = (await spaceResponse.json()).data;
+    const isolated = await client(credentials.writeToken, false, space.id);
+    try {
+      expect(
+        (
+          await isolated.callTool({
+            name: "domain_model_get",
+            arguments: { id: created.id },
+          })
+        ).isError,
+      ).toBe(true);
+      expect(
+        toolResult<any>(
+          await isolated.callTool({ name: "domain_model_list", arguments: {} }),
+        ).data,
+      ).toHaveLength(0);
+      expect(
+        toolResult<any>(
+          await isolated.callTool({
+            name: "development_task_list",
+            arguments: {},
+          }),
+        ),
+      ).toHaveLength(0);
+    } finally {
+      await isolated.close();
+    }
+
+    const listed = toolResult<any>(
+      await reader.callTool({
+        name: "domain_model_list",
+        arguments: { q: model.name },
+      }),
+    );
+    expect(listed.data.some((m: any) => m.id === created.id)).toBe(true);
+    const updated = toolResult<any>(
+      await mcp.callTool({
+        name: "domain_model_update",
+        arguments: {
+          id: created.id,
+          expectedVersion: created.version,
+          model: { ...model, name: "Updated Model" },
+        },
+      }),
+    );
+    expect(updated.version).toBe(created.version + 1);
+    expect(
+      (
+        await mcp.callTool({
+          name: "domain_model_update",
+          arguments: {
+            id: created.id,
+            expectedVersion: created.version,
+            model,
+          },
+        })
+      ).isError,
+    ).toBe(true);
+    expect(
+      (
+        await reader.callTool({
+          name: "domain_model_delete",
+          arguments: {
+            id: created.id,
+            expectedVersion: updated.version,
+          },
+        })
+      ).isError,
+    ).toBe(true);
+    toolResult(
+      await mcp.callTool({
+        name: "domain_model_delete",
+        arguments: {
+          id: created.id,
+          expectedVersion: updated.version,
+        },
+      }),
+    );
+    expect(
+      (
+        await mcp.callTool({
+          name: "domain_model_get",
+          arguments: { id: created.id },
+        })
+      ).isError,
+    ).toBe(true);
+  } finally {
+    await mcp.close();
+    await reader.close();
+  }
+});
+
+test("create-item REST returns created item and current sprint membership", async () => {
+  const { cookie, csrf } = await webSession();
+  const headers = {
+    Cookie: cookie,
+    Origin: origin,
+    "Content-Type": "application/json",
+    "X-CSRF-Token": csrf,
+  };
+  const sprintResponse = await fetch(`${origin}/api/v1/sprints`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      name: "创建时归属测试",
+      goal: "",
+      startDate: "2026-10-16",
+      endDate: "2026-10-23",
+    }),
+  });
+  expect(sprintResponse.status).toBe(201);
+  const { data: sprint } = await sprintResponse.json();
+  const input = {
+    expectedVersion: sprint.version,
+    item: { title: "REST 冲刺归属" },
+    requestKey: crypto.randomUUID(),
+  };
+  const create = () =>
+    fetch(`${origin}/api/v1/sprints/${sprint.id}/create-item`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(input),
+    });
+  const response = await create();
+  expect(response.ok).toBe(true);
+  const { data: board } = await response.json();
+  expect(board.createdItem.title).toBe("REST 冲刺归属");
+  const { data: replay } = await (await create()).json();
+  expect(replay.createdItem.id).toBe(board.createdItem.id);
+  const membership = await fetch(
+    `${origin}/api/v1/work-items/${board.createdItem.id}/sprint`,
+    { headers: { Cookie: cookie } },
+  );
+  expect((await membership.json()).data.id).toBe(sprint.id);
 });

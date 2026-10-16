@@ -1,3 +1,4 @@
+import { businessOperationSchema } from "./assistant-business";
 import { z } from "zod";
 import { generatedWorkItemSchema } from "./work-item-ai";
 import { generatedModelSchema } from "./domain-model-ai";
@@ -5,8 +6,39 @@ import { generatedModelSchema } from "./domain-model-ai";
 export const chatProposalSchema = z.discriminatedUnion("kind", [
   z
     .object({
+      kind: z.literal("business_action"),
+      operation: businessOperationSchema,
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("work_items"),
       items: z.array(generatedWorkItemSchema).min(1).max(12),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("development_items"),
+      sourceItems: z
+        .array(
+          z
+            .object({ id: z.uuid(), version: z.number().int().positive() })
+            .strict(),
+        )
+        .min(1)
+        .max(20),
+      sourceModels: z
+        .array(
+          z
+            .object({ id: z.uuid(), version: z.number().int().positive() })
+            .strict(),
+        )
+        .min(1)
+        .max(10),
+      items: z
+        .array(generatedWorkItemSchema.extend({ type: z.literal("task") }))
+        .min(1)
+        .max(12),
     })
     .strict(),
   z
@@ -25,7 +57,9 @@ export function chatProposalContent(text: string) {
     complete: boolean;
   }[] = [];
   const isPayload = (value: string) =>
-    /^\s*\{\s*"kind"\s*:\s*"(?:work_items|domain_model)"/.test(value);
+    /^\s*\{\s*"kind"\s*:\s*"(?:work_items|development_items|domain_model|business_action)"/.test(
+      value,
+    );
   for (const match of text.matchAll(/```(dedsiwork|json)?[^\S\n]*\n/g)) {
     const start = match.index!;
     if (regions.some((region) => start < region.end)) continue;
@@ -41,7 +75,7 @@ export function chatProposalContent(text: string) {
       });
   }
   for (const match of text.matchAll(
-    /\{\s*"kind"\s*:\s*"(?:work_items|domain_model)"/g,
+    /\{\s*"kind"\s*:\s*"(?:work_items|development_items|domain_model|business_action)"/g,
   )) {
     const start = match.index!;
     if (regions.some((region) => start >= region.start && start < region.end))
@@ -101,7 +135,7 @@ export function chatProposalContent(text: string) {
     return "";
   });
   visible = visible.replace(
-    /\{\s*"kind"\s*:\s*"(?:work_items|domain_model)?$/,
+    /\{\s*"kind"\s*:\s*"(?:work_items|development_items|domain_model|business_action)?$/,
     () => {
       pending = true;
       return "";

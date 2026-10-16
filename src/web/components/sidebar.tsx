@@ -20,8 +20,8 @@ export function Sidebar() {
           className={({ isActive }) =>
             `nav-item sidebar-chat${isActive ? " active" : ""}`
           }
-          title="AI 助手"
-          aria-label="AI 助手"
+          title="DedsiWork Ai Agent"
+          aria-label="DedsiWork Ai Agent"
         >
           <MessageSquare size={16} />
         </NavLink>

@@ -1,3 +1,4 @@
+import { bookmarkSaveSchema } from "../../shared/bookmarks";
 import { parseStoredDailyReport } from "../../shared/daily-report";
 import { canvasNoteInputSchema } from "../../shared/canvas-note";
 import { Database } from "bun:sqlite";
@@ -39,6 +40,7 @@ const tables = [
   "assistant_work_item_links",
   "assistant_model_links",
   "chat_history_snapshots",
+  "bookmarks",
   "canvas_notes",
   "daily_reports",
   "development_tasks",
@@ -100,7 +102,13 @@ export class WorkspaceBackups {
       models: n("domain_models"),
       sprints: n("sprints"),
       chats: n("codex_chats"),
-      developmentTasks: db.query("SELECT name FROM sqlite_master WHERE name='development_tasks' AND type='table'").get() ? n("development_tasks") : 0,
+      developmentTasks: db
+        .query(
+          "SELECT name FROM sqlite_master WHERE name='development_tasks' AND type='table'",
+        )
+        .get()
+        ? n("development_tasks")
+        : 0,
       notes: db
         .query(
           "SELECT name FROM sqlite_master WHERE name='canvas_notes' AND type='table'",
@@ -237,9 +245,10 @@ export class WorkspaceBackups {
             n: number;
           }
         ).n;
-        if (![8, 9, 10, 11, 12].includes(version)) throw new Error();
+        if (![8, 9, 10, 11, 12, 13].includes(version)) throw new Error();
         for (const table of tables) {
           if (
+            (table === "bookmarks" && version < 13) ||
             (table === "canvas_notes" && version === 8) ||
             (table === "daily_reports" && version < 10) ||
             (table === "development_tasks" && version < 12)
@@ -341,7 +350,8 @@ export class WorkspaceBackups {
               .transaction(() => {
                 for (const table of tables) {
                   if (
-                    (table === "canvas_notes" ||
+                    (table === "bookmarks" ||
+                      table === "canvas_notes" ||
                       table === "daily_reports" ||
                       table === "development_tasks") &&
                     !source
@@ -475,6 +485,13 @@ export class WorkspaceBackups {
                       .strict(),
                   ).parse(JSON.parse(row.history));
                 }
+                for (const row of target
+                  .query("SELECT version,groups_json FROM bookmarks")
+                  .all() as { version: number; groups_json: string }[])
+                  bookmarkSaveSchema.parse({
+                    expectedVersion: row.version,
+                    groups: JSON.parse(row.groups_json),
+                  });
                 for (const row of target
                   .query("SELECT name,content FROM canvas_notes")
                   .all() as { name: string; content: string }[])

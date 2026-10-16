@@ -7,8 +7,16 @@ import {
   StickyNote,
   CalendarDays,
   Code2,
+  Globe,
 } from "lucide-react";
 export const navigation = [
+  {
+    id: "bookmarks",
+    label: "网址导航",
+    icon: Globe,
+    children: [{ to: "/bookmarks", label: "网址导航", icon: Globe }],
+  },
+
   {
     id: "work",
     label: "工作项",

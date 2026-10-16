@@ -45,7 +45,7 @@ const questionMethods = new Set([
   "tool/requestUserInput",
 ]);
 
-const assistantInstructions = `你是 DedsiWork AI 助手，正常进行自由对话，可以使用 Codex 工具。根据对话情况，在用户讨论可执行需求或明确要求创建时，建议创建工作项；用户讨论领域建模时，建议创建领域模型。信息不足先澄清，不要把闲聊强制拆成工作项。需要创建时在自然语言解释后附加一个标记为 dedsiwork 的 Markdown JSON 代码块，符合以下 schema：${JSON.stringify(z.toJSONSchema(chatProposalSchema))}。应用会将代码块显示为可预览编辑的创建卡片。不要把草稿 JSON 直接写在正文里，不要在自然语言中重复全部字段；正文只用一两句话说明草稿范围和下一步操作。仅提议草稿，不能声称已经保存，必须由用户点击卡片预览并确认后创建。不要通过 shell、MCP、数据库或 HTTP 绕过应用确认创建 DedsiWork 工作项或模型。用户希望修改草稿时返回更新后的完整代码块。工作项 description 使用纯文本，默认优先级 normal。${workItemPlanningInstructions}领域模型规则：${domainModelInstructions}`;
+const assistantInstructions = `你是 DedsiWork Ai Agent，正常进行自由对话，可以使用 Codex 工具。根据对话情况，在用户讨论可执行需求或明确要求创建时，建议创建工作项；用户讨论领域建模时，建议创建领域模型。信息不足先澄清，不要把闲聊强制拆成工作项。需要创建时在自然语言解释后附加一个标记为 dedsiwork 的 Markdown JSON 代码块，符合以下 schema：${JSON.stringify(z.toJSONSchema(chatProposalSchema))}。应用会将代码块显示为可预览编辑的创建卡片。不要把草稿 JSON 直接写在正文里，不要在自然语言中重复全部字段；正文只用一两句话说明草稿范围和下一步操作。仅提议草稿，不能声称已经保存，必须由用户点击卡片预览并确认后创建。不要通过 shell、MCP、数据库或 HTTP 绕过应用确认创建 DedsiWork 工作项或模型。用户希望修改草稿时返回更新后的完整代码块。网址导航和冲刺看板也已接入：查询时读取当前工作空间的网址导航与冲刺资料文件后直接回答；创建、修改、删除网址或分组，以及创建修改删除冲刺、开始结束冲刺、加入移出工作项、变更看板状态时，输出 business_action 草稿，使用对应 operation。每张卡片只包含一个操作，先读取真实 ID 和最新版本，不编造 ID、网址、日期或工作项；缺少必要信息先询问。网址导航 expectedVersion 是整个导航的版本；修改网址时保留未要求更改的字段。新分组需先确认创建、取得真实 ID 后才能添加网址。冲刺日期使用 YYYY-MM-DD；日期不明确先确认。结束冲刺要明确未完成项是退回待规划还是转入指定计划中冲刺。删除分组会连同其中网址永久删除，必须说明影响范围；仅允许删除无工作项的冲刺。状态变化沿用业务约束，阻塞和退回等操作提供原因。不通过 shell、MCP、数据库或 HTTP 写入、修改、删除这些业务数据；所有写入必须经应用预览确认，删除还需二次确认。不要仅因用户查询而提出写入操作，不声称草稿已执行。当用户要求根据已有需求工作项和领域模型生成研发任务时，读取当前工作空间业务资料索引，核实需求和模型的完整内容、真实 ID 和版本，返回 development_items 草稿；sourceItems 仅关联 type=feature 的需求，sourceModels 关联实际采用的模型。不得编造 ID 或版本；缺少需求或模型时先协助生成并由用户确认保存，再继续。研发任务工作项固定 type=task，说明包括来源需求和模型、业务规则、实现范围、前后端及数据要求和验收标准。不要重新创建已有需求，不按前后端技术层拆分同一业务功能。用户确认研发任务工作项后，可在结果中点击创建研发任务。工作项 description 使用纯文本，默认优先级 normal。${workItemPlanningInstructions}领域模型规则：${domainModelInstructions}`;
 
 export class CodexChat extends CodexAppServer {
   private sessions = new Map<string, Session>();
@@ -70,6 +70,7 @@ export class CodexChat extends CodexAppServer {
     dataDir: string,
     private workspaceInfo?: () => Workspace,
     private developmentInstructions?: string,
+    private sourceContext?: () => Promise<string>,
   ) {
     super("chat");
     this.fallbackWorkspace = join(resolve(dataDir), "chat-workspace");
@@ -165,8 +166,13 @@ export class CodexChat extends CodexAppServer {
       .all(id) as { state: string }[];
     const saved = rows
       .map(({ state }) => JSON.parse(state))
-      .filter((flow) => flow.createdItems.length || flow.modelId)
+      .filter(
+        (flow) =>
+          flow.createdItems.length || flow.modelId || flow.businessResult,
+      )
       .map((flow) => ({
+        businessResult: flow.businessResult,
+        businessAction: flow.businessResult ? flow.businessAction : undefined,
         workItems: flow.createdItems,
         model: flow.modelId
           ? { id: flow.modelId, name: flow.modelDraft?.name }
@@ -209,7 +215,12 @@ export class CodexChat extends CodexAppServer {
         .all(actor.identity) as Row[]
     ).map((row) => this.summary(row));
   }
-  async deleteChat(id: string, input: unknown, actor: Actor) {
+  async deleteChat(
+    id: string,
+    input: unknown,
+    actor: Actor,
+    permanent = false,
+  ) {
     this.row(id, actor);
     z.object({ confirmed: z.literal(true) })
       .strict()
@@ -239,17 +250,19 @@ export class CodexChat extends CodexAppServer {
       const wireId = archive?.restored ? archive.thread_id : id;
       if (wireId) {
         await this.start();
-        await this.rpc("thread/archive", { threadId: wireId }, 60000).catch(
-          (error) => {
-            if (
-              error instanceof AppError &&
-              error.code === "CODEX_ERROR" &&
-              error.message.includes(`no rollout found for thread id ${wireId}`)
-            )
-              return;
-            throw error;
-          },
-        );
+        await this.rpc(
+          permanent ? "thread/delete" : "thread/archive",
+          { threadId: wireId },
+          60000,
+        ).catch((error) => {
+          if (
+            error instanceof AppError &&
+            error.code === "CODEX_ERROR" &&
+            error.message.includes(`no rollout found for thread id ${wireId}`)
+          )
+            return;
+          throw error;
+        });
       }
       this.db
         .query("DELETE FROM codex_chats WHERE id=? AND owner=?")
@@ -266,7 +279,7 @@ export class CodexChat extends CodexAppServer {
     return {
       id: row.id,
       title: row.title,
-      cwd: row.cwd,
+      cwd: this.workspaceInfo ? this.defaultWorkspace : row.cwd,
       model: row.model,
       updatedAt: row.updatedAt,
     };
@@ -318,7 +331,10 @@ export class CodexChat extends CodexAppServer {
     const request = chatCreateSchema.parse(input);
     mkdirSync(this.defaultWorkspace, { recursive: true });
     const path =
-      request.cwd?.replace(/^~(?=\/|$)/, homedir()) || this.defaultWorkspace;
+      (this.workspaceInfo
+        ? this.defaultWorkspace
+        : request.cwd?.replace(/^~(?=\/|$)/, homedir())) ||
+      this.defaultWorkspace;
     if (!isAbsolute(path))
       throw new AppError("INVALID_DIRECTORY", "工作目录需要填写完整路径");
     let cwd: string;
@@ -328,6 +344,7 @@ export class CodexChat extends CodexAppServer {
     } catch {
       throw new AppError("INVALID_DIRECTORY", "工作目录不存在或无法访问");
     }
+    const context = this.sourceContext ? await this.sourceContext() : "";
     await this.start();
     const { thread } = await this.rpc<{
       thread: { id: string; model?: string | null };
@@ -335,7 +352,7 @@ export class CodexChat extends CodexAppServer {
       "thread/start",
       {
         cwd,
-        developerInstructions: this.instructions(),
+        developerInstructions: this.instructions() + context,
         ...(request.model ? { model: request.model } : {}),
         approvalPolicy: "on-request",
         sandbox: "workspace-write",
@@ -357,6 +374,7 @@ export class CodexChat extends CodexAppServer {
       )
       .run(row.id, row.title, row.cwd, row.model, row.owner, row.updatedAt);
     const session = this.state(row);
+    session.assistantContext = context;
     this.sessions.set(row.id, session);
     this.routes.set(row.id, row.id);
     return this.snapshot(session);
@@ -392,7 +410,7 @@ export class CodexChat extends CodexAppServer {
           {
             threadId: session.wireThreadId,
             excludeTurns: true,
-            cwd: row.cwd,
+            cwd: this.workspaceInfo ? this.defaultWorkspace : row.cwd,
             developerInstructions:
               this.conversationInstructions(session) + session.assistantContext,
             approvalPolicy: "on-request",
@@ -519,6 +537,12 @@ export class CodexChat extends CodexAppServer {
         "当前回复尚未结束，可以停止后再发送",
         409,
       );
+    if (this.workspaceInfo) {
+      session.row.cwd = this.defaultWorkspace;
+      this.db
+        .query("UPDATE codex_chats SET cwd=? WHERE id=?")
+        .run(session.row.cwd, id);
+    }
     session.running = true;
     session.revision++;
     session.stopping = false;
@@ -538,7 +562,8 @@ export class CodexChat extends CodexAppServer {
           mkdirSync(this.defaultWorkspace, { recursive: true });
           let cwd = this.defaultWorkspace;
           try {
-            if (statSync(session.row.cwd).isDirectory()) cwd = session.row.cwd;
+            if (!this.workspaceInfo && statSync(session.row.cwd).isDirectory())
+              cwd = session.row.cwd;
           } catch {}
           const { thread } = await this.rpc<{ thread: { id: string } }>(
             "thread/start",
@@ -566,7 +591,7 @@ export class CodexChat extends CodexAppServer {
             {
               threadId: session.wireThreadId,
               excludeTurns: true,
-              cwd: session.row.cwd,
+              cwd: this.workspaceInfo ? this.defaultWorkspace : session.row.cwd,
               developerInstructions:
                 this.conversationInstructions(session) +
                 session.assistantContext,
@@ -577,14 +602,16 @@ export class CodexChat extends CodexAppServer {
             60000,
           );
         }
-        const context = this.savedContext(id);
+        const context =
+          this.savedContext(id) +
+          (this.sourceContext ? await this.sourceContext() : "");
         if (context !== session.assistantContext) {
           await this.rpc(
             "thread/resume",
             {
               threadId: session.wireThreadId,
               excludeTurns: true,
-              cwd: session.row.cwd,
+              cwd: this.workspaceInfo ? this.defaultWorkspace : session.row.cwd,
               developerInstructions:
                 this.conversationInstructions(session) + context,
               approvalPolicy: "on-request",
@@ -607,6 +634,7 @@ export class CodexChat extends CodexAppServer {
           {
             threadId: session.wireThreadId,
             ...(request.model ? { model: request.model } : {}),
+            cwd: session.row.cwd,
             clientUserMessageId: request.clientId,
             input: [
               ...(request.text

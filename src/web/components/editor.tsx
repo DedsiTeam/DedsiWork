@@ -1,3 +1,5 @@
+import { SprintChoice, ItemSprint } from "./sprint-assignment";
+import type { SprintBoard } from "../../shared/sprint";
 import { DatePicker } from "./date-picker";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useBlocker } from "react-router";
@@ -92,6 +94,7 @@ export function Editor({
           dueAt: item?.dueAt || null,
           blockedReason: item?.blockedReason || "",
         };
+  const [sprintId, setSprintId] = useState("none");
   const [transitionReason, setTransitionReason] = useState("");
   const [form, setForm] = useState(initial),
     [due, setDue] = useState(localDate(initial.dueAt));
@@ -106,6 +109,7 @@ export function Editor({
   const lifecycleButton = useRef<HTMLButtonElement>(null);
   const request = useRef({ payload: "", key: crypto.randomUUID() });
   const dirty =
+    (!item && sprintId !== "none") ||
     Boolean(initialDraft && !item) ||
     JSON.stringify(form) !== JSON.stringify(initial) ||
     due !== localDate(initial.dueAt);
@@ -189,25 +193,49 @@ export function Editor({
           : form.blockedReason,
         dueAt: due ? new Date(due).toISOString() : null,
       };
-      const serialized = JSON.stringify(payload);
+      const serialized = JSON.stringify({ payload, sprintId });
       if (request.current.payload !== serialized)
         request.current = { payload: serialized, key: crypto.randomUUID() };
-      const result = await api<{ data: WorkItem }>(
-        item ? `/api/v1/work-items/${item.id}` : "/api/v1/work-items",
-        {
-          method: item ? "PATCH" : "POST",
-          headers: item ? {} : { "Idempotency-Key": request.current.key },
-          body: JSON.stringify(
-            item
-              ? { ...payload, transitionReason, expectedVersion: item.version }
-              : payload,
-          ),
-        },
-      );
+      let saved: WorkItem;
+      if (!item && sprintId !== "none") {
+        const { data: board } = await api<{ data: SprintBoard }>(
+          `/api/v1/sprints/${sprintId}`,
+        );
+        const { data } = await api<{
+          data: SprintBoard & { createdItem: WorkItem };
+        }>(`/api/v1/sprints/${sprintId}/create-item`, {
+          method: "POST",
+          body: JSON.stringify({
+            expectedVersion: board.sprint.version,
+            item: payload,
+            status: "todo",
+            requestKey: request.current.key,
+          }),
+        });
+        saved = data.createdItem;
+      } else {
+        const result = await api<{ data: WorkItem }>(
+          item ? `/api/v1/work-items/${item.id}` : "/api/v1/work-items",
+          {
+            method: item ? "PATCH" : "POST",
+            headers: item ? {} : { "Idempotency-Key": request.current.key },
+            body: JSON.stringify(
+              item
+                ? {
+                    ...payload,
+                    transitionReason,
+                    expectedVersion: item.version,
+                  }
+                : payload,
+            ),
+          },
+        );
+        saved = result.data;
+      }
       skipNavigationGuard.current = true;
-      onSaved(result.data);
+      onSaved(saved);
       notify(
-        item?.status === "done" && result.data.status === "todo"
+        item?.status === "done" && saved.status === "todo"
           ? "工作项已修改，状态已变为待处理"
           : item
             ? "工作项修改成功"
@@ -302,6 +330,7 @@ export function Editor({
       {deleted && (
         <div className="message">此工作项在回收站中，恢复后可以继续编辑。</div>
       )}
+      {item && !deleted && !embedded && <ItemSprint item={item} />}
       <form onSubmit={save} className="editor-form">
         <fieldset disabled={busy || deleted}>
           <div className="field">
@@ -318,6 +347,16 @@ export function Editor({
               onChange={(e) => change("title", e.target.value)}
             />
           </div>
+          {!item && (
+            <div className="field">
+              <Label>所属冲刺</Label>
+              <SprintChoice
+                value={sprintId}
+                onChange={setSprintId}
+                disabled={busy}
+              />
+            </div>
+          )}
           <div className="field-grid">
             <div className="field">
               <Label>类型</Label>

@@ -251,10 +251,6 @@
   color: rgb(13 12 34 / 0.374);
   font-size: 11px;
 }
-.task-list,
-.model-collection {
-  border-top: 1px solid var(--border);
-}
 .task-row {
   display: flex;
   align-items: center;

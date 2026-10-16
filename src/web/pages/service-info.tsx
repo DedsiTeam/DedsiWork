@@ -75,7 +75,8 @@ export function ServiceInfo() {
                   <Link2 size={18} /> MCP 连接
                 </CardTitle>
                 <CardDescription>
-                  Streamable HTTP · 7 个工作项工具 · 11 个冲刺工具
+                  Streamable HTTP · 工作项 7 · 冲刺 11 · 领域模型 5 · 研发任务
+                  19
                 </CardDescription>
               </CardHeader>
               <CardContent className="info-list">
@@ -94,6 +95,8 @@ export function ServiceInfo() {
                 <p className="muted text-sm">
                   使用 readToken 允许查询，或使用 writeToken
                   允许创建与修改。下方配置已填入本地 writeToken。
+                  研发任务按调用身份隔离，MCP 与网页的任务列表独立；查询 MCP
+                  创建的任务需沿用原凭据。
                 </p>
               </CardContent>
             </Card>

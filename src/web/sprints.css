@@ -18,10 +18,10 @@
   min-width: 260px;
 }
 .sprint-overview {
-  border: 1px solid rgb(13 12 34 / 0.099);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 20px;
-  background: white;
+  background: var(--card);
   margin-bottom: 20px;
 }
 .sprint-overview-heading {
@@ -39,7 +39,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgb(13 12 34 / 0.49);
+  color: var(--muted-foreground);
   font-size: 12px;
   margin-top: 8px;
 }
@@ -47,20 +47,20 @@
   font-size: 11px;
   padding: 3px 7px;
   border-radius: 4px;
-  background: rgb(13 12 34 / 0.054);
-  color: rgb(13 12 34 / 0.564);
+  background: var(--muted);
+  color: var(--muted-foreground);
 }
 .sprint-state.active {
-  background: rgb(13 12 34 / 0.057);
-  color: #0d0c22;
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 .sprint-state.closed {
-  background: rgb(13 12 34 / 0.043);
-  color: #0d0c22;
+  background: var(--muted);
+  color: var(--foreground);
 }
 .sprint-goal {
   margin: 18px 0;
-  color: rgb(13 12 34 / 0.693);
+  color: var(--muted-foreground);
   font-size: 13px;
   white-space: pre-wrap;
 }
@@ -69,22 +69,22 @@
 }
 .sprint-metrics button {
   font-size: 12px;
-  color: rgb(13 12 34 / 0.49);
+  color: var(--muted-foreground);
   cursor: pointer;
 }
 .sprint-metrics button strong {
   font-size: 14px;
-  color: #0d0c22;
+  color: var(--foreground);
   margin-left: 6px;
 }
 .sprint-metrics button[aria-pressed="true"] {
-  color: #0d0c22;
+  color: var(--foreground);
 }
 .sprint-metrics progress {
   margin-left: auto;
   width: 160px;
   height: 5px;
-  accent-color: #0d0c22;
+  accent-color: var(--primary);
 }
 .sprint-toolbar {
   margin-bottom: 16px;
@@ -97,11 +97,11 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  color: rgb(13 12 34 / 0.49);
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 .sprint-check input {
-  accent-color: #0d0c22;
+  accent-color: var(--primary);
 }
 .sprint-board {
   display: flex;
@@ -114,8 +114,8 @@
 .sprint-column {
   flex: 1;
   min-width: 235px;
-  background: rgb(13 12 34 / 0.046);
-  border: 1px solid rgb(13 12 34 / 0.071);
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
   min-height: 380px;
@@ -130,26 +130,26 @@
   gap: 7px;
   font-size: 12px;
   font-weight: 600;
-  color: rgb(13 12 34 / 0.678);
+  color: var(--muted-foreground);
 }
 .sprint-column h3 > span {
   width: 7px;
   height: 7px;
-  background: rgb(13 12 34 / 0.364);
+  background: var(--muted-foreground);
   border-radius: 50%;
 }
 .column-in_progress h3 > span {
-  background: #0d0c22;
+  background: var(--foreground);
 }
 .column-blocked h3 > span {
-  background: #0d0c22;
+  background: var(--foreground);
 }
 .column-done h3 > span {
-  background: #0d0c22;
+  background: var(--foreground);
 }
 .sprint-column h3 small {
   font-weight: 400;
-  color: rgb(13 12 34 / 0.417);
+  color: var(--muted-foreground);
   margin-left: 3px;
 }
 .sprint-column-cards {
@@ -158,11 +158,11 @@
   gap: 10px;
 }
 .sprint-card {
-  background: white;
-  border: 1px solid rgb(13 12 34 / 0.109);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 14px;
-  box-shadow: 0 1px 2px rgb(13 12 34 / 0.02);
+  box-shadow: var(--shadow-card);
 }
 .sprint-card[data-movable="true"] {
   cursor: grab;
@@ -173,12 +173,12 @@
   opacity: 0.4;
 }
 .sprint-card:hover {
-  border-color: #0d0c22;
+  border-color: var(--ring);
 }
 .sprint-card-top {
   justify-content: space-between;
   font-size: 11px;
-  color: rgb(13 12 34 / 0.433);
+  color: var(--muted-foreground);
 }
 .sprint-card-title {
   display: block;
@@ -190,14 +190,14 @@
   margin: 9px 0;
   cursor: pointer;
   overflow-wrap: anywhere;
-  color: #0d0c22;
+  color: var(--foreground);
 }
 .sprint-card time {
   font-size: 11px;
-  color: rgb(13 12 34 / 0.458);
+  color: var(--muted-foreground);
 }
 .sprint-card time.sprint-overdue {
-  color: #0d0c22;
+  color: var(--foreground);
 }
 .sprint-card-actions {
   justify-content: flex-end;
@@ -211,14 +211,14 @@
 }
 .sprint-column-empty {
   text-align: center;
-  color: rgb(13 12 34 / 0.359);
+  color: var(--muted-foreground);
   font-size: 12px;
   padding: 32px 0;
 }
 .sprint-history {
   margin-top: 8px;
   font-size: 12px;
-  color: rgb(13 12 34 / 0.49);
+  color: var(--muted-foreground);
 }
 .sprint-history summary {
   cursor: pointer;
@@ -228,7 +228,7 @@
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid rgb(13 12 34 / 0.071);
+  border-bottom: 1px solid var(--border);
 }
 .dialog-content.editor.sprint-modal {
   width: 540px;
@@ -245,14 +245,14 @@
 }
 .sprint-modal > p {
   font-size: 12px;
-  color: rgb(13 12 34 / 0.49);
+  color: var(--muted-foreground);
   margin: 8px 0 20px;
 }
 .sprint-modal textarea {
   display: block;
   width: 100%;
   min-height: 96px;
-  border: 1px solid rgb(13 12 34 / 0.141);
+  border: 1px solid var(--input);
   border-radius: 6px;
   padding: 8px;
   font-size: 13px;
@@ -264,7 +264,7 @@
   gap: 8px;
   margin: 0 0 18px;
   font-size: 12px;
-  color: rgb(13 12 34 / 0.591);
+  color: var(--muted-foreground);
 }
 .sprint-modal-actions {
   justify-content: flex-end;
@@ -280,12 +280,12 @@
   align-items: center;
   gap: 12px;
   padding: 12px 2px;
-  border-bottom: 1px solid rgb(13 12 34 / 0.071);
+  border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
 .sprint-candidates small {
   display: block;
-  color: rgb(13 12 34 / 0.433);
+  color: var(--muted-foreground);
   margin-top: 4px;
   font-size: 11px;
 }
@@ -299,10 +299,10 @@
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid rgb(13 12 34 / 0.071);
+  border-bottom: 1px solid var(--border);
 }
 .sprint-finish-list small {
-  color: rgb(13 12 34 / 0.433);
+  color: var(--muted-foreground);
 }
 .dialog-content.editor.sprint-drawer {
   position: fixed;
@@ -335,13 +335,13 @@
   border: 0;
   border-radius: 4px;
   overflow: hidden;
-  background: rgb(13 12 34 / 0.076);
+  background: var(--muted);
 }
 .sprint-metrics progress::-webkit-progress-bar {
-  background: rgb(13 12 34 / 0.076);
+  background: var(--muted);
 }
 .sprint-metrics progress::-webkit-progress-value {
-  background: #0d0c22;
+  background: var(--foreground);
 }
 .sprint-snapshot .rich-toolbar,
 .sprint-snapshot .rich-hint {
@@ -352,11 +352,11 @@
 }
 
 .sprint-column.drop-active {
-  background: rgb(13 12 34 / 0.052);
-  border-color: #0d0c22;
+  background: var(--accent);
+  border-color: var(--ring);
 }
 .sprint-card.insert-before {
-  box-shadow: 0 -3px 0 #0d0c22;
+  box-shadow: 0 -3px 0 var(--primary);
 }
 .sprint-drag-preview {
   position: fixed;
@@ -364,35 +364,35 @@
   pointer-events: none;
   max-width: 280px;
   padding: 12px 16px;
-  border: 1px solid #0d0c22;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: white;
-  box-shadow: 0 8px 24px rgb(13 12 34 / 0.149);
+  background: var(--card);
+  box-shadow: var(--shadow-floating);
   font-size: 13px;
-  color: #0d0c22;
+  color: var(--foreground);
 }
 /* Keep delivery stages readable; narrower windows scroll the board horizontally. */
 .sprint-column {
   min-width: 220px;
 }
 .column-in_review h3 > span {
-  background: #0d0c22;
+  background: var(--foreground);
 }
 .column-in_verification h3 > span {
-  background: #0d0c22;
+  background: var(--foreground);
 }
 .column-awaiting_acceptance h3 > span {
-  background: #0d0c22;
+  background: var(--foreground);
 }
 .column-paused h3 > span {
-  background: rgb(13 12 34 / 0.425);
+  background: var(--muted-foreground);
 }
 .sprint-blocked {
   margin: 8px 0;
   padding: 6px 8px;
   border-radius: 4px;
-  background: rgb(13 12 34 / 0.041);
-  color: #0d0c22;
+  background: var(--muted);
+  color: var(--foreground);
   font-size: 11px;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -410,7 +410,9 @@
 }
 .sprint-card-actions:not(.read-only) > [data-slot="select-trigger"] {
   grid-column: 1;
-  width: 100%;
+  justify-self: start;
+  width: 105px;
+  max-width: 100%;
   min-width: 0;
   padding-left: 6px;
   padding-right: 6px;
@@ -425,8 +427,86 @@
 }
 .sprint-card-actions > .sprint-block-action {
   grid-column: 3;
-  color: #0d0c22;
+  color: var(--foreground);
 }
 .sprint-card-actions > .sprint-remove-action {
   grid-column: 4;
+}
+
+.sprint-development {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.sprint-development a {
+  color: var(--primary);
+  overflow-wrap: anywhere;
+}
+.sprint-review-draft {
+  display: block;
+  width: 100%;
+  min-height: 280px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.sprint-page,
+.sprint-modal,
+.sprint-drawer {
+  color: var(--foreground);
+}
+.sprint-overview,
+.sprint-card {
+  color: var(--card-foreground);
+}
+.sprint-modal,
+.sprint-drawer {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+.sprint-modal textarea {
+  background: var(--background);
+  color: var(--foreground);
+}
+.sprint-metrics button {
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.sprint-metrics button:hover,
+.sprint-metrics button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.sprint-card-title:hover,
+.sprint-development a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sprint-metrics button:focus-visible,
+.sprint-card-title:focus-visible,
+.sprint-history summary:focus-visible,
+.sprint-development a:focus-visible,
+.sprint-check input:focus-visible,
+.sprint-candidates input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.sprint-candidates input {
+  accent-color: var(--primary);
+}
+.sprint-candidates > label:hover,
+.sprint-candidates > label:has(input:checked) {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.sprint-candidates > label:has(input:disabled) {
+  opacity: 0.5;
+}
+.sprint-metrics progress::-moz-progress-bar {
+  background: var(--primary);
 }

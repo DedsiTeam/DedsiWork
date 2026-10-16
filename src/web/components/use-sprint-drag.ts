@@ -108,7 +108,7 @@ export function useSprintDrag(
           e.button !== 0 ||
           !e.isPrimary ||
           (e.target as Element).closest(
-            ".sprint-card-actions, input, textarea, select",
+            ".sprint-card-actions, a, input, textarea, select",
           )
         )
           return;

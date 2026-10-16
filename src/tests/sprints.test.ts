@@ -485,3 +485,61 @@ test("failed sprint deletion rolls back all related records", () => {
       .all(s.id),
   ).toHaveLength(1);
 });
+
+test("create in sprint is atomic, retryable and exposes current membership", () => {
+  const sprint = service.create(plan, actor);
+  const input = {
+    expectedVersion: 1,
+    item: { title: "从新建页面加入" },
+    requestKey: "new-in-sprint",
+  };
+  const board = service.createItem(sprint.id, input, actor);
+  expect(board.createdItem.title).toBe("从新建页面加入");
+  expect(service.membership(board.createdItem.id)?.id).toBe(sprint.id);
+  const replay = service.createItem(sprint.id, input, actor);
+  expect(replay.createdItem.id).toBe(board.createdItem.id);
+  expect(replay.sprint.version).toBe(board.sprint.version);
+  expect(replay.items).toHaveLength(1);
+  expect(() =>
+    service.createItem(
+      sprint.id,
+      { ...input, item: { title: "变更内容" } },
+      actor,
+    ),
+  ).toThrow("不同内容");
+  expect(() =>
+    service.createItem(sprint.id, { ...input, requestKey: "stale" }, actor),
+  ).toThrow("冲刺已变更");
+  expect(work.list({}).meta.total).toBe(1);
+  service.start(sprint.id, { expectedVersion: board.sprint.version }, actor);
+  service.finish(
+    sprint.id,
+    { expectedVersion: board.sprint.version + 1 },
+    actor,
+  );
+  expect(service.membership(board.createdItem.id)).toBeNull();
+  expect(service.createItem(sprint.id, input, actor).createdItem.id).toBe(
+    board.createdItem.id,
+  );
+});
+
+test("failed create-in-sprint rolls back item, event and retry key", () => {
+  const sprint = service.create(plan, actor);
+  service.db.exec(
+    "CREATE TRIGGER fail_sprint_item BEFORE INSERT ON sprint_items BEGIN SELECT RAISE(ABORT,'membership failure'); END;",
+  );
+  const input = {
+    expectedVersion: 1,
+    item: { title: "原子创建" },
+    requestKey: "rollback-create",
+  };
+  expect(() => service.createItem(sprint.id, input, actor)).toThrow(
+    "membership failure",
+  );
+  expect(work.list({}).meta.total).toBe(0);
+  expect(
+    service.db.query("SELECT * FROM idempotency_records").all(),
+  ).toHaveLength(0);
+  service.db.exec("DROP TRIGGER fail_sprint_item");
+  expect(service.createItem(sprint.id, input, actor).items).toHaveLength(1);
+});

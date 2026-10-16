@@ -17,6 +17,12 @@ export const developmentCreateSchema = z
     (v) => v.itemIds.length > 0 || v.requirement.length > 0,
     "请选择工作项或填写研发要求",
   );
+export const developmentMessageSchema = z
+  .object({
+    text: z.string().trim().min(1).max(16000),
+    clientId: z.uuid(),
+  })
+  .strict();
 export const developmentStatusLabels = {
   draft: "待开始",
   preparing: "准备环境",
@@ -36,6 +42,7 @@ export type DevelopmentTask = {
   title: string;
   requirement: string;
   repository: string;
+  executionMode?: "workspace";
   baseBranch: string;
   baseCommit: string;
   branch: string;
@@ -43,7 +50,12 @@ export type DevelopmentTask = {
   model: string;
   status: DevelopmentStatus;
   chatId: string | null;
-  sources: { items: WorkItem[]; models: DomainModel[] };
+  sourceMode?: "references";
+  sources: {
+    items: (Pick<WorkItem, "id" | "title" | "version"> & Partial<WorkItem>)[];
+    models: (Pick<DomainModel, "id" | "name" | "version"> &
+      Partial<DomainModel>)[];
+  };
   snapshot: ChatSnapshot | null;
   error: string | null;
   version: number;

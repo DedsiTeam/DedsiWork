@@ -943,3 +943,18 @@
     align-items: flex-start;
   }
 }
+
+.report-work-picker {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+.report-work-picker-list > button {
+  color: var(--card-foreground);
+}
+.report-work-picker-list > button:hover {
+  color: var(--accent-foreground);
+}
+.report-work-picker-list > button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

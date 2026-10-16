@@ -1,8 +1,10 @@
+import { DevelopmentItemAcceptance } from "../components/development-item-acceptance";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import {
+  Trash2,
   ArrowLeft,
   ArrowRight,
   Code2,
@@ -14,7 +16,6 @@ import {
   Check,
   RefreshCw,
   X,
-  Copy,
   ExternalLink,
 } from "lucide-react";
 import { api, subscribeApi } from "../api";
@@ -31,7 +32,7 @@ import {
 } from "../../shared/development-task";
 import type { CodexStatus } from "../../shared/domain-model-ai";
 import type { WorkItem, Page } from "../../shared/work-item";
-import type { DomainModelList } from "../../shared/domain-model";
+import type { DomainModel, DomainModelList } from "../../shared/domain-model";
 import "../development-tasks.css";
 
 const root = "/api/v1/development-tasks";
@@ -50,6 +51,36 @@ function Status({ task }: { task: DevelopmentTask }) {
   );
 }
 export function DevelopmentTasksPage() {
+  const [deleteTarget, setDeleteTarget] = useState<DevelopmentTask | null>(
+    null,
+  );
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const { notify } = useWorkspace();
+  async function removeTask() {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await api(`${root}/${deleteTarget.id}`, {
+        method: "DELETE",
+        body: JSON.stringify({
+          confirmed: true,
+          expectedVersion: deleteTarget.version,
+        }),
+      });
+      setTasks((previous) =>
+        previous.filter((task) => task.id !== deleteTarget.id),
+      );
+      setDeleteTarget(null);
+      notify("研发任务及关联 Codex 对话已永久删除");
+    } catch (error) {
+      setDeleteError((error as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const [tasks, setTasks] = useState<DevelopmentTask[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
@@ -131,7 +162,9 @@ export function DevelopmentTasksPage() {
           <h2>
             {tasks.length ? "暂无符合条件的任务" : "开始你的第一个研发任务"}
           </h2>
-          <p>选择本地代码目录，关联工作项与领域模型，交给 Codex 实现。</p>
+          <p>
+            使用工作空间本地工作目录，关联工作项与领域模型，交给 Codex 实现。
+          </p>
           {!tasks.length && (
             <Button asChild>
               <Link to="/development-tasks/new">
@@ -144,11 +177,12 @@ export function DevelopmentTasksPage() {
       ) : (
         <div className="dev-task-grid">
           {filtered.map((task) => (
-            <Link
-              className="dev-task-card"
-              key={task.id}
-              to={`/development-tasks/${task.id}`}
-            >
+            <article className="dev-task-card" key={task.id}>
+              <Link
+                className="dev-card-link"
+                to={`/development-tasks/${task.id}`}
+                aria-label={`打开研发任务：${task.title}`}
+              />
               <div className="dev-card-heading">
                 <Code2 size={20} />
                 <Status task={task} />
@@ -167,12 +201,59 @@ export function DevelopmentTasksPage() {
               </div>
               <footer>
                 <span>{date(task.updatedAt)}</span>
-                <ArrowRight size={15} />
+                <div className="dev-card-actions">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`删除研发任务：${task.title}`}
+                    disabled={active(task)}
+                    title={active(task) ? "请先停止研发任务" : "删除研发任务"}
+                    onClick={() => {
+                      setDeleteTarget(task);
+                      setDeleteError("");
+                    }}
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                  <ArrowRight size={15} aria-hidden="true" />
+                </div>
               </footer>
-            </Link>
+            </article>
           ))}
         </div>
       )}
+      <AlertDialog.Root
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="dialog-overlay confirmation-overlay" />
+          <AlertDialog.Content className="confirmation-content">
+            <AlertDialog.Title>永久删除研发任务？</AlertDialog.Title>
+            <AlertDialog.Description>
+              将永久删除“{deleteTarget?.title}”、执行记录、关联 Codex
+              对话及任务资料文件，无法撤销。关联工作项、领域模型和本地仓库代码会保留。
+            </AlertDialog.Description>
+            {deleteError && (
+              <p role="alert" className="message">
+                {deleteError}
+              </p>
+            )}
+            <div className="confirmation-actions">
+              <AlertDialog.Cancel asChild>
+                <Button variant="outline" disabled={deleting}>
+                  取消
+                </Button>
+              </AlertDialog.Cancel>
+              <Button disabled={deleting} onClick={() => void removeTask()}>
+                {deleting ? "正在删除…" : "确认永久删除"}
+              </Button>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </div>
   );
 }
@@ -258,7 +339,7 @@ function SourcePicker({
             选择{kind === "items" ? "工作项" : "领域模型"}
           </Dialog.Title>
           <Dialog.Description>
-            仅展示当前工作空间的数据，创建任务时保存内容快照。
+            仅展示当前工作空间的数据，执行时按关联 ID 读取最新资料。
           </Dialog.Description>
           <Input
             aria-label="搜索关联内容"
@@ -325,6 +406,12 @@ function SourcePicker({
 
 export function DevelopmentTaskCreatePage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const sourceIds = params.get("items") || "";
+  const sourceModelIds = params.get("models") || "";
+  const [sourcesLoading, setSourcesLoading] = useState(
+    Boolean(sourceIds || sourceModelIds),
+  );
   const [title, setTitle] = useState(""),
     [requirement, setRequirement] = useState(""),
     [selection, setSelection] = useState<RepositorySelection | null>(null),
@@ -339,10 +426,63 @@ export function DevelopmentTaskCreatePage() {
   const [status, setStatus] = useState<CodexStatus | null>(null);
   useEffect(() => {
     const controller = new AbortController();
+    if (!sourceIds && !sourceModelIds) {
+      setSourcesLoading(false);
+      return;
+    }
+    setSourcesLoading(true);
+    Promise.all([
+      Promise.all(
+        [...new Set(sourceIds.split(",").filter(Boolean))]
+          .slice(0, 20)
+          .map((id) =>
+            api<{ data: WorkItem }>(
+              `/api/v1/work-items/${encodeURIComponent(id)}`,
+              { signal: controller.signal },
+            ),
+          ),
+      ),
+      Promise.all(
+        [...new Set(sourceModelIds.split(",").filter(Boolean))]
+          .slice(0, 10)
+          .map((id) =>
+            api<{ data: DomainModel }>(
+              `/api/v1/domain-models/${encodeURIComponent(id)}`,
+              { signal: controller.signal },
+            ),
+          ),
+      ),
+    ])
+      .then(([itemResults, modelResults]) => {
+        if (controller.signal.aborted) return;
+        setItems(itemResults.map((result) => result.data));
+        setModels(
+          modelResults.map(({ data }) => ({
+            id: data.id,
+            title: data.name,
+            version: data.version,
+          })),
+        );
+        setTitle((previous) => previous || itemResults[0]?.data.title || "");
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setError(`关联资料加载失败：${error.message}`);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSourcesLoading(false);
+      });
+    return () => controller.abort();
+  }, [sourceIds, sourceModelIds]);
+  useEffect(() => {
+    const controller = new AbortController();
     api<{ data: CodexStatus }>(`${root}/status`, { signal: controller.signal })
       .then((r) => setStatus(r.data))
       .catch(() => {});
     return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    void choose();
   }, []);
   async function choose() {
     setChoosing(true);
@@ -364,7 +504,7 @@ export function DevelopmentTaskCreatePage() {
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!selection || saving) return;
+    if (!selection || saving || sourcesLoading) return;
     setSaving(true);
     setError("");
     try {
@@ -410,7 +550,7 @@ export function DevelopmentTaskCreatePage() {
         </Button>
       </div>
       <form className="dev-create-form" onSubmit={submit}>
-        <fieldset disabled={saving}>
+        <fieldset disabled={saving || sourcesLoading}>
           <section className="dev-panel">
             <h2>任务信息</h2>
             <label>
@@ -437,38 +577,28 @@ export function DevelopmentTaskCreatePage() {
           <section className="dev-panel">
             <h2>代码与执行环境</h2>
             <label>
-              本地代码目录
+              工作空间本地工作目录
               <div className="dev-directory">
                 <output title={selection?.directory}>
-                  {selection?.directory || "请选择本地 Git 仓库"}
+                  {selection?.directory ||
+                    (choosing
+                      ? "正在读取工作空间目录…"
+                      : "无法读取工作空间仓库")}
                 </output>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={choosing}
-                  onClick={() => void choose()}
-                >
-                  <FolderOpen />
-                  {choosing
-                    ? "正在选择…"
-                    : selection
-                      ? "重新选择"
-                      : "选择文件夹"}
-                </Button>
               </div>
             </label>
             <p className="dev-help">
-              仅支持文件夹选择器。任务从起始分支的已提交代码创建独立工作树，不包含原目录中的未提交修改。
+              自动使用工作空间的本地工作目录；如需修改，请前往工作空间设置。直接在该目录当前分支执行，保留并使用已有未提交修改，不创建工作树或切换分支。
             </p>
             <div className="dev-form-columns">
               <label>
-                起始分支
+                当前分支
                 <select
-                  disabled={!selection}
+                  disabled
                   value={base}
                   onChange={(e) => setBase(e.target.value)}
                 >
-                  {!selection && <option value="">请先选择代码目录</option>}
+                  {!selection && <option value="">等待工作空间仓库信息</option>}
                   {selection?.branches.map((branch) => (
                     <option key={branch}>{branch}</option>
                   ))}
@@ -561,7 +691,7 @@ export function DevelopmentTaskCreatePage() {
               </div>
             </div>
             <p className="dev-help">
-              创建时保存所选内容及版本快照，后续编辑工作项或模型不会改变执行依据。
+              创建时保存关联 ID，开始或继续研发时读取最新资料，按需加载内容。
             </p>
           </section>
           {error && (
@@ -570,7 +700,7 @@ export function DevelopmentTaskCreatePage() {
             </p>
           )}
           <div className="dev-create-footer">
-            <span>创建后自动执行 · 人工验收 · 手动合并</span>
+            <span>直接修改本地目录 · 人工验收 · 手动提交</span>
             <Button
               type="submit"
               disabled={
@@ -599,6 +729,97 @@ export function DevelopmentTaskCreatePage() {
 }
 
 export function DevelopmentTaskPage() {
+  const { id } = useParams();
+  const [tasks, setTasks] = useState<DevelopmentTask[]>([]);
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const load = async () => {
+      try {
+        const result = await api<{ data: DevelopmentTask[] }>(root, {
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setTasks(result.data);
+          setError("");
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) setError((error as Error).message);
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          timer = setTimeout(load, 2500);
+        }
+      }
+    };
+    void load();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, []);
+  const visible = tasks.filter((task) =>
+    task.title.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
+  );
+  return (
+    <div className="workspace-content dev-task-layout">
+      <aside className="dev-task-sidebar" aria-label="研发任务切换">
+        <div className="dev-task-sidebar-heading">
+          <h2>研发任务</h2>
+          <Button variant="ghost" size="icon-sm" asChild>
+            <Link to="/development-tasks/new" aria-label="新建研发任务">
+              <Plus />
+            </Link>
+          </Button>
+        </div>
+        <Input
+          aria-label="搜索研发任务"
+          placeholder="搜索研发任务…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        {error && (
+          <p role="alert" className="dev-task-sidebar-message">
+            {error}
+          </p>
+        )}
+        <nav className="dev-task-sidebar-list" aria-label="研发任务列表">
+          {visible.map((task) => (
+            <Link
+              key={task.id}
+              to={`/development-tasks/${task.id}`}
+              className="dev-task-sidebar-item"
+              aria-current={task.id === id ? "page" : undefined}
+            >
+              <strong>{task.title}</strong>
+              <Status task={task} />
+            </Link>
+          ))}
+          {!visible.length && (
+            <p className="dev-task-sidebar-message" role="status">
+              {loading
+                ? "正在加载…"
+                : query
+                  ? "没有匹配的任务"
+                  : "暂无研发任务"}
+            </p>
+          )}
+        </nav>
+        <Button variant="ghost" asChild>
+          <Link to="/development-tasks">查看全部任务</Link>
+        </Button>
+      </aside>
+      <div className="dev-task-main">
+        <DevelopmentTaskDetail key={id} />
+      </div>
+    </div>
+  );
+}
+
+function DevelopmentTaskDetail() {
   const { id } = useParams(),
     { notify } = useWorkspace();
   const [task, setTask] = useState<DevelopmentTask | null>(null),
@@ -606,7 +827,9 @@ export function DevelopmentTaskPage() {
     [connection, setConnection] = useState("正在连接实时进度…"),
     [busy, setBusy] = useState("");
   const [tab, setTab] = useState("progress"),
-    [text, setText] = useState(""),
+    [text, updateText] = useState(
+      () => sessionStorage.getItem(`development-draft:${id}`) || "",
+    ),
     [changes, setChanges] = useState<DevelopmentChanges | null>(null),
     [changesError, setChangesError] = useState(""),
     [changesLoading, setChangesLoading] = useState(false),
@@ -620,6 +843,11 @@ export function DevelopmentTaskPage() {
     [mergeError, setMergeError] = useState("");
   const viewport = useRef<HTMLDivElement>(null),
     follow = useRef(true);
+  const setText = (value: string) => {
+    updateText(value);
+    if (value) sessionStorage.setItem(`development-draft:${id}`, value);
+    else sessionStorage.removeItem(`development-draft:${id}`);
+  };
   const currentId = useRef(id);
   currentId.current = id;
   const accept = (value: DevelopmentTask) =>
@@ -634,7 +862,6 @@ export function DevelopmentTaskPage() {
     );
   useEffect(() => {
     setTask(null);
-    setText("");
     setChanges(null);
     setConfirm(false);
     setBusy("");
@@ -708,7 +935,7 @@ export function DevelopmentTaskPage() {
       if (result.data?.id) accept(result.data);
       if (name === "complete") {
         setConfirm(false);
-        notify("研发任务已完成，分支和工作树已保留");
+        notify("研发任务已完成，代码修改已保留");
       }
       if (name === "handoff")
         notify(
@@ -801,30 +1028,6 @@ export function DevelopmentTaskPage() {
       setBusy("");
     }
   }
-  async function copyContext() {
-    if (!task) return;
-    const context = [
-      `请接管以下研发任务：${task.title}`,
-      `任务工作目录：${task.worktree}`,
-      `原仓库：${task.repository}`,
-      `研发分支：${task.branch}`,
-      `起始分支：${task.baseBranch}（${task.baseCommit}）`,
-      `Codex 会话 ID：${task.chatId || "尚未创建"}`,
-      `研发要求：${task.requirement}`,
-      "约束：不运行测试，由用户测试，不自动提交、推送或合并。请先检查当前代码和差异。",
-      `需求与模型快照：\n${JSON.stringify(task.sources, null, 2)}`,
-      `近期执行记录：\n${(task.snapshot?.items || [])
-        .slice(-10)
-        .map((i) => `${i.type}: ${i.text.slice(-4000)}`)
-        .join("\n\n")}`,
-    ].join("\n\n");
-    try {
-      await navigator.clipboard.writeText(context);
-      notify("接管上下文已复制");
-    } catch {
-      setError("复制失败，请检查系统剪贴板权限");
-    }
-  }
   async function login() {
     setBusy("login");
     setError("");
@@ -847,12 +1050,6 @@ export function DevelopmentTaskPage() {
   if (!task)
     return (
       <div className="workspace-content dev-page">
-        <Button variant="ghost" asChild>
-          <Link to="/development-tasks">
-            <ArrowLeft />
-            返回任务列表
-          </Link>
-        </Button>
         <p role={error ? "alert" : "status"}>{error || "正在加载研发任务…"}</p>
       </div>
     );
@@ -872,12 +1069,6 @@ export function DevelopmentTaskPage() {
           <h1>{task.title}</h1>
           <Status task={task} />
         </div>
-        <Button variant="ghost" asChild>
-          <Link to="/development-tasks">
-            <ArrowLeft />
-            返回任务列表
-          </Link>
-        </Button>
       </div>
       {error && (
         <p role="alert" className="message error">
@@ -889,15 +1080,15 @@ export function DevelopmentTaskPage() {
           {task.error}
         </p>
       )}
-      <section className="dev-panel dev-task-overview">
+      <section className="dev-detail-content dev-task-overview">
         <dl>
           <div>
             <dt>代码仓库</dt>
             <dd title={task.repository}>{task.repository}</dd>
           </div>
           <div>
-            <dt>任务工作树</dt>
-            <dd title={task.worktree}>{task.worktree || "开始研发时创建"}</dd>
+            <dt>本地工作目录</dt>
+            <dd title={task.worktree}>{task.worktree || "历史目录不可用"}</dd>
           </div>
           <div>
             <dt>研发分支</dt>
@@ -914,22 +1105,28 @@ export function DevelopmentTaskPage() {
           </div>
         </dl>
         <div className="dev-actions">
-          {task.status === "completed" && !task.restored && !task.merge && (
-            <Button disabled={!!busy} onClick={() => void previewMerge()}>
-              <GitBranch />
-              合并回主分支
-            </Button>
-          )}
-          {task.merge && !task.merge.cleanedAt && !task.restored && (
-            <Button
-              variant="outline"
-              disabled={!!busy}
-              onClick={() => void action("cleanup")}
-            >
-              清理研发目录
-            </Button>
-          )}
-          {canStart && (
+          {task.executionMode !== "workspace" &&
+            task.status === "completed" &&
+            !task.restored &&
+            !task.merge && (
+              <Button disabled={!!busy} onClick={() => void previewMerge()}>
+                <GitBranch />
+                合并回主分支
+              </Button>
+            )}
+          {task.executionMode !== "workspace" &&
+            task.merge &&
+            !task.merge.cleanedAt &&
+            !task.restored && (
+              <Button
+                variant="outline"
+                disabled={!!busy}
+                onClick={() => void action("cleanup")}
+              >
+                清理研发目录
+              </Button>
+            )}
+          {canStart && task.executionMode === "workspace" && (
             <Button disabled={!!busy} onClick={() => void action("start")}>
               <Play />
               {task.status === "draft" ? "开始研发" : "继续研发"}
@@ -960,14 +1157,6 @@ export function DevelopmentTaskPage() {
           </Button>
           <Button
             variant="outline"
-            disabled={!task.worktree}
-            onClick={() => void copyContext()}
-          >
-            <Copy />
-            复制接管上下文
-          </Button>
-          <Button
-            variant="outline"
             disabled={
               !!busy ||
               !task.worktree ||
@@ -995,9 +1184,14 @@ export function DevelopmentTaskPage() {
             )}
         </div>
         <p className="dev-help">
-          不自动运行测试，由你测试和验收。外部接管需先停止执行，再复制上下文到
-          ChatGPT；不会自动打开同一会话。
+          不自动运行测试，由你测试和验收。外部接管需先停止执行；打开 ChatGPT
+          后需自行提供任务信息，不会自动接续同一会话。
         </p>
+        {!task.executionMode && !task.restored && (
+          <p className="dev-help">
+            历史工作树任务保留查阅与合并；继续研发请创建新任务，直接使用工作空间目录。
+          </p>
+        )}
         {task.merge && (
           <p className="dev-help">
             合并于 {date(task.merge.mergedAt)} · 提交{" "}
@@ -1048,7 +1242,7 @@ export function DevelopmentTaskPage() {
         ))}
       </div>
       {tab === "progress" && (
-        <section className="dev-panel dev-progress">
+        <section className="dev-progress" aria-label="研发执行记录">
           <div className="dev-live-heading">
             <div>
               <span
@@ -1104,38 +1298,41 @@ export function DevelopmentTaskPage() {
               onResult={() => {}}
             />
           ))}
-          {task.chatId && !task.restored && task.status !== "completed" && (
-            <form className="dev-composer" onSubmit={send}>
-              <textarea
-                aria-label="补充研发要求"
-                rows={3}
-                maxLength={16000}
-                placeholder={
-                  running
-                    ? "需要调整方向时，先停止执行，再发送补充要求。"
-                    : "补充要求、反馈问题，让 Codex 继续研发…"
-                }
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                disabled={running || !!busy}
-              />
-              <div>
-                <span>停止后可补充要求，继续同一任务会话。</span>
-                <Button
-                  type="submit"
-                  disabled={running || !!busy || !text.trim()}
-                >
-                  {busy === "messages" ? "正在发送…" : "发送并继续"}
-                </Button>
-              </div>
-            </form>
-          )}
+          {task.executionMode === "workspace" &&
+            task.chatId &&
+            !task.restored &&
+            task.status !== "completed" && (
+              <form className="dev-composer" onSubmit={send}>
+                <textarea
+                  aria-label="补充研发要求"
+                  rows={3}
+                  maxLength={16000}
+                  placeholder={
+                    running
+                      ? "需要调整方向时，先停止执行，再发送补充要求。"
+                      : "补充要求、反馈问题，让 Codex 继续研发…"
+                  }
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  disabled={running || !!busy}
+                />
+                <div>
+                  <span>停止后可补充要求，继续同一任务会话。</span>
+                  <Button
+                    type="submit"
+                    disabled={running || !!busy || !text.trim()}
+                  >
+                    {busy === "messages" ? "正在发送…" : "发送并继续"}
+                  </Button>
+                </div>
+              </form>
+            )}
         </section>
       )}
       {tab === "changes" && (
-        <section className="dev-panel dev-changes">
+        <section className="dev-detail-content dev-changes">
           <div className="dev-section-title">
-            <h2>相对基准提交的代码变化</h2>
+            <h2>工作目录状态与提交记录</h2>
             <Button
               variant="outline"
               disabled={changesLoading}
@@ -1146,7 +1343,7 @@ export function DevelopmentTaskPage() {
             </Button>
           </div>
           <p className="dev-help">
-            包含分支已提交与未提交的跟踪文件差异。新文件列在工作目录状态中，可在研发目录查看完整内容。
+            显示工作目录状态及任务基准提交之后的提交记录。具体代码内容可在本地工作目录中查看。
           </p>
           {changesError && (
             <p className="message error" role="alert">
@@ -1157,11 +1354,6 @@ export function DevelopmentTaskPage() {
             <>
               <h3>工作目录状态</h3>
               <pre>{changes.status}</pre>
-              <h3>代码差异</h3>
-              <pre>{changes.diff || "暂无跟踪文件差异"}</pre>
-              {changes.truncated && (
-                <p>差异内容较长，仅展示前 200,000 个字符。</p>
-              )}
               <h3>提交记录</h3>
               <pre>{changes.commits}</pre>
             </>
@@ -1169,47 +1361,62 @@ export function DevelopmentTaskPage() {
         </section>
       )}
       {tab === "sources" && (
-        <section className="dev-panel dev-sources">
+        <section className="dev-detail-content dev-sources">
           <h2>研发要求</h2>
           <p>{task.requirement || "按照关联工作项完成实现。"}</p>
           <h2>
-            工作项快照 <small>{task.sources.items.length}</small>
+            {task.sourceMode === "references" ? "关联工作项" : "工作项快照"}{" "}
+            <small>{task.sources.items.length}</small>
           </h2>
           {task.sources.items.map((item) => (
             <details key={item.id}>
               <summary>
                 {item.title}
-                <small>版本 {item.version}</small>
+                <small>
+                  {task.sourceMode === "references" ? "关联时版本" : "版本"}{" "}
+                  {item.version}
+                </small>
               </summary>
               <pre>{JSON.stringify(item, null, 2)}</pre>
             </details>
           ))}
           {!task.sources.items.length && <p>未关联工作项</p>}
           <h2>
-            领域模型快照 <small>{task.sources.models.length}</small>
+            {task.sourceMode === "references" ? "关联领域模型" : "领域模型快照"}{" "}
+            <small>{task.sources.models.length}</small>
           </h2>
           {task.sources.models.map((model) => (
             <details key={model.id}>
               <summary>
                 {model.name}
-                <small>版本 {model.version}</small>
+                <small>
+                  {task.sourceMode === "references" ? "关联时版本" : "版本"}{" "}
+                  {model.version}
+                </small>
               </summary>
               <pre>{JSON.stringify(model, null, 2)}</pre>
             </details>
           ))}
           {!task.sources.models.length && <p>未关联领域模型</p>}
           <p className="dev-help">
-            创建于 {date(task.createdAt)}。这里展示创建任务时的内容和版本。
+            创建于 {date(task.createdAt)}。
+            {task.sourceMode === "references"
+              ? "这里保存关联 ID；每次开始或继续研发时读取最新资料。本次执行期间使用固定资料，后续修改将在下次执行时生效。"
+              : "这里展示创建任务时的内容和版本。"}
           </p>
         </section>
       )}
+      {["review", "completed"].includes(task.status) &&
+        task.sources.items.length > 0 && (
+          <DevelopmentItemAcceptance key={task.id} task={task} />
+        )}
       <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
         <AlertDialog.Portal>
           <AlertDialog.Overlay className="dialog-overlay confirmation-overlay" />
           <AlertDialog.Content className="confirmation-content">
             <AlertDialog.Title>确认研发任务完成</AlertDialog.Title>
             <AlertDialog.Description>
-              请确认你已完成必要的测试和验收。完成后保留研发分支和工作树，由你决定何时合并；关联工作项的状态不自动改变。
+              请确认你已完成必要的测试和验收。完成后保留本地目录中的全部代码修改，由你决定何时提交；完成后可在下方“关联工作项验收”中选择需要更新的工作项。
             </AlertDialog.Description>
             <div className="confirmation-actions">
               <AlertDialog.Cancel asChild>

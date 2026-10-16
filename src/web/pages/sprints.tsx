@@ -1,7 +1,13 @@
+import { Textarea } from "../components/ui/textarea";
+import {
+  developmentStatusLabels,
+  type DevelopmentTask,
+} from "../../shared/development-task";
+import { SprintReview } from "../components/sprint-review";
 import { DatePicker } from "../components/date-picker";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   Plus,
   RefreshCw,
@@ -108,6 +114,31 @@ export function SprintsPage() {
   const id = params.get("sprint") || "";
   const [sprints, setSprints] = useState<Sprint[]>([]),
     [board, setBoard] = useState<SprintBoard | null>(null);
+  const [tasks, setTasks] = useState<DevelopmentTask[]>([]);
+  const [taskError, setTaskError] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = () =>
+      api<{ data: DevelopmentTask[] }>("/api/v1/development-tasks", {
+        signal: controller.signal,
+      })
+        .then((r) => {
+          setTasks(r.data);
+          setTaskError("");
+        })
+        .catch((e) => {
+          if (!controller.signal.aborted) setTaskError(e.message);
+        });
+    void load();
+    const timer = setInterval(() => {
+      if (!document.hidden) void load();
+    }, 5000);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+    };
+  }, []);
   const [loaded, setLoaded] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -351,6 +382,26 @@ export function SprintsPage() {
         >
           {item.title}
         </button>
+        {!closed && (
+          <div className="sprint-development">
+            {tasks
+              .filter((t) => t.sources.items.some((i) => i.id === item.id))
+              .map((t) => (
+                <Link
+                  key={t.id}
+                  to={`/development-tasks/${t.id}`}
+                  title={t.title}
+                >
+                  研发 · {developmentStatusLabels[t.status]} · {t.title}
+                </Link>
+              ))}
+            {!["done", "cancelled"].includes(item.status) && (
+              <Link to={`/development-tasks/new?items=${item.id}`}>
+                发起研发任务 →
+              </Link>
+            )}
+          </div>
+        )}
         {item.blockedReason && (
           <p className="sprint-blocked" title={item.blockedReason}>
             阻塞：{item.blockedReason}
@@ -619,6 +670,21 @@ export function SprintsPage() {
                   {all.filter((x) => x.status === "paused").length}
                 </strong>
               </button>
+              <button
+                onClick={() =>
+                  setFilter(
+                    filter === "awaiting_acceptance"
+                      ? "all"
+                      : "awaiting_acceptance",
+                  )
+                }
+                aria-pressed={filter === "awaiting_acceptance"}
+              >
+                待验收{" "}
+                <strong>
+                  {all.filter((i) => i.status === "awaiting_acceptance").length}
+                </strong>
+              </button>
               <progress
                 value={done}
                 max={all.length || 1}
@@ -636,6 +702,11 @@ export function SprintsPage() {
         </div>
       ) : (
         <>
+          {taskError && (
+            <p role="alert" className="message error">
+              研发进度暂时无法刷新：{taskError}
+            </p>
+          )}
           <div className="sprint-toolbar">
             <div className="search-field">
               <Search size={16} />
@@ -661,6 +732,14 @@ export function SprintsPage() {
             <label className="sprint-check">
               <input
                 type="checkbox"
+                checked={expanded}
+                onChange={(e) => setExpanded(e.target.checked)}
+              />
+              展开全部阶段
+            </label>
+            <label className="sprint-check">
+              <input
+                type="checkbox"
                 checked={cancelled}
                 onChange={(e) => setCancelled(e.target.checked)}
               />
@@ -676,56 +755,68 @@ export function SprintsPage() {
             )}
           </div>
           <div className="sprint-board">
-            {[...columns, ...(cancelled ? ["cancelled" as const] : [])].map(
-              (status) => (
-                <section
-                  key={status}
-                  className={`sprint-column column-${status} ${dropTarget?.status === status ? "drop-active" : ""}`}
-                  data-sprint-column={status}
-                  aria-label={statusLabels[status]}
-                >
-                  <div className="sprint-column-heading">
-                    <h3>
-                      <span />
-                      {statusLabels[status]}{" "}
-                      <small>
-                        {visible.filter((i) => i.status === status).length}
-                      </small>
-                    </h3>
-                    {!closed && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={busy}
-                        aria-label={`在${statusLabels[status]}中新建工作项`}
-                        onClick={() => {
-                          setTitle("");
-                          setNewStatus(status);
-                          requestKey.current = crypto.randomUUID();
-                          openModal("new");
-                        }}
-                      >
-                        <Plus />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="sprint-column-cards">
-                    {visible.filter((i) => i.status === status).map(card)}
-                    {!visible.some((i) => i.status === status) && (
-                      <p className="sprint-column-empty">
-                        {search ||
-                        filter !== "all" ||
-                        type !== "all" ||
-                        priority !== "all"
-                          ? "没有匹配的工作项"
-                          : "暂无工作项"}
-                      </p>
-                    )}
-                  </div>
-                </section>
+            {[
+              ...columns.filter(
+                (s) =>
+                  expanded ||
+                  [
+                    "todo",
+                    "in_progress",
+                    "awaiting_acceptance",
+                    "done",
+                  ].includes(s) ||
+                  all.some((i) => i.status === s),
               ),
-            )}
+              ...(cancelled ? ["cancelled" as const] : []),
+            ].map((status) => (
+              <section
+                key={status}
+                className={`sprint-column column-${status} ${dropTarget?.status === status ? "drop-active" : ""}`}
+                data-sprint-column={status}
+                aria-label={statusLabels[status]}
+              >
+                <div className="sprint-column-heading">
+                  <h3>
+                    <span />
+                    {statusLabels[status]}{" "}
+                    <small>
+                      {visible.filter((i) => i.status === status).length}
+                    </small>
+                  </h3>
+                  {!closed && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={busy}
+                      aria-label={`在${statusLabels[status]}中新建工作项`}
+                      onClick={() => {
+                        setTitle("");
+                        setNewStatus(status);
+                        requestKey.current = crypto.randomUUID();
+                        openModal("new");
+                      }}
+                    >
+                      <Plus />
+                    </Button>
+                  )}
+                </div>
+                <div className="sprint-column-cards">
+                  {visible.filter((i) => i.status === status).map(card)}
+                  {!visible.some((i) => i.status === status) && (
+                    <p className="sprint-column-empty">
+                      {search ||
+                      filter !== "all" ||
+                      type !== "all" ||
+                      priority !== "all"
+                        ? "没有匹配的工作项"
+                        : "暂无工作项"}
+                    </p>
+                  )}
+                </div>
+              </section>
+            ))}
           </div>
+          <SprintReview board={board} />
           <details className="sprint-history">
             <summary>冲刺活动 · 最近 {board.events.length} 条</summary>
             {board.events.map((e) => (
@@ -859,7 +950,7 @@ export function SprintsPage() {
                 </label>
                 <label className="field">
                   目标
-                  <textarea
+                  <Textarea
                     maxLength={1000}
                     value={form.goal}
                     onChange={(e) => setForm({ ...form, goal: e.target.value })}
@@ -1073,7 +1164,7 @@ export function SprintsPage() {
             >
               <label className="field">
                 阻塞原因
-                <textarea
+                <Textarea
                   aria-label="阻塞原因"
                   required
                   maxLength={1000}

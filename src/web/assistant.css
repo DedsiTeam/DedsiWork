@@ -342,3 +342,63 @@
   font-size: 11px;
   background: rgb(13 12 34 / 0.02);
 }
+
+.assistant-development-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+  color: var(--muted-foreground);
+}
+.assistant-development-sources p {
+  width: 100%;
+  margin: 0;
+}
+.assistant-development-sources a {
+  color: var(--foreground);
+}
+.assistant-development-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.assistant-development-result {
+  padding: 8px 0;
+}
+.assistant-development-result > a:first-child {
+  color: var(--foreground);
+  font-size: 12px;
+  text-decoration: none;
+}
+.assistant-development-result > a:first-child:hover {
+  text-decoration: underline;
+}
+.assistant-business-help,
+.assistant-business-before {
+  color: var(--muted-foreground);
+}
+.assistant-business-fields {
+  margin: 24px 0;
+  display: grid;
+  gap: 16px;
+}
+.assistant-business-fields > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 16px;
+}
+.assistant-business-fields dt {
+  color: var(--muted-foreground);
+}
+.assistant-business-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.assistant-business-delete-targets {
+  max-height: 40vh;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}

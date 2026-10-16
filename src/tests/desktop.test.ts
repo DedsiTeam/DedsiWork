@@ -125,7 +125,7 @@ desktopTest(
             },
           }),
         );
-        expect((await mcp.listTools()).tools.length).toBe(18);
+        expect((await mcp.listTools()).tools.length).toBe(42);
       } finally {
         await mcp.close();
       }

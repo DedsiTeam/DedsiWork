@@ -37,6 +37,9 @@
   --sidebar-border: rgb(13 12 34 / 0.1);
   --sidebar-ring: rgb(13 12 34 / 0.3);
   --workspace-background: #ffffff;
+  --shadow-card: 0 1px 2px rgb(13 12 34 / 0.02);
+  --shadow-card-hover: 0 5px 18px rgb(13 12 34 / 0.04);
+  --shadow-floating: 0 8px 24px rgb(13 12 34 / 0.15);
   --header-height: 40px;
 }
 * {
@@ -317,7 +320,7 @@ button:disabled {
 }
 .workspace-content,
 .settings-content {
-  padding: 1rem;
+  padding: 2rem;
   width: 100%;
   max-width: none;
   margin: 0;
@@ -1215,7 +1218,6 @@ tbody tr:last-child td {
 }
 .dm-list-toolbar {
   padding: 18px 22px;
-  border-bottom: 1px solid var(--border);
 }
 .dm-search {
   display: flex;

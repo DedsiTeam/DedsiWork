@@ -1,0 +1,71 @@
+# 项目协作约定
+
+- 每次完成代码修改后，重新构建并重启 DedsiWork 桌面客户端，并确认客户端与内嵌服务成功启动。前端、服务或共享代码均内嵌在 sidecar 中，不能仅刷新页面。
+- 重启应沿用当前数据目录；已有客户端运行时先正常退出，再启动更新后的客户端。开发启动命令为在 src 目录执行 bun run desktop:dev。
+
+## UI 配色规范
+
+- 全站采用白底、近黑文字与灰阶交互的配色体系。后续新增页面、组件及修改的样式必须复用现有语义化主题变量，不得自行硬编码十六进制、RGB、HSL 等颜色，也不得使用固定色值的 Tailwind 色板类。
+- 主题变量以 `src/web/index.css` 为主；基础组件映射在 `src/styles/globals.css`，桌面表面覆盖在 `src/web/surfaces.css`。页面应使用 `var(--变量名)` 或对应的语义化 Tailwind 类（如 `bg-card`、`text-foreground`、`border-border`）。下表中的色值仅说明当前主题，不能复制到页面样式中。
+
+| 用途 | 主题变量 | 当前配色 |
+| --- | --- | --- |
+| 页面背景 | `--background` | 白色 `#FFFFFF` |
+| 卡片背景 / 文字 | `--card` / `--card-foreground` | 白色 / 近黑色 |
+| 弹窗背景 / 文字 | `--popover` / `--popover-foreground` | 白色 / 近黑色 |
+| 正文与标题 | `--foreground` | 近黑色 `#0D0C22` |
+| 主按钮背景 / 文字 | `--primary` / `--primary-foreground` | 近黑色 / 白色 |
+| 次要文字与辅助图标 | `--muted-foreground` | 近黑色的 55% 不透明度 |
+| 轻微背景强调 | `--muted` | 近黑色的 2.5% 不透明度 |
+| 次要按钮背景 / 文字 | `--secondary` / `--secondary-foreground` | 近黑色的 4.5% 不透明度 / 近黑色 |
+| 悬停、选中强调背景 / 文字 | `--accent` / `--accent-foreground` | 近黑色的 6% 不透明度 / 近黑色 |
+| 普通边框 | `--border` | 近黑色的 10% 不透明度 |
+| 输入框边框 | `--input` | 近黑色的 16% 不透明度 |
+| 键盘焦点轮廓 | `--ring` | 近黑色的 30% 不透明度 |
+| 侧栏背景 | `--sidebar` | 浅灰色 `#F3F3F5` |
+
+- 默认、悬停、选中、禁用、焦点等状态均须遵循同一主题；不得为单个业务模块另设紫色或其他品牌色。侧栏和图表使用现有 `--sidebar-*`、`--chart-*` 变量。
+- 优先复用已有 UI 组件及其语义化样式。需要新的语义颜色或阴影时，先在全局主题中统一定义，再由页面引用；不得通过页面私有变量变相引入独立色板。
+- 用户明确指定的特殊视觉效果（例如语音球体的彩色流光）仅限该效果本身，不得扩散到普通业务页面、按钮、卡片或弹窗。
+
+<!-- trail:start -->
+## Trail — repo context graph
+
+This repo is indexed in `.trail/cache/`: small linked markdown nodes that explain each
+system and carry exact file:line spans, kept in sync with the code through git.
+
+For ANY task here — understanding how something works, finding where code lives,
+or scoping a change — get context from the graph before grepping or opening
+source files. Re-ask freely (it's cheap) and reuse literal identifiers you
+already have (symbol, error string, file name) as the query. New to this repo?
+Run `trail map` first — a token-budgeted orientation (dir clusters, hubs,
+hotspots), no LLM, no key.
+
+- Run `trail ask "<your question>" --source` → ranked nodes with the relevant
+  code spans inlined (each hit's ≤8-line crux by default; `--full` for whole
+  definitions when the crux isn't enough). Match the tool to the task shape:
+  for understanding or editing, the top node IS the answer — cite its
+  `covers:` file:line spans and edit straight from `--source`. For
+  exhaustive tasks ("every occurrence / every caller of this pattern"), ranked
+  results are top-N, not complete — run `trail grep "<literal>"` instead
+  (exhaustive over indexed files, grouped by enclosing symbol), falling back
+  to raw `grep -rn` only for unindexed files.
+- `trail skeleton <file>` → every definition's signature + span, ~10× cheaper
+  than reading the file; use it to skim an API surface.
+- `trail callers <symbol>` gives precomputed, exact edges — who calls this.
+  Add `--direction out` for what it calls, or `--depth N` to walk
+  transitively for the full blast radius. For structural questions, skip
+  ranking and use this directly.
+- Or browse: `.trail/cache/INDEX.md` lists every node; follow the links.
+- Monorepos and folders of multiple repos rank fairly across sub-projects —
+  hits carry `[scope/]` labels naming which one they're from. Narrow with
+  `trail ask "<task>" --in <scope>/` once you know where you're working.
+
+If a returned span is truncated ("+N more lines"), open the file at that exact
+range before finalizing. Only open source files when a node genuinely lacks a
+needed detail, and then at the exact file:line the node points to — never
+re-read whole files.
+
+After big code changes, refresh the graph with `trail build` (deterministic,
+no API key, $0).
+<!-- trail:end -->

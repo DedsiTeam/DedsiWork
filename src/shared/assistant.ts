@@ -1,3 +1,4 @@
+import type { BusinessOperation, BusinessPreview } from "./assistant-business";
 import { z } from "zod";
 import { generatedWorkItemSchema } from "./work-item-ai";
 import type { DomainModelInput } from "./domain-model";
@@ -44,7 +45,12 @@ export type AssistantSourceItem = {
   version: number;
 };
 export type AssistantFlow = {
+  businessAction?: BusinessOperation;
+  businessPreview?: BusinessPreview;
+  businessResult?: { label: string; url: string };
   chatId?: string;
+  intent?: "development";
+  sourceModels?: { id: string; name: string; version: number }[];
   id: string;
   revision: number;
   title: string;

@@ -558,7 +558,7 @@ export function WorkspacesPage() {
                 本地工作目录 <small>可选</small>
                 <span className="space-directory">
                   <input
-                    placeholder="AI 助手默认使用的目录"
+                    placeholder="DedsiWork Ai Agent 默认使用的目录"
                     value={form.directory}
                     maxLength={2000}
                     disabled={saving || choosing}

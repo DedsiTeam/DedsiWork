@@ -14,6 +14,17 @@ import {
   idSchema,
   requestKeySchema,
 } from "../../shared/work-item";
+import {
+  domainModelInputSchema,
+  domainModelUpdateSchema,
+} from "../../shared/domain-model";
+import {
+  developmentCreateSchema,
+  developmentMessageSchema,
+} from "../../shared/development-task";
+import { chatAnswerSchema } from "../../shared/chat";
+import type { DomainModelService } from "../services/domain-models";
+import type { DevelopmentTasks } from "../services/development-tasks";
 import { errorBody } from "../../shared/errors";
 import type { WorkItemService, Actor } from "../services/work-items";
 
@@ -27,7 +38,12 @@ import {
   sprintFinishSchema,
   sprintCreateItemSchema,
 } from "../../shared/sprint";
-export function createMcp(service: WorkItemService, sprints: SprintService) {
+export function createMcp(
+  service: WorkItemService,
+  sprints: SprintService,
+  models: DomainModelService,
+  development: DevelopmentTasks,
+) {
   return createMcpHandler(
     (ctx) => {
       const actor: Actor = {
@@ -52,14 +68,19 @@ export function createMcp(service: WorkItemService, sprints: SprintService) {
             inputSchema,
             annotations: {
               readOnlyHint: readOnly,
-              destructiveHint:
-                name === "work_item_delete" || name === "sprint_delete",
-              openWorldHint: false,
+              destructiveHint: [
+                "work_item_delete",
+                "sprint_delete",
+                "domain_model_delete",
+                "development_task_merge",
+                "development_task_cleanup",
+              ].includes(name),
+              openWorldHint: name.startsWith("development_task_") && !readOnly,
             },
           },
           async (input) => {
             try {
-              const result = callback(schema.parse(input));
+              const result = await callback(schema.parse(input));
               return {
                 content: [
                   { type: "text" as const, text: JSON.stringify(result) },
@@ -216,6 +237,186 @@ export function createMcp(service: WorkItemService, sprints: SprintService) {
         sprintFinishSchema.extend({ id: idSchema }),
         false,
         ({ id, ...input }) => sprints.finish(id, input, actor),
+      );
+
+      tool(
+        "domain_model_list",
+        "搜索当前工作空间领域模型，分页返回摘要，每页 20 条。",
+        z
+          .object({
+            q: z.string().trim().max(200).default(""),
+            page: z.number().int().positive().max(1000000).default(1),
+          })
+          .strict(),
+        true,
+        (input) => models.list(input),
+      );
+      tool(
+        "domain_model_get",
+        "读取完整领域模型及最新版本，包含设计项和字段。",
+        z.object({ id: idSchema }).strict(),
+        true,
+        ({ id }) => models.get(id),
+      );
+      tool(
+        "domain_model_create",
+        "创建领域模型，复用页面校验：恰好一个聚合根，领域事件与处理器一一对应。元素和字段需要 UUID。",
+        z.object({ model: domainModelInputSchema }).strict(),
+        false,
+        ({ model }) => models.create(model, actor),
+      );
+      tool(
+        "domain_model_update",
+        "更新完整领域模型，必须传最新 expectedVersion。",
+        domainModelUpdateSchema.extend({ id: idSchema }),
+        false,
+        ({ id, ...input }) => models.update(id, input, actor),
+      );
+      tool(
+        "domain_model_delete",
+        "删除领域模型，需要最新版本；与页面一致，删除后不再出现在列表中。",
+        versioned,
+        false,
+        ({ id, expectedVersion }) => models.remove(id, expectedVersion, actor),
+      );
+
+      const taskId = z.object({ id: idSchema }).strict();
+      tool(
+        "development_task_list",
+        "列出当前工作空间、当前调用身份的研发任务摘要；详情及执行记录用 development_task_get。",
+        z.object({}).strict(),
+        true,
+        () => development.list(actor),
+      );
+      tool(
+        "development_task_get",
+        "读取研发任务、关联资料引用（历史任务为快照）、执行记录及待处理请求。执行中可轮询此工具获取进度。",
+        taskId,
+        true,
+        ({ id }) => development.get(id, actor),
+      );
+      tool(
+        "development_task_repository",
+        "自动读取工作空间本地 Git 仓库及当前分支，返回创建任务所需 token；不会弹出目录选择器。",
+        z.object({}).strict(),
+        false,
+        () => development.selectDirectory(actor),
+      );
+      tool(
+        "development_task_create",
+        "创建并立即开始研发，直接修改工作空间本地目录。先调用 development_task_repository，将 token 填入 directoryToken，currentBranch 填入 baseBranch。关联工作项和模型必须属于当前空间。需用户已授权开始研发。",
+        z.object({ task: developmentCreateSchema }).strict(),
+        false,
+        ({ task }) => development.create(task, actor),
+      );
+      tool(
+        "development_task_start",
+        "开始或继续研发任务，直接修改本地代码；同一空间一次只能执行一个任务，历史工作树任务不可继续。",
+        taskId,
+        false,
+        ({ id }) => development.start(id, actor),
+      );
+      tool(
+        "development_task_stop",
+        "请求停止研发执行；返回后可通过 get 查询是否停止完成。",
+        taskId,
+        false,
+        ({ id }) => development.stop(id, actor),
+      );
+      tool(
+        "development_task_message",
+        "补充要求并继续研发。当前执行必须已停止；重试同一消息使用相同 clientId。",
+        developmentMessageSchema.extend({ id: idSchema }),
+        false,
+        ({ id, ...input }) => development.message(id, input, actor),
+      );
+      tool(
+        "development_task_answer",
+        "回复任务待处理请求。requestId 来自 get 返回的 snapshot.requests；权限审批必须传达用户的明确决定，不可自动批准，信息问题按实际用户答复填写。",
+        chatAnswerSchema.extend({ id: idSchema, requestId: z.uuid() }),
+        false,
+        ({ id, requestId, ...input }) =>
+          development.answer(id, requestId, input, actor),
+      );
+      tool(
+        "development_task_complete",
+        "用户验收确认后标记研发任务完成，不提交代码，也不自动改变关联工作项状态。",
+        z.object({ id: idSchema, confirmed: z.literal(true) }).strict(),
+        false,
+        ({ id }) => development.complete(id, actor),
+      );
+      tool(
+        "development_task_changes",
+        "读取工作目录状态、相对基准提交的差异及提交记录；包含目录原有修改，不等同于任务独占改动。",
+        taskId,
+        true,
+        ({ id }) => development.changes(id, actor),
+      );
+      tool(
+        "development_task_notifications",
+        "读取当前身份未确认的研发提醒。",
+        z.object({}).strict(),
+        true,
+        () => development.notifications(actor),
+      );
+      tool(
+        "development_task_acknowledge",
+        "确认已看到一条研发提醒，不验收或完成任务；notificationId 来自任务 attention.id。",
+        z.object({ id: idSchema, notificationId: z.uuid() }).strict(),
+        false,
+        ({ id, notificationId }) =>
+          development.acknowledge(id, notificationId, actor),
+      );
+      tool(
+        "development_task_merge_preview",
+        "预览历史独立工作树任务合并。仅限已验收任务；直接使用工作空间目录的新任务无需合并。",
+        taskId,
+        false,
+        ({ id }) => development.merging.preview(id, actor),
+      );
+      tool(
+        "development_task_merge",
+        "用户确认预览后合并历史任务，可能提交代码、合并分支并清理旧工作树。token 来自 merge_preview。",
+        z
+          .object({ id: idSchema, token: z.uuid(), confirmed: z.literal(true) })
+          .strict(),
+        false,
+        ({ id, ...input }) => development.merging.merge(id, input, actor),
+      );
+      tool(
+        "development_task_cleanup",
+        "重试清理已合并历史任务的工作树与研发分支，保留未提交修改；不允许清理工作空间本地目录。",
+        z.object({ id: idSchema, confirmed: z.literal(true) }).strict(),
+        false,
+        ({ id }) => development.merging.cleanup(id, actor),
+      );
+      tool(
+        "development_task_open_directory",
+        "在本机文件管理器打开任务目录。",
+        taskId,
+        false,
+        ({ id }) => development.openDirectory(id, actor),
+      );
+      tool(
+        "development_task_handoff",
+        "停止执行并在本机打开 ChatGPT 供用户接管，不自动接续同一会话。",
+        taskId,
+        false,
+        ({ id }) => development.handoff(id, actor),
+      );
+      tool(
+        "development_task_status",
+        "检查本机 Codex 登录状态及可用模型。",
+        z.object({}).strict(),
+        false,
+        () => development.chat.status(actor),
+      );
+      tool(
+        "development_task_login",
+        "开始本机 Codex 登录，返回登录 URL 供用户完成授权。",
+        z.object({}).strict(),
+        false,
+        () => development.chat.signIn(actor),
       );
       return server;
     },

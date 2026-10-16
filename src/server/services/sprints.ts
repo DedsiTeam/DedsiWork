@@ -70,6 +70,15 @@ export class SprintService {
       })),
     };
   }
+  membership(itemId: string): Sprint | null {
+    this.work.get(itemId, true);
+    const row = this.db
+      .query(
+        "SELECT s.id FROM sprints s JOIN sprint_items si ON si.sprint_id=s.id WHERE si.item_id=? AND s.state!='closed'",
+      )
+      .get(itemId) as { id: string } | null;
+    return row ? this.get(row.id) : null;
+  }
   private ids(id: string) {
     return (
       this.db
@@ -323,8 +332,34 @@ export class SprintService {
     const p = sprintCreateItemSchema.parse(input);
     return this.db
       .transaction(() => {
+        const key = `sprint-item:${p.requestKey}`;
+        const input = JSON.stringify({ id, item: p.item, status: p.status });
+        const cached = this.db
+          .query(
+            "SELECT input,result FROM idempotency_records WHERE actor=? AND request_key=?",
+          )
+          .get(actor.identity, key) as { input: string; result: string } | null;
+        if (cached) {
+          const result = JSON.parse(cached.result);
+          if (result.purged)
+            throw new AppError(
+              "PERMANENTLY_DELETED",
+              "此请求创建的工作项已永久删除",
+              410,
+            );
+          if (cached.input !== input)
+            throw new AppError(
+              "IDEMPOTENCY_CONFLICT",
+              "相同请求标识已用于不同内容",
+              409,
+            );
+          return {
+            ...this.board(id),
+            createdItem: this.work.get(result.id, true),
+          };
+        }
         this.check(id, p.expectedVersion);
-        let item = this.work.create(p.item, actor, p.requestKey);
+        let item = this.work.create(p.item, actor);
         this.available(item.id);
         if (p.status !== item.status)
           item = this.work.update(
@@ -335,7 +370,11 @@ export class SprintService {
         this.db
           .query("INSERT INTO sprint_items VALUES (?,?,?)")
           .run(id, item.id, this.nextPosition(id));
-        return this.bump(id, "item_created", { itemId: item.id }, actor);
+        const board = this.bump(id, "item_created", { itemId: item.id }, actor);
+        this.db
+          .query("INSERT INTO idempotency_records VALUES (?,?,?,?)")
+          .run(actor.identity, key, input, JSON.stringify({ id: item.id }));
+        return { ...board, createdItem: item };
       })
       .immediate();
   }

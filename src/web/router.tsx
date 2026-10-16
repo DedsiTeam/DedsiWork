@@ -1,3 +1,4 @@
+import { BookmarksPage } from "./pages/bookmarks";
 import { DailyReportPage } from "./pages/daily-reports";
 import { DailyReportsPage } from "./pages/daily-report-list";
 import { NotesPage } from "./pages/notes";
@@ -23,6 +24,11 @@ export const router = createBrowserRouter([
     path: "/",
     Component: App,
     children: [
+      {
+        path: "bookmarks",
+        Component: BookmarksPage,
+        handle: { title: "网址导航" },
+      },
       {
         path: "development-tasks",
         Component: DevelopmentTasksPage,
@@ -74,7 +80,7 @@ export const router = createBrowserRouter([
       {
         path: "assistant",
         Component: AssistantPage,
-        handle: { title: "AI 助手" },
+        handle: { title: "DedsiWork Ai Agent" },
       },
       { path: "chat", element: <Navigate to="/assistant?mode=chat" replace /> },
       {

@@ -1,5 +1,7 @@
+import { VoicePreview } from "../components/voice-preview";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useNavigate, useSearchParams } from "react-router";
+import { businessActionLabels } from "../../shared/assistant-business";
 import { chatProposals, chatProposalContent } from "../../shared/chat-proposal";
 import type { AssistantFlow } from "../../shared/assistant";
 import type { WorkItem } from "../../shared/work-item";
@@ -14,6 +16,7 @@ import {
   ImagePlus,
   LoaderCircle,
   MessageSquare,
+  AudioLines,
   History,
   Folder,
   Plus,
@@ -68,22 +71,22 @@ async function openLink(url: string) {
 export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { notify, workspace } = useWorkspace();
   const selectionKey = `dedsiwork:${workspace?.id}:chat-selected`;
-  const cwdKey = `dedsiwork:${workspace?.id}:chat-cwd`;
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+  const [view, setView] = useState(() =>
+    stored("dedsiwork:agent-view") === "voice" ? "voice" : "text",
+  );
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [directoryOpen, setDirectoryOpen] = useState(false);
   useEffect(() => {
-    if (!historyOpen && !directoryOpen) return;
+    if (!historyOpen) return;
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setHistoryOpen(false);
-        setDirectoryOpen(false);
       }
     };
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
-  }, [historyOpen, directoryOpen]);
+  }, [historyOpen]);
   const [openingProposal, setOpeningProposal] = useState("");
   const [selected, setSelected] = useState(() => stored(selectionKey));
   const selectedRef = useRef(selected);
@@ -100,9 +103,6 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [revision, setRevision] = useState(0);
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
-  const [cwd, setCwd] = useState(
-    () => stored(cwdKey) || workspace?.directory || "",
-  );
   const [model, setModel] = useState("");
   const [sending, setSending] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -196,7 +196,6 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   const busy = sending || Boolean(snapshot?.running);
   function select(id: string) {
     setHistoryOpen(false);
-    setDirectoryOpen(false);
     draft.current.set(selected, { text, images });
     selectedRef.current = id;
     setSelected(id);
@@ -211,9 +210,6 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
     setText(next?.text || "");
     setImages(next?.images || []);
   }
-  useEffect(() => {
-    store(cwdKey, cwd);
-  }, [cwd]);
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -337,7 +333,6 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
           {
             method: "POST",
             body: JSON.stringify({
-              ...(cwd.trim() ? { cwd: cwd.trim() } : {}),
               ...(model ? { model } : {}),
             }),
           },
@@ -496,8 +491,8 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
           >
             <AlertDialog.Title>删除对话？</AlertDialog.Title>
             <AlertDialog.Description>
-              “{deleteTarget?.title}”将从 AI 助手中移除，并归档 Codex
-              对话。已创建的工作项和领域模型会保留。
+              “{deleteTarget?.title}”将从 DedsiWork Ai Agent 中移除，并归档
+              Codex 对话。已创建的工作项和领域模型会保留。
             </AlertDialog.Description>
             {deleteError && (
               <p role="alert" className="message error">
@@ -519,7 +514,7 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
       </AlertDialog.Root>
       <div className="page-heading">
         <div className="chat-heading">
-          {!embedded && <h1>AI 助手</h1>}
+          {!embedded && <h1>DedsiWork Ai Agent</h1>}
           <Button
             type="button"
             variant="ghost"
@@ -556,6 +551,20 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
           </span>
         </div>
         <div className="dm-heading-actions">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={view === "voice" ? "切换到文字模式" : "切换到语音模式"}
+            title={view === "voice" ? "切换到文字模式" : "切换到语音模式"}
+            onClick={() => {
+              const next = view === "voice" ? "text" : "voice";
+              setView(next);
+              store("dedsiwork:agent-view", next);
+            }}
+          >
+            {view === "voice" ? <MessageSquare /> : <AudioLines />}
+          </Button>
           {!status?.ready && (
             <Button
               variant="outline"
@@ -654,7 +663,18 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
             </aside>
           </>
         )}
-        <div className="chat-conversation">
+        {view === "voice" && (
+          <VoicePreview
+            onReturn={() => {
+              setView("text");
+              store("dedsiwork:agent-view", "text");
+            }}
+          />
+        )}
+        <div
+          className="chat-conversation"
+          style={view === "voice" ? { display: "none" } : undefined}
+        >
           <div
             className="chat-scroll"
             ref={scroll}
@@ -714,23 +734,31 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                       <section className="chat-proposal" key={index}>
                         <div>
                           <strong>
-                            {proposal.kind === "work_items" ? (
+                            {proposal.kind !== "domain_model" ? (
                               <ListTodo size={14} />
                             ) : (
                               <Boxes size={14} />
                             )}
-                            {proposal.kind === "work_items"
-                              ? `工作项草稿 · ${proposal.items.length} 项`
-                              : proposal.model.name}
+                            {proposal.kind === "business_action"
+                              ? businessActionLabels[proposal.operation.action]
+                              : proposal.kind !== "domain_model"
+                                ? `${proposal.kind === "development_items" ? "研发任务草稿" : "工作项草稿"} · ${proposal.items.length} 项`
+                                : proposal.model.name}
                           </strong>
                           <span>
-                            {proposal.kind === "work_items"
-                              ? proposal.items
-                                  .map((item) => item.title)
-                                  .join(" · ")
-                              : `领域模型草稿 · ${proposal.model.elements.length} 个设计项 · ${proposal.model.elements.reduce((count, element) => count + element.fields.length, 0)} 个字段`}
+                            {proposal.kind === "business_action"
+                              ? "查看操作范围，确认后执行"
+                              : proposal.kind !== "domain_model"
+                                ? proposal.items
+                                    .map((item) => item.title)
+                                    .join(" · ")
+                                : `领域模型草稿 · ${proposal.model.elements.length} 个设计项 · ${proposal.model.elements.reduce((count, element) => count + element.fields.length, 0)} 个字段`}
                           </span>
-                          <small>预览修改后确认保存</small>
+                          <small>
+                            {proposal.kind === "business_action"
+                              ? "预览确认后执行"
+                              : "预览修改后确认保存"}
+                          </small>
                         </div>
                         <Button
                           size="sm"
@@ -740,9 +768,13 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                         >
                           {openingProposal === `${item.id}:${index}`
                             ? "正在打开…"
-                            : proposal.kind === "work_items"
-                              ? "预览工作项"
-                              : "预览领域模型"}
+                            : proposal.kind === "business_action"
+                              ? "预览操作"
+                              : proposal.kind !== "domain_model"
+                                ? proposal.kind === "development_items"
+                                  ? "预览研发任务"
+                                  : "预览工作项"
+                                : "预览领域模型"}
                         </Button>
                       </section>
                     ))}
@@ -843,69 +875,21 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                   <ImagePlus />
                 </Button>
                 <div
-                  className="chat-directory-control"
-                  onBlur={(event) => {
-                    if (
-                      !event.currentTarget.contains(event.relatedTarget as Node)
-                    )
-                      setDirectoryOpen(false);
-                  }}
+                  className="chat-directory-button"
+                  title={
+                    workspace?.directory ||
+                    status?.defaultWorkspace ||
+                    "工作空间本地工作目录"
+                  }
+                  aria-label="工作空间本地工作目录"
                 >
-                  <button
-                    type="button"
-                    className="chat-directory-button"
-                    disabled={Boolean(snapshot) || busy}
-                    title={
-                      snapshot?.chat.cwd ||
-                      cwd ||
-                      status?.defaultWorkspace ||
-                      "默认目录"
-                    }
-                    aria-label="设置工作目录"
-                    aria-expanded={directoryOpen}
-                    onClick={() => setDirectoryOpen((value) => !value)}
-                  >
-                    <Folder size={13} />
-                    <span>
-                      {(
-                        snapshot?.chat.cwd ||
-                        cwd ||
-                        status?.defaultWorkspace ||
-                        ""
-                      )
-                        .replace(/[\\/]+$/, "")
-                        .split(/[\\/]/)
-                        .pop() || "默认目录"}
-                    </span>
-                  </button>
-                  {directoryOpen && (
-                    <div className="chat-directory-popover">
-                      <label>
-                        工作目录
-                        <input
-                          autoFocus
-                          aria-label="工作目录完整路径"
-                          placeholder="填写完整路径，留空使用默认目录"
-                          value={cwd}
-                          onChange={(event) => setCwd(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              setDirectoryOpen(false);
-                            }
-                          }}
-                        />
-                      </label>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setDirectoryOpen(false)}
-                      >
-                        完成
-                      </Button>
-                    </div>
-                  )}
+                  <Folder size={13} />
+                  <span>
+                    {(workspace?.directory || status?.defaultWorkspace || "")
+                      .replace(/[\\/]+$/, "")
+                      .split(/[\\/]/)
+                      .pop() || "工作空间目录"}
+                  </span>
                 </div>
                 {status?.models.length ? (
                   <select

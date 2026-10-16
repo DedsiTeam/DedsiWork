@@ -1,0 +1,159 @@
+/* Shared card presentation for all work-item views and the model catalog. */
+.collection-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-items: stretch;
+  gap: 16px;
+  border: 0;
+  padding: 8px 0;
+}
+.collection-card-grid .collection-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.collection-card-grid .collection-card:hover,
+.collection-card-grid .collection-card:focus-within {
+  background: var(--card);
+  border-color: var(--ring);
+  box-shadow: var(--shadow-card-hover);
+}
+.collection-card-grid .collection-card:has(.task-checkbox:checked) {
+  background: var(--accent);
+  border-color: var(--ring);
+}
+.collection-card-grid .row-reveal {
+  opacity: 1;
+}
+.collection-card-grid .task-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr auto;
+  gap: 14px 10px;
+  min-height: 210px;
+}
+.collection-card-grid .task-checkbox {
+  grid-column: 1;
+  grid-row: 1;
+}
+.collection-card-grid .task-checkbox:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.collection-card-grid .task-main {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-items: flex-start;
+  align-self: stretch;
+}
+.collection-card-grid .task-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+.collection-card-grid .task-copy > strong {
+  font-size: 14px;
+  line-height: 1.65;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.collection-card-grid .task-context,
+.collection-card-grid .task-meta,
+.collection-card-grid .model-entry-meta,
+.collection-card-grid .model-entry-copy > p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.collection-card-grid .work-item-blocked {
+  color: var(--foreground);
+}
+.collection-card-grid .task-meta {
+  grid-column: 1;
+  grid-row: 3;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.collection-card-grid .task-meta .priority {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+.collection-card-grid .task-meta time {
+  min-width: 0;
+  text-align: left;
+}
+.collection-card-grid .task-row-actions {
+  grid-column: 2;
+  grid-row: 3;
+}
+.collection-card-grid .model-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  min-height: 240px;
+}
+.collection-card-grid .model-entry-main {
+  flex-direction: column;
+  gap: 16px;
+}
+.collection-card-grid .model-entry-icon {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border-color: var(--border);
+}
+.collection-card-grid .model-entry-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+}
+.collection-card-grid .model-entry-copy h2 {
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  margin-bottom: 10px;
+}
+.collection-card-grid .model-entry-copy > p {
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+  margin-bottom: 16px;
+}
+.collection-card-grid .model-entry-meta {
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: auto;
+}
+.app-shell .collection-card-grid .model-entry .dm-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  width: 100%;
+}
+
+.collection-card-grid:not(.selection-mode) .task-row {
+  grid-template-rows: 1fr auto;
+  min-height: 180px;
+}
+.collection-card-grid:not(.selection-mode) .task-main {
+  grid-row: 1;
+}
+.collection-card-grid:not(.selection-mode) .task-meta,
+.collection-card-grid:not(.selection-mode) .task-row-actions {
+  grid-row: 2;
+}

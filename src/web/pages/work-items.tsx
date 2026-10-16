@@ -1,3 +1,5 @@
+import "../collection-cards.css";
+import { SprintAssignment } from "../components/sprint-assignment";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -51,6 +53,7 @@ export function WorkItemsPage({
   const [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState<WorkItem[]>([]);
   const [purgeTargets, setPurgeTargets] = useState<WorkItem[]>([]);
   const [purging, setPurging] = useState(false);
@@ -58,6 +61,10 @@ export function WorkItemsPage({
   const selectAll = useRef<HTMLInputElement>(null);
   const purgeTrigger = useRef<HTMLElement | null>(null);
   const serial = useRef(0);
+  useEffect(() => {
+    setSelectionMode(false);
+    setSelected([]);
+  }, [view, initialStatus]);
   useEffect(() => {
     setSelected([]);
   }, [view, search, page, status, type, priority]);
@@ -307,6 +314,18 @@ export function WorkItemsPage({
                   }}
                 />
               </div>
+              <Button
+                variant={selectionMode ? "secondary" : "ghost"}
+                size="sm"
+                aria-pressed={selectionMode}
+                disabled={purging}
+                onClick={() => {
+                  setSelectionMode((value) => !value);
+                  setSelected([]);
+                }}
+              >
+                {selectionMode ? "退出多选" : "多选"}
+              </Button>
               <span className="sort-label">
                 <ArrowDown size={12} />
                 最近更新
@@ -321,7 +340,7 @@ export function WorkItemsPage({
                 <RefreshCw className={loading ? "animate-spin" : ""} />
               </Button>
             </div>
-            {view === "trash" && (
+            {selectionMode && (
               <div className="trash-actions">
                 <label className="task-select-all">
                   <input
@@ -339,15 +358,26 @@ export function WorkItemsPage({
                   />
                   全选当前页 <span>已选 {selected.length} 项</span>
                 </label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!selected.length || loading || purging}
-                  onClick={() => confirmPurge(selected)}
-                >
-                  <Trash2 />
-                  批量永久删除
-                </Button>
+                {view !== "trash" ? (
+                  <SprintAssignment
+                    items={selected}
+                    onAssigned={() => {
+                      setSelected([]);
+                      setNotice("已加入冲刺");
+                      void refresh(true);
+                    }}
+                  />
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!selected.length || loading || purging}
+                    onClick={() => confirmPurge(selected)}
+                  >
+                    <Trash2 />
+                    批量永久删除
+                  </Button>
+                )}
               </div>
             )}
             {error && (
@@ -358,10 +388,18 @@ export function WorkItemsPage({
                 </Button>
               </div>
             )}
-            <div className="task-list" role="list" aria-busy={loading}>
+            <div
+              className={`task-list collection-card-grid${selectionMode ? " selection-mode" : ""}`}
+              role="list"
+              aria-busy={loading}
+            >
               {result.data.map((item) => (
-                <article className="task-row" role="listitem" key={item.id}>
-                  {view === "trash" && (
+                <article
+                  className="task-row collection-card"
+                  role="listitem"
+                  key={item.id}
+                >
+                  {selectionMode && (
                     <input
                       className="task-checkbox"
                       type="checkbox"
@@ -395,7 +433,7 @@ export function WorkItemsPage({
                         {item.title}
                       </strong>
                       <span className="task-context">
-                        {typeLabels[item.type]}
+                        {typeLabels[item.type]} · {statusLabels[item.status]}
                         {item.blockedReason && (
                           <span
                             className="work-item-blocked"

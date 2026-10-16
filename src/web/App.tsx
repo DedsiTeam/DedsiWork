@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { DevelopmentNotifications } from "./components/development-notifications";
 import { WorkspaceSwitcher } from "./components/workspace-switcher";
 import type { Workspace } from "../shared/workspace";
@@ -181,7 +182,17 @@ export function App() {
       <div className={`app-shell${manager ? " space-manager-shell" : ""}`}>
         {!manager && workspace && <Sidebar key={workspace.id} />}
         <main className="main-area">
-          <header className="topbar" {...windowDrag}>
+          <header
+            className="topbar"
+            data-native-controls-inset={
+              isTauri() &&
+              /Mac/i.test(navigator.platform) &&
+              (manager || !workspace)
+                ? true
+                : undefined
+            }
+            {...windowDrag}
+          >
             <DevelopmentNotifications />
             {!manager && <WorkspaceSwitcher />}
           </header>

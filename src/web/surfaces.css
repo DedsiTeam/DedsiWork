@@ -3,16 +3,16 @@
 :root.dark {
   color-scheme: light;
   --background: #ffffff;
-  --workspace-background: #ffffff;
-  --card: #ffffff;
-  --popover: #ffffff;
+  --workspace-background: var(--background);
+  --card: var(--background);
+  --popover: var(--background);
   --sidebar: #f3f3f5;
 }
 html,
 body,
 #root {
   min-height: 100%;
-  background: #ffffff !important;
+  background: var(--background) !important;
 }
 .app-shell,
 .app-shell .main-area,
@@ -22,7 +22,7 @@ body,
 .settings-content,
 .chat-workbench,
 .spaces-page {
-  background: #ffffff !important;
+  background: var(--background) !important;
 }
 .app-shell .sidebar {
   background: var(--sidebar) !important;
@@ -30,7 +30,7 @@ body,
 .sidebar-version {
   flex-shrink: 0;
   margin-top: 4px;
-  color: rgb(13 12 34 / 0.44);
+  color: var(--muted-foreground);
   font-size: 10px;
   line-height: 14px;
   text-align: center;
@@ -54,11 +54,57 @@ body,
   .chat-directory-popover,
   .workspace-toast
 ) {
-  background: #ffffff;
+  background: var(--card);
 }
 *,
 *::before,
 *::after {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
+}
+
+.sprint-assignment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sprint-assignment > div:first-child {
+  min-width: 200px;
+}
+.sprint-assignment .message {
+  flex-basis: 100%;
+}
+.item-sprint {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.sprint-assignment,
+.item-sprint {
+  color: var(--foreground);
+}
+.item-sprint a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.item-sprint a:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.item-sprint a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.sprint-assignment .message {
+  background: var(--muted);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+/* The macOS overlay title bar owns the first 104px when no sidebar is present. */
+.app-shell .topbar[data-native-controls-inset] {
+  padding-left: 104px;
 }

@@ -48,6 +48,12 @@ export class DevelopmentMerge {
     return this.track(async () => {
       const task = this.get(id, actor);
       if (!actor.writable) throw new AppError("FORBIDDEN", "需要写入权限", 403);
+      if (task.executionMode === "workspace")
+        throw new AppError(
+          "CLEANUP_UNAVAILABLE",
+          "工作空间本地目录不能清理",
+          409,
+        );
       if (!task.merge || task.restored)
         throw new AppError(
           "CLEANUP_UNAVAILABLE",
@@ -182,6 +188,12 @@ export class DevelopmentMerge {
     }
   }
   private check(task: DevelopmentTask, actor: Actor) {
+    if (task.executionMode === "workspace")
+      throw new AppError(
+        "MERGE_UNAVAILABLE",
+        "任务直接修改工作空间目录，无需合并",
+        409,
+      );
     if (!actor.writable) throw new AppError("FORBIDDEN", "需要写入权限", 403);
     if (task.restored)
       throw new AppError(

@@ -224,5 +224,17 @@ export function openDatabase(path: string) {
       );
     }).immediate();
   }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=13").get()
+  ) {
+    db.transaction(() => {
+      db.exec(
+        "CREATE TABLE bookmarks (id INTEGER PRIMARY KEY CHECK(id=1), version INTEGER NOT NULL, groups_json TEXT NOT NULL)",
+      );
+      db.query("INSERT INTO schema_migrations VALUES (13,?)").run(
+        new Date().toISOString(),
+      );
+    }).immediate();
+  }
   return db;
 }

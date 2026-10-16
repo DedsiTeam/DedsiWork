@@ -1,3 +1,4 @@
+import "../collection-cards.css";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import * as Dialog from "@radix-ui/react-alert-dialog";
@@ -148,9 +149,13 @@ export function DomainModelsPage() {
           </div>
         ) : (
           !error && (
-            <div className="model-collection" role="list">
+            <div className="model-collection collection-card-grid" role="list">
               {result.data.map((model) => (
-                <article className="model-entry" role="listitem" key={model.id}>
+                <article
+                  className="model-entry collection-card"
+                  role="listitem"
+                  key={model.id}
+                >
                   <Link
                     className="model-entry-main"
                     to={`/domain-models/${model.id}`}

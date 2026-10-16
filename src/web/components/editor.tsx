@@ -1,3 +1,5 @@
+import { PAGE_SIZE } from "../../shared/pagination";
+import { EmptyState } from "./empty-state";
 import { SprintChoice, ItemSprint } from "./sprint-assignment";
 import type { SprintBoard } from "../../shared/sprint";
 import { DatePicker } from "./date-picker";
@@ -140,7 +142,7 @@ export function Editor({
             `/api/v1/work-items/${item.id}?includeDeleted=true`,
           ),
           api<Page<WorkItemEvent>>(
-            `/api/v1/work-items/${item.id}/events?page=${eventPage}&pageSize=10`,
+            `/api/v1/work-items/${item.id}/events?page=${eventPage}&pageSize=${PAGE_SIZE}`,
           ),
         ]);
         if (alive) {
@@ -330,8 +332,8 @@ export function Editor({
       {deleted && (
         <div className="message">此工作项在回收站中，恢复后可以继续编辑。</div>
       )}
-      {item && !deleted && !embedded && <ItemSprint item={item} />}
       <form onSubmit={save} className="editor-form">
+        {item && !deleted && !embedded && <ItemSprint item={item} />}
         <fieldset disabled={busy || deleted}>
           <div className="field">
             <Label htmlFor="item-title">
@@ -518,8 +520,15 @@ export function Editor({
               </div>
             </div>
           ))}
-          {!events.length && <p className="muted">暂无活动记录</p>}
-          {eventTotal > 10 && (
+          {!events.length && (
+            <EmptyState
+              icon={Clock3}
+              compact
+              title="暂无活动记录"
+              description="工作项的更新记录会显示在这里。"
+            />
+          )}
+          {eventTotal > PAGE_SIZE && (
             <div className="pagination">
               <Button
                 type="button"
@@ -531,13 +540,13 @@ export function Editor({
                 上一页
               </Button>
               <span>
-                {eventPage} / {Math.ceil(eventTotal / 10)}
+                {eventPage} / {Math.ceil(eventTotal / PAGE_SIZE)}
               </span>
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
-                disabled={eventPage * 10 >= eventTotal}
+                disabled={eventPage * PAGE_SIZE >= eventTotal}
                 onClick={() => setEventPage((p) => p + 1)}
               >
                 下一页

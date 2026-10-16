@@ -11,7 +11,7 @@
   height: 34px;
   padding: 0 11px;
   border: 1px solid rgb(13 12 34 / 0.112);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   background: #ffffff;
   color: rgb(13 12 34 / 0.549);
   font-size: 12px;
@@ -46,7 +46,7 @@
   width: 268px;
   padding: 12px;
   border: 1px solid rgb(13 12 34 / 0.09);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-popover);
   background: #ffffff;
   box-shadow: 0 8px 30px rgb(13 12 34 / 0.094);
   user-select: none;
@@ -73,7 +73,7 @@
   height: 25px;
   padding: 0;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   background: transparent;
   color: rgb(13 12 34 / 0.433);
   cursor: pointer;
@@ -103,7 +103,7 @@
   height: 30px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   background: transparent;
   color: rgb(13 12 34 / 0.624);
   font-size: 11px;
@@ -123,7 +123,7 @@
   left: calc(50% - 1.5px);
   width: 3px;
   height: 3px;
-  border-radius: 50%;
+  border-radius: var(--ui-radius-circle);
   background: #0d0c22;
 }
 .date-picker-days button.selected,
@@ -153,7 +153,7 @@
 }
 .date-picker-footer button {
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-control);
   background: rgb(13 12 34 / 0.049);
   padding: 4px 9px;
   color: rgb(13 12 34 / 0.512);
@@ -190,7 +190,7 @@
   width: 48px;
   padding: 0 4px;
   border: 1px solid rgb(13 12 34 / 0.099);
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   background: rgb(13 12 34 / 0.02);
   color: rgb(13 12 34 / 0.558);
   font-size: 11px;
@@ -211,7 +211,7 @@
 .date-picker-months button {
   height: 38px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   background: transparent;
   color: var(--muted-foreground);
   font-size: 12px;

@@ -1,3 +1,4 @@
+import { EmptyState } from "../components/empty-state";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useBlocker, useNavigate, useParams } from "react-router";
 import {
@@ -464,9 +465,11 @@ export function ModelEditor({
                     </Button>
                   </div>
                   {!form.elements.some((element) => element.kind === kind) && (
-                    <p className="dm-section-empty">
-                      暂无{elementLabels[kind]}，按需添加。
-                    </p>
+                    <EmptyState
+                      compact
+                      title={`暂无${elementLabels[kind]}`}
+                      description="按需添加设计项，逐步完善模型。"
+                    />
                   )}
                   {form.elements
                     .filter(
@@ -603,7 +606,11 @@ export function ModelEditor({
                           </Button>
                         </div>
                         {!element.fields.length ? (
-                          <p className="dm-fields-empty">暂无字段。</p>
+                          <EmptyState
+                            compact
+                            title="暂无字段"
+                            description="添加字段，定义名称、类型和说明。"
+                          />
                         ) : (
                           <div className="dm-fields">
                             {" "}

@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../shared/pagination";
 import { AssistantBusiness } from "./assistant-business";
 import {
   businessConfirmSchema,
@@ -148,7 +149,7 @@ export class AssistantService {
         page: z.coerce.number().int().positive().default(1),
       })
       .parse(input);
-    const result = this.workItems.list({ q, page, pageSize: 20 });
+    const result = this.workItems.list({ q, page, pageSize: PAGE_SIZE });
     return {
       data: result.data.map((item) => ({
         id: item.id,

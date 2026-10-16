@@ -1,0 +1,438 @@
+/* Shared component presentation, including Radix portals outside .app-shell. */
+:root .ui-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  min-width: 0;
+  width: 100%;
+  padding: 70px 20px;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+:root .ui-empty-state > svg {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--foreground);
+  stroke-width: 1.75;
+  margin-bottom: 20px;
+}
+:root .ui-empty-state > h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+:root .ui-empty-state > p {
+  max-width: 480px;
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+:root .ui-empty-state-compact {
+  padding: 24px 12px;
+}
+:root .ui-empty-state-compact > svg {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 12px;
+}
+:root .ui-empty-state-compact > h2 {
+  font-size: 13px;
+}
+:root .ui-empty-state-compact > p {
+  margin-top: 8px;
+  font-size: 11px;
+}
+:root [data-slot="button"] {
+  height: var(--ui-control-height);
+  padding: 0 14px;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-button);
+  font-size: var(--ui-font-size);
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: none;
+  transition:
+    background-color var(--ui-transition),
+    border-color var(--ui-transition),
+    color var(--ui-transition),
+    box-shadow var(--ui-transition),
+    transform var(--ui-transition);
+}
+:root [data-slot="button"][data-size="sm"] {
+  height: var(--ui-control-height-sm);
+  padding-inline: 12px;
+  font-size: var(--ui-font-size-sm);
+}
+:root [data-slot="button"][data-size="lg"] {
+  height: var(--ui-control-height-lg);
+  padding-inline: 18px;
+}
+:root [data-slot="button"][data-size^="icon"] {
+  width: var(--ui-control-height-sm);
+  height: var(--ui-control-height-sm);
+  padding: 0;
+  flex-shrink: 0;
+}
+:root [data-slot="button"][data-size="icon-sm"] {
+  width: 28px;
+  height: 28px;
+}
+:root [data-slot="button"][data-size="icon-lg"] {
+  width: var(--ui-control-height);
+  height: var(--ui-control-height);
+}
+:root [data-slot="button"] > svg {
+  width: var(--ui-icon-size);
+  height: var(--ui-icon-size);
+  stroke-width: 1.75;
+}
+:root [data-slot="button"][data-variant="default"],
+:root [data-slot="button"][data-variant="destructive"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+:root
+  [data-slot="button"]:is(
+    [data-variant="default"],
+    [data-variant="destructive"]
+  ):hover:not(:disabled) {
+  background: var(--ui-primary-hover);
+}
+:root [data-slot="button"][data-variant="outline"] {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+:root [data-slot="button"][data-variant="secondary"] {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+:root [data-slot="button"]:is([data-variant="ghost"], [data-variant="link"]) {
+  background: transparent;
+  color: var(--foreground);
+}
+:root
+  [data-slot="button"]:is(
+    [data-variant="outline"],
+    [data-variant="secondary"],
+    [data-variant="ghost"]
+  ):hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+:root [data-slot="button"]:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+:root
+  :is(
+    [data-slot="input"],
+    [data-slot="select-trigger"],
+    [data-slot="textarea"]
+  ) {
+  border: 1px solid var(--input);
+  border-radius: var(--ui-radius-control);
+  background: var(--card);
+  color: var(--foreground);
+  padding-inline: var(--ui-control-padding);
+  font-size: var(--ui-font-size);
+  line-height: 1.5;
+  box-shadow: none;
+  transition:
+    border-color var(--ui-transition),
+    box-shadow var(--ui-transition),
+    background-color var(--ui-transition);
+}
+:root :is([data-slot="input"], [data-slot="select-trigger"]) {
+  height: var(--ui-control-height);
+}
+:root [data-slot="select-trigger"][data-size="sm"] {
+  height: var(--ui-control-height-sm);
+  font-size: var(--ui-font-size-sm);
+}
+:root [data-slot="textarea"] {
+  min-height: 88px;
+  padding-block: 10px;
+}
+:root :is([data-slot="input"], [data-slot="textarea"])::placeholder {
+  color: var(--muted-foreground);
+}
+:root
+  :is(
+    [data-slot="input"],
+    [data-slot="select-trigger"],
+    [data-slot="textarea"]
+  ):hover:not(:disabled) {
+  border-color: var(--ring);
+}
+:root
+  :is(
+    [data-slot="button"],
+    [data-slot="input"],
+    [data-slot="select-trigger"],
+    [data-slot="textarea"]
+  ):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+:root
+  :is(
+    [data-slot="button"],
+    [data-slot="input"],
+    [data-slot="select-trigger"],
+    [data-slot="textarea"]
+  ):disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+:root
+  :is(
+    [data-slot="input"],
+    [data-slot="select-trigger"],
+    [data-slot="textarea"]
+  )[aria-invalid="true"] {
+  border-color: var(--destructive);
+}
+
+/* Existing native form fields use the same geometry and surfaces. */
+:root
+  :is(
+    .space-dialog,
+    .space-delete-name,
+    .bookmark-dialog,
+    .editor-form,
+    .dev-create-form,
+    .report-fields,
+    .report-ai-options,
+    .assistant-draft-options
+  )
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(
+        [type="color"]
+      ):not([type="range"]),
+    select,
+    textarea
+  ) {
+  border: 1px solid var(--input);
+  border-radius: var(--ui-radius-control);
+  padding: 8px var(--ui-control-padding);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: var(--ui-font-size);
+  line-height: 1.5;
+  transition:
+    border-color var(--ui-transition),
+    box-shadow var(--ui-transition);
+}
+:root
+  :is(
+    .space-dialog,
+    .space-delete-name,
+    .bookmark-dialog,
+    .editor-form,
+    .dev-create-form,
+    .report-fields,
+    .report-ai-options,
+    .assistant-draft-options
+  )
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(
+        [type="color"]
+      ):not([type="range"]),
+    select
+  ) {
+  height: var(--ui-control-height);
+  padding-block: 0;
+}
+:root
+  :is(
+    .space-dialog,
+    .space-delete-name,
+    .bookmark-dialog,
+    .editor-form,
+    .dev-create-form,
+    .report-fields,
+    .report-ai-options,
+    .assistant-draft-options
+  )
+  :is(input, select, textarea):focus-visible {
+  border-color: var(--ring);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+:root
+  :is(
+    .space-dialog,
+    .bookmark-dialog,
+    .editor-form,
+    .dev-create-form,
+    .report-fields
+  )
+  :is(input, select, textarea):disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.app-shell :is(.search-field, .dm-search, .notes-search) {
+  min-height: var(--ui-control-height);
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-control);
+  background: var(--card);
+  color: var(--muted-foreground);
+  transition: border-color var(--ui-transition);
+}
+.app-shell :is(.search-field, .dm-search, .notes-search):focus-within {
+  border-color: var(--ring);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.app-shell
+  :is(.search-field, .dm-search, .notes-search)
+  input[data-slot="input"] {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: var(--ui-control-height-sm);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding-inline: 0;
+  outline: none;
+  box-shadow: none;
+}
+.app-shell
+  :is(.search-field, .dm-search, .notes-search)
+  input[data-slot="input"]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Menus, statuses and dialogs retain their roles across business modules. */
+:root
+  :is(
+    [data-slot="select-content"],
+    .space-card-menu,
+    .space-switcher-menu,
+    .date-picker-popover,
+    .chat-directory-popover
+  ) {
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-popover);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-floating);
+}
+:root :is(.space-card-menu, .space-switcher-menu) {
+  padding: 6px;
+}
+:root
+  :is(
+    [data-slot="select-item"],
+    .space-card-menu button,
+    .space-switcher-menu button,
+    .space-switcher-menu a
+  ) {
+  min-height: var(--ui-control-height-sm);
+  border-radius: var(--ui-radius-control);
+  font-size: var(--ui-font-size-sm);
+  color: var(--foreground);
+  transition:
+    background-color var(--ui-transition),
+    color var(--ui-transition);
+}
+:root
+  :is(
+    .space-card-menu button,
+    .space-switcher-menu button,
+    .space-switcher-menu a
+  ):is(:hover, :focus-visible) {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  outline: none;
+}
+:root :is(.status, .priority, .item-type, .dev-status, .sprint-state) {
+  border-radius: var(--ui-radius-compact);
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  padding: 3px 7px;
+}
+:root .task-state .status {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0;
+  line-height: 1;
+  gap: 0;
+}
+:root .task-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  flex-shrink: 0;
+}
+:root
+  :is(
+    .confirmation-content,
+    .space-dialog,
+    .bookmark-dialog,
+    .dialog-content.editor
+  ) {
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-dialog);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-floating);
+}
+:root :is(.confirmation-content, .space-dialog, .bookmark-dialog) > h2 {
+  color: var(--foreground);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+}
+:root
+  :is(
+    .confirmation-actions,
+    .space-dialog-actions,
+    .editor-actions,
+    .report-actions
+  ) {
+  gap: 8px;
+}
+.rich-toolbar button[aria-pressed="true"] {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+/* A full-height drawer remains flush with the window edge. */
+:root .dialog-content.editor.sprint-drawer {
+  border-radius: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root
+    :is(
+      [data-slot="button"],
+      [data-slot="input"],
+      [data-slot="select-trigger"],
+      [data-slot="textarea"],
+      [data-slot="select-item"]
+    ) {
+    transition: none;
+  }
+  :root [data-slot="button"]:active:not(:disabled) {
+    transform: none;
+  }
+}

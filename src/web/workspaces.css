@@ -7,38 +7,42 @@
 }
 .spaces-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 310px));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 360px));
+  gap: 24px;
 }
 .space-card {
   position: relative;
-  border: 1px solid rgb(13 12 34 / 0.095);
-  border-radius: 14px;
-  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
   transition:
-    border-color 0.18s,
-    box-shadow 0.18s;
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
 }
 .space-card:hover {
-  border-color: rgb(13 12 34 / 0.24);
-  box-shadow: 0 8px 24px rgb(13 12 34 / 0.06);
+  border-color: var(--input);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
 }
 .space-card-open {
   width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 24px 22px 0;
+  padding: 24px;
   text-align: left;
   border: 0;
   background: transparent;
   cursor: pointer;
-  color: #0d0c22;
-  border-radius: 14px;
+  color: var(--card-foreground);
+  border-radius: inherit;
 }
 .space-card-open:focus-visible,
 .space-card-more:focus-visible {
-  outline: 2px solid #777185;
+  outline: 2px solid var(--ring);
   outline-offset: 3px;
 }
 .space-card-open:disabled {
@@ -50,47 +54,50 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background: #f3f3f5;
+  border-radius: var(--ui-radius-circle);
+  background: var(--muted);
   flex-shrink: 0;
 }
 .space-card-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-right: 20px;
+  gap: 12px;
+  padding-right: 28px;
   width: 100%;
 }
 .space-card-title svg {
   flex-shrink: 0;
-  color: rgb(13 12 34 / 0.48);
+  color: var(--muted-foreground);
 }
 .space-card-title strong {
-  font-size: 16px;
+  min-width: 0;
+  font-size: 18px;
   font-weight: 600;
+  letter-spacing: -0.02em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .space-card-counts {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   width: 100%;
   gap: 12px;
+  padding: 8px 0;
   font-size: 11px;
-  color: #83828d;
-  margin: 24px 0;
+  color: var(--muted-foreground);
+  margin: 16px 0 24px;
 }
 .space-card-counts > span {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 .space-card-counts strong {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 26px;
+  font-weight: 500;
   line-height: 1.2;
-  color: #343342;
+  color: var(--foreground);
   font-variant-numeric: tabular-nums;
 }
 .space-card-description {
@@ -103,47 +110,59 @@
   margin-top: 16px;
   font-size: 12px;
   line-height: 20px;
-  color: #83828d;
+  color: var(--muted-foreground);
 }
 .space-card-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: calc(100% + 44px);
-  margin: 0 -22px;
-  padding: 15px 22px;
-  border-top: 1px solid #eeeef1;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-top: auto;
 }
 .space-card-enter {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: var(--ui-radius-button);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 12px;
   font-weight: 500;
-  color: #555361;
+  transition: opacity 200ms ease;
 }
-.space-card-time {
-  font-size: 10px;
-  color: #94939d;
+.space-card-open:hover .space-card-enter {
+  opacity: 0.88;
 }
 .space-card-more {
   position: absolute;
-  right: 12px;
-  top: 28px;
+  right: 20px;
+  top: 29px;
   width: 30px;
   height: 30px;
   display: grid;
   place-items: center;
   border: 0;
   background: transparent;
-  color: rgb(13 12 34 / 0.378);
-  border-radius: 5px;
+  color: var(--muted-foreground);
+  border-radius: var(--ui-radius-circle);
   cursor: pointer;
 }
 .space-card-more:hover {
-  background: rgb(13 12 34 / 0.057);
-  color: rgb(13 12 34 / 0.614);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+@media (prefers-reduced-motion: reduce) {
+  .space-card,
+  .space-card-enter {
+    transition: none;
+  }
+  .space-card:hover {
+    transform: none;
+  }
 }
 .space-menu-dismiss {
   position: fixed;
@@ -160,7 +179,7 @@
   min-width: 155px;
   padding: 5px;
   border: 1px solid rgb(13 12 34 / 0.09);
-  border-radius: 7px;
+  border-radius: var(--ui-radius-popover);
   background: #ffffff;
   box-shadow: 0 6px 24px rgb(13 12 34 / 0.071);
 }
@@ -178,7 +197,7 @@
   padding: 8px 10px;
   text-align: left;
   text-decoration: none;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-control);
   cursor: pointer;
 }
 .space-card-menu button:hover,
@@ -219,7 +238,7 @@
   padding: 24px;
   background: white;
   border: 1px solid rgb(13 12 34 / 0.095);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-dialog);
   box-shadow: 0 16px 60px rgb(13 12 34 / 0.141);
 }
 .space-dialog h2 {
@@ -246,7 +265,7 @@
   width: 100%;
   box-sizing: border-box;
   border: 1px solid rgb(13 12 34 / 0.107);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   padding: 9px 10px;
   font: inherit;
   color: #0d0c22;
@@ -278,7 +297,7 @@
   width: 100%;
   padding: 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-button);
   background: transparent;
   color: rgb(13 12 34 / 0.611);
   font-size: 12px;
@@ -306,7 +325,7 @@
   padding: 5px;
   border: 1px solid rgb(13 12 34 / 0.103);
   background: #ffffff;
-  border-radius: 7px;
+  border-radius: var(--ui-radius-popover);
   box-shadow: 0 8px 28px rgb(13 12 34 / 0.094);
 }
 
@@ -362,7 +381,7 @@
   height: 26px;
   padding: 0;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-button);
   background: transparent;
   color: rgb(13 12 34 / 0.433);
   cursor: pointer;
@@ -389,7 +408,7 @@
   gap: 7px;
   padding: 12px;
   border: 1px solid rgb(13 12 34 / 0.069);
-  border-radius: 7px;
+  border-radius: var(--ui-radius-control);
   background: rgb(13 12 34 / 0.02);
   color: rgb(13 12 34 / 0.486);
   font-size: 11px;

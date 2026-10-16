@@ -1,3 +1,4 @@
+import { EmptyState } from "../components/empty-state";
 import {
   useEffect,
   useRef,
@@ -1321,10 +1322,12 @@ export function NotePage() {
             onChange={(e) => insertImage(e.target.files?.[0])}
           />
           {!count && (
-            <div className="note-canvas-empty">
-              <Layers2 size={24} />
-              <span>从一段文字、一张图片开始</span>
-            </div>
+            <EmptyState
+              className="note-canvas-empty"
+              icon={Layers2}
+              title="从一段文字、一张图片开始"
+              description="使用工具栏添加文字、图片或图形。"
+            />
           )}
           {selection.length > 1 && (
             <aside

@@ -1,3 +1,5 @@
+import { PAGE_SIZE } from "../../shared/pagination";
+import { EmptyState } from "../components/empty-state";
 import { DatePicker } from "../components/date-picker";
 import { useReportExport } from "../report-export";
 import { ReportWorkItemPicker } from "../components/report-work-item-picker";
@@ -352,7 +354,7 @@ function DailyReportEditor() {
       const unique = new Map<string, ReportMatter>();
       let p = 1,
         total = 1;
-      while ((p - 1) * 20 < total) {
+      while ((p - 1) * PAGE_SIZE < total) {
         const result = await api<DailyReportList>(
           `/api/v1/daily-reports?page=${p++}`,
         );
@@ -611,7 +613,13 @@ function DailyReportEditor() {
                         关闭
                       </Button>
                     </div>
-                    {!history.length && <p>没有可接续的历史事项。</p>}
+                    {!history.length && (
+                      <EmptyState
+                        compact
+                        title="暂无可接续的历史事项"
+                        description="此前未完成的事项会显示在这里。"
+                      />
+                    )}
                     {history.map((item) => (
                       <Button
                         key={item.matterId}

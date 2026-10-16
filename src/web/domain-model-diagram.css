@@ -24,7 +24,7 @@
   min-height: 0;
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-panel);
   overflow: hidden;
 }
 .dm-diagram-toolbar,
@@ -34,7 +34,7 @@
   z-index: 5;
   padding: 4px 6px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-control);
   background: rgb(255 255 255 / 0.949);
   box-shadow: 0 2px 8px rgb(13 12 34 / 0.031);
   backdrop-filter: blur(12px);
@@ -55,7 +55,7 @@
   width: 26px;
   height: 26px;
   padding: 0;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   color: rgb(13 12 34 / 0.564);
 }
 .dm-diagram-toolbar [data-slot="button"] svg,
@@ -182,7 +182,7 @@
   z-index: 1;
   flex-shrink: 0;
   border: 1px solid rgb(13 12 34 / 0.113);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-panel);
   background: #ffffff;
   box-shadow: 0 2px 5px rgb(13 12 34 / 0.02);
   text-align: left;
@@ -331,7 +331,7 @@
   color: #0d0c22;
   background: rgb(13 12 34 / 0.04);
   padding: 2px 5px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-compact);
   overflow-wrap: anywhere;
 }
 .dm-tree-field p {

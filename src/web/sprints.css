@@ -19,8 +19,8 @@
 }
 .sprint-overview {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 20px;
+  border-radius: var(--ui-radius-card);
+  padding: 24px;
   background: var(--card);
   margin-bottom: 20px;
 }
@@ -46,7 +46,7 @@
 .sprint-state {
   font-size: 11px;
   padding: 3px 7px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-compact);
   background: var(--muted);
   color: var(--muted-foreground);
 }
@@ -116,7 +116,7 @@
   min-width: 235px;
   background: var(--muted);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-panel);
   padding: 12px;
   min-height: 380px;
 }
@@ -136,7 +136,7 @@
   width: 7px;
   height: 7px;
   background: var(--muted-foreground);
-  border-radius: 50%;
+  border-radius: var(--ui-radius-circle);
 }
 .column-in_progress h3 > span {
   background: var(--foreground);
@@ -160,8 +160,8 @@
 .sprint-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 14px;
+  border-radius: var(--ui-radius-panel);
+  padding: 16px;
   box-shadow: var(--shadow-card);
 }
 .sprint-card[data-movable="true"] {
@@ -183,8 +183,8 @@
 .sprint-card-title {
   display: block;
   text-align: left;
-  font-size: 13px;
-  font-weight: 550;
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1.6;
   width: 100%;
   margin: 9px 0;
@@ -253,7 +253,7 @@
   width: 100%;
   min-height: 96px;
   border: 1px solid var(--input);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   padding: 8px;
   font-size: 13px;
 }
@@ -333,7 +333,7 @@
 .sprint-metrics progress {
   appearance: none;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-compact);
   overflow: hidden;
   background: var(--muted);
 }
@@ -365,7 +365,7 @@
   max-width: 280px;
   padding: 12px 16px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   background: var(--card);
   box-shadow: var(--shadow-floating);
   font-size: 13px;
@@ -390,7 +390,7 @@
 .sprint-blocked {
   margin: 8px 0;
   padding: 6px 8px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-compact);
   background: var(--muted);
   color: var(--foreground);
   font-size: 11px;
@@ -450,7 +450,7 @@
   margin: 12px 0;
   padding: 12px;
   border: 1px solid var(--input);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-control);
   background: var(--background);
   color: var(--foreground);
 }
@@ -475,7 +475,7 @@
 }
 .sprint-metrics button {
   padding: 4px 6px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-control);
 }
 .sprint-metrics button:hover,
 .sprint-metrics button[aria-pressed="true"] {

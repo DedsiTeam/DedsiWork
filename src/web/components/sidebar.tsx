@@ -1,60 +1,114 @@
 import { NavLink, useLocation } from "react-router";
 import { MessageSquare } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { navigation } from "../navigation";
-import { useWindowDrag } from "./window-drag";
 import { version } from "../../package.json";
 
+const items = [
+  { to: "/assistant", label: "AI 助手", icon: MessageSquare },
+  ...navigation
+    .filter((group) => group.id !== "system")
+    .flatMap((group) => group.children),
+];
+const settings = navigation.find((group) => group.id === "system")!
+  .children[0]!;
+
 export function Sidebar() {
-  const windowDrag = useWindowDrag();
   const { pathname } = useLocation();
+  const rail = useRef<HTMLElement>(null);
+  const [indicator, setIndicator] = useState<{
+    x: number;
+    y: number;
+    size: number;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const element = rail.current;
+    if (!element) return;
+    const update = () => {
+      const icon = element.querySelector<HTMLElement>(
+        ".nav-item.active .nav-item-icon",
+      );
+      if (!icon) {
+        setIndicator(null);
+        return;
+      }
+      const bounds = element.getBoundingClientRect();
+      const target = icon.getBoundingClientRect();
+      const size = icon.offsetWidth + 4;
+      const next = {
+        x: target.left - bounds.left + target.width / 2 - size / 2,
+        y: target.top - bounds.top + target.height / 2 - size / 2,
+        size,
+      };
+      setIndicator((previous) =>
+        previous?.x === next.x &&
+        previous.y === next.y &&
+        previous.size === next.size
+          ? previous
+          : next,
+      );
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    for (const child of element.children) {
+      if (child.matches("nav, .sidebar-footer")) observer.observe(child);
+    }
+    element.addEventListener("scroll", update, true);
+    return () => {
+      observer.disconnect();
+      element.removeEventListener("scroll", update, true);
+    };
+  }, [pathname]);
+  function renderItem(item: (typeof items)[number]) {
+    const nested =
+      (item.to === "/work-items" &&
+        pathname.startsWith("/work-items/") &&
+        !pathname.startsWith("/work-items/sprints")) ||
+      (["/domain-models", "/development-tasks", "/notes"].includes(item.to) &&
+        pathname.startsWith(`${item.to}/`));
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        end={item.to !== "/assistant"}
+        title={item.label}
+        className={({ isActive }) =>
+          `nav-item${isActive || nested ? " active" : ""}`
+        }
+      >
+        <span className="nav-item-icon">
+          <item.icon size={18} aria-hidden="true" />
+        </span>
+        <span className="nav-item-label">{item.label}</span>
+      </NavLink>
+    );
+  }
   return (
-    <aside className="sidebar sidebar-minimized">
-      <div className="sidebar-header" {...windowDrag} />
+    <aside className="sidebar sidebar-floating" ref={rail}>
+      {indicator && (
+        <div
+          className="sidebar-selection"
+          aria-hidden="true"
+          style={{
+            width: indicator.size,
+            height: indicator.size,
+            transform: `translate3d(${indicator.x}px, ${indicator.y}px, 0)`,
+          }}
+        />
+      )}
       <nav
         id="sidebar-navigation"
         className="module-navigation"
         aria-label="主导航"
       >
-        <NavLink
-          to="/assistant"
-          className={({ isActive }) =>
-            `nav-item sidebar-chat${isActive ? " active" : ""}`
-          }
-          title="DedsiWork Ai Agent"
-          aria-label="DedsiWork Ai Agent"
-        >
-          <MessageSquare size={16} />
-        </NavLink>
-        {navigation.map((group) => (
-          <section
-            className="navigation-group"
-            key={group.id}
-            aria-label={group.label}
-          >
-            <div className="module-children is-open">
-              <div className="module-children-clip">
-                <div className="module-links">
-                  {group.children.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      end
-                      aria-label={item.label}
-                      title={item.label}
-                      className={({ isActive }) =>
-                        `nav-item ${isActive || (item.to === "/work-items" && pathname.startsWith("/work-items/") && !pathname.startsWith("/work-items/sprints")) || (item.to === "/domain-models" && pathname.startsWith("/domain-models/")) || (item.to === "/development-tasks" && pathname.startsWith("/development-tasks/")) || (item.to === "/notes" && pathname.startsWith("/notes/")) ? "active" : ""}`
-                      }
-                    >
-                      <item.icon size={16} />
-                    </NavLink>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-        ))}
+        {items.map(renderItem)}
       </nav>
-      <div className="sidebar-version">{version}</div>
+      <div className="sidebar-footer">
+        {renderItem(settings)}
+        <div className="sidebar-version">{version}</div>
+      </div>
     </aside>
   );
 }

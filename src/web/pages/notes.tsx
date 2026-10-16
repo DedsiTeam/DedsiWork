@@ -1,3 +1,5 @@
+import { PAGE_SIZE } from "../../shared/pagination";
+import { EmptyState } from "../components/empty-state";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import * as Dialog from "@radix-ui/react-alert-dialog";
@@ -26,7 +28,7 @@ export function NotesPage() {
     [revision, setRevision] = useState(0);
   const [result, setResult] = useState<CanvasNoteList>({
     data: [],
-    meta: { total: 0, page: 1, pageSize: 20 },
+    meta: { total: 0, page: 1, pageSize: PAGE_SIZE },
   });
   const [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
@@ -115,10 +117,15 @@ export function NotesPage() {
           正在加载…
         </div>
       ) : !error && result.data.length === 0 ? (
-        <div className="notes-empty">
-          <StickyNote size={28} />
-          <h2>{q ? "没有找到匹配的无边记" : "留一个地方，放下你的想法"}</h2>
-        </div>
+        <EmptyState
+          icon={StickyNote}
+          title={q ? "没有找到匹配的无边记" : "创建第一个无边记"}
+          description={
+            q
+              ? "试试其他名称或关键词。"
+              : "用文字、图片和图形，记录并整理你的想法。"
+          }
+        />
       ) : (
         <div className="notes-grid">
           {result.data.map((note) => (
@@ -167,12 +174,12 @@ export function NotesPage() {
             <ChevronLeft />
           </Button>
           <span>
-            {page} / {Math.max(1, Math.ceil(result.meta.total / 20))}
+            {page} / {Math.max(1, Math.ceil(result.meta.total / PAGE_SIZE))}
           </span>
           <Button
             variant="ghost"
             size="icon-sm"
-            disabled={page * 20 >= result.meta.total}
+            disabled={page * PAGE_SIZE >= result.meta.total}
             aria-label="下一页"
             onClick={() => setPage((p) => p + 1)}
           >

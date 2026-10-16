@@ -1,3 +1,5 @@
+import { PAGE_SIZE } from "../../shared/pagination";
+import { EmptyState } from "../components/empty-state";
 import "../collection-cards.css";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -28,7 +30,7 @@ export function DomainModelsPage() {
   const [revision, setRevision] = useState(0);
   const [result, setResult] = useState<DomainModelList>({
     data: [],
-    meta: { total: 0, page: 1, pageSize: 20 },
+    meta: { total: 0, page: 1, pageSize: PAGE_SIZE },
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -138,15 +140,15 @@ export function DomainModelsPage() {
             正在加载领域模型…
           </p>
         ) : !error && result.data.length === 0 ? (
-          <div className="dm-empty">
-            <Boxes size={32} />
-            <h2>{q ? "没有找到匹配的模型" : "创建第一个领域模型"}</h2>
-            <p>
-              {q
+          <EmptyState
+            icon={Boxes}
+            title={q ? "没有找到匹配的模型" : "创建第一个领域模型"}
+            description={
+              q
                 ? "试试其他名称或关键词。"
-                : "在一个模型中组织五类设计项，并定义每个字段的类型和说明。"}
-            </p>
-          </div>
+                : "在一个模型中组织五类设计项，并定义每个字段的类型和说明。"
+            }
+          />
         ) : (
           !error && (
             <div className="model-collection collection-card-grid" role="list">
@@ -231,13 +233,15 @@ export function DomainModelsPage() {
               <ChevronLeft />
             </Button>
             <span>
-              {page} / {Math.max(1, Math.ceil(result.meta.total / 20))}
+              {page} / {Math.max(1, Math.ceil(result.meta.total / PAGE_SIZE))}
             </span>
             <Button
               variant="ghost"
               size="icon-sm"
               aria-label="下一页"
-              disabled={page * 20 >= result.meta.total || loading || deleting}
+              disabled={
+                page * PAGE_SIZE >= result.meta.total || loading || deleting
+              }
               onClick={() => setPage(page + 1)}
             >
               <ChevronRight />

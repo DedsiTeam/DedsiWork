@@ -236,5 +236,17 @@ export function openDatabase(path: string) {
       );
     }).immediate();
   }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=14").get()
+  ) {
+    db.transaction(() => {
+      db.exec(
+        "CREATE TABLE ai_workflows (id INTEGER PRIMARY KEY CHECK(id=1), version INTEGER NOT NULL, workflows_json TEXT NOT NULL)",
+      );
+      db.query("INSERT INTO schema_migrations VALUES (14,?)").run(
+        new Date().toISOString(),
+      );
+    }).immediate();
+  }
   return db;
 }

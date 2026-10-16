@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../shared/pagination";
 import { z } from "zod";
 import type { Database } from "bun:sqlite";
 import { AppError } from "../../shared/errors";
@@ -58,9 +59,9 @@ export class DomainModelService {
     ).total;
     const rows = this.db
       .query(
-        `SELECT *, json_array_length(elements) AS element_count FROM domain_models WHERE ${where} ORDER BY updated_at DESC, id DESC LIMIT 20 OFFSET ?`,
+        `SELECT *, json_array_length(elements) AS element_count FROM domain_models WHERE ${where} ORDER BY updated_at DESC, id DESC LIMIT ${PAGE_SIZE} OFFSET ?`,
       )
-      .all(query.q, query.q, (query.page - 1) * 20) as (Row & {
+      .all(query.q, query.q, (query.page - 1) * PAGE_SIZE) as (Row & {
       element_count: number;
     })[];
     return {
@@ -80,7 +81,7 @@ export class DomainModelService {
           ),
         };
       }),
-      meta: { total, page: query.page, pageSize: 20 },
+      meta: { total, page: query.page, pageSize: PAGE_SIZE },
     };
   }
   create(input: unknown, actor: Actor) {

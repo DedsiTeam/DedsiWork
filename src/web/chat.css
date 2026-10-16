@@ -50,7 +50,7 @@
   display: flex;
   overflow: hidden;
   border: 1px solid rgb(13 12 34 / 0.099);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-panel);
   background: #ffffff;
 }
 .chat-history {
@@ -78,7 +78,7 @@
   gap: 8px;
   padding: 9px 8px;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   background: transparent;
   color: rgb(13 12 34 / 0.486);
   font-size: 11px;
@@ -136,7 +136,7 @@
   height: 27px;
   padding: 0 8px;
   border: 1px solid rgb(13 12 34 / 0.087);
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   background: transparent;
   color: rgb(13 12 34 / 0.486);
   font-size: 10px;
@@ -187,7 +187,7 @@
   max-width: 80%;
   margin-left: auto;
   padding: 10px 14px;
-  border-radius: 16px;
+  border-radius: var(--ui-radius-panel);
   background: rgb(13 12 34 / 0.057);
 }
 .chat-message-user .chat-message-image {
@@ -236,7 +236,7 @@
   max-height: 360px;
   overflow: auto;
   padding: 12px 14px;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   background: rgb(13 12 34 / 0.037);
   color: rgb(13 12 34 / 0.628);
   font-size: 11px;
@@ -249,7 +249,7 @@
 }
 .chat-markdown code {
   padding: 2px 4px;
-  border-radius: 3px;
+  border-radius: var(--ui-radius-compact);
   background: rgb(13 12 34 / 0.049);
   font-size: 11px;
 }
@@ -290,13 +290,13 @@
   max-width: 320px;
   max-height: 240px;
   object-fit: contain;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   margin-top: 10px;
 }
 .chat-tool {
   margin: 8px 0 16px;
   border: 1px solid rgb(13 12 34 / 0.07);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   padding: 9px 12px;
   color: rgb(13 12 34 / 0.486);
   font-size: 11px;
@@ -338,7 +338,7 @@
   margin: 0 20px 18px;
   padding: 12px 12px 8px;
   border: 1px solid rgb(13 12 34 / 0.112);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-panel);
   background: #ffffff;
   flex-shrink: 0;
 }
@@ -387,7 +387,7 @@
   width: 56px;
   height: 56px;
   object-fit: cover;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
 }
 .chat-attachments button {
   position: absolute;
@@ -399,7 +399,7 @@
   width: 18px;
   height: 18px;
   border: 1px solid rgb(13 12 34 / 0.099);
-  border-radius: 50%;
+  border-radius: var(--ui-radius-circle);
   background: #ffffff;
   color: rgb(13 12 34 / 0.433);
   cursor: pointer;
@@ -416,7 +416,7 @@
   margin: 12px 0;
   padding: 16px;
   border: 1px solid rgb(13 12 34 / 0.12);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-control);
   background: rgb(13 12 34 / 0.02);
   font-size: 12px;
 }
@@ -454,7 +454,7 @@
   height: 31px;
   padding: 0 9px;
   border: 1px solid rgb(13 12 34 / 0.112);
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   background: #ffffff;
   font-size: 12px;
 }
@@ -466,7 +466,7 @@
 .chat-answer-options button {
   padding: 5px 8px;
   border: 1px solid rgb(13 12 34 / 0.112);
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   background: #ffffff;
   color: rgb(13 12 34 / 0.486);
   font-size: 11px;
@@ -490,7 +490,7 @@
   min-height: 100px;
   padding: 10px;
   border: 1px solid rgb(13 12 34 / 0.112);
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   background: #ffffff;
   font-family: monospace;
   font-size: 11px;
@@ -500,7 +500,7 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
 }
 .chat-history-row:hover {
   background: rgb(13 12 34 / 0.069);
@@ -554,7 +554,7 @@
 .chat-composer {
   margin: 0;
   padding: 14px 14px 10px;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-panel);
   box-shadow: 0 2px 8px rgb(13 12 34 / 0.015);
 }
 .chat-composer > textarea {
@@ -577,7 +577,7 @@
   max-height: min(480px, 100%);
   padding: 10px 7px;
   border: 1px solid rgb(13 12 34 / 0.099);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-popover);
   background: #ffffff;
   box-shadow: 0 8px 30px rgb(13 12 34 / 0.071);
 }
@@ -596,7 +596,7 @@
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-control);
   padding: 4px;
   background: transparent;
   color: rgb(13 12 34 / 0.378);
@@ -619,7 +619,7 @@
   height: 27px;
   max-width: 160px;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-button);
   background: transparent;
   padding: 0 6px;
   color: rgb(13 12 34 / 0.465);
@@ -649,7 +649,7 @@
   width: 340px;
   padding: 12px;
   border: 1px solid rgb(13 12 34 / 0.099);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-popover);
   background: #ffffff;
   box-shadow: 0 8px 24px rgb(13 12 34 / 0.071);
 }
@@ -663,7 +663,7 @@
 .chat-directory-popover input {
   width: 100%;
   border: 1px solid rgb(13 12 34 / 0.103);
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   padding: 8px;
   font-size: 11px;
   outline: none;
@@ -676,7 +676,7 @@
   height: 27px;
   max-width: 170px;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
   background: transparent;
   padding: 0 6px;
   color: rgb(13 12 34 / 0.465);

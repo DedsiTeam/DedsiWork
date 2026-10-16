@@ -1,3 +1,5 @@
+import { PAGE_SIZE } from "../../shared/pagination";
+import { EmptyState } from "../components/empty-state";
 import "../collection-cards.css";
 import { SprintAssignment } from "../components/sprint-assignment";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -48,7 +50,7 @@ export function WorkItemsPage({
     [page, setPage] = useState(1);
   const [result, setResult] = useState<Page<WorkItem>>({
     data: [],
-    meta: { total: 0, page: 1, pageSize: 20 },
+    meta: { total: 0, page: 1, pageSize: PAGE_SIZE },
   });
   const [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
@@ -139,7 +141,7 @@ export function WorkItemsPage({
       const params = new URLSearchParams({
         q,
         page: String(page),
-        pageSize: "20",
+        pageSize: String(PAGE_SIZE),
         deleted: String(view === "trash"),
       });
       if (status !== "all") params.set("status", status);
@@ -484,12 +486,10 @@ export function WorkItemsPage({
               ))}
             </div>
             {!result.data.length && !error && (
-              <div className="empty-state">
-                <span>
-                  <LayoutList size={28} />
-                </span>
-                <h2>
-                  {loading
+              <EmptyState
+                icon={LayoutList}
+                title={
+                  loading
                     ? "正在读取工作项…"
                     : q ||
                         status !== "all" ||
@@ -498,16 +498,21 @@ export function WorkItemsPage({
                       ? "没有找到匹配的工作项"
                       : view === "trash"
                         ? "回收站是空的"
-                        : "从一件小事开始"}
-                </h2>
-                <p>
-                  {loading
-                    ? "正在从本地数据库获取最新数据。"
-                    : view === "trash"
-                      ? "移入回收站的工作项会显示在这里。"
-                      : "记录接下来要做的事，在这里逐步推进。"}
-                </p>
-              </div>
+                        : "创建第一个工作项"
+                }
+                description={
+                  loading
+                    ? "正在获取最新数据。"
+                    : q ||
+                        status !== "all" ||
+                        type !== "all" ||
+                        priority !== "all"
+                      ? "调整关键词或筛选条件后重试。"
+                      : view === "trash"
+                        ? "移入回收站的工作项会显示在这里。"
+                        : "记录接下来要做的事，在这里逐步推进。"
+                }
+              />
             )}
             <footer className="list-footer">
               <span>共 {result.meta.total} 项</span>
@@ -522,13 +527,14 @@ export function WorkItemsPage({
                   <ChevronLeft />
                 </Button>
                 <span>
-                  {page} / {Math.max(1, Math.ceil(result.meta.total / 20))}
+                  {page} /{" "}
+                  {Math.max(1, Math.ceil(result.meta.total / PAGE_SIZE))}
                 </span>
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   aria-label="下一页"
-                  disabled={page * 20 >= result.meta.total || loading}
+                  disabled={page * PAGE_SIZE >= result.meta.total || loading}
                   onClick={() => setPage((p) => p + 1)}
                 >
                   <ChevronRight />

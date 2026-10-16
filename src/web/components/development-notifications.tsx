@@ -1,3 +1,4 @@
+import { EmptyState } from "./empty-state";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -203,7 +204,14 @@ export function DevelopmentNotifications() {
             </p>
           )}
           <div className="development-notice-list">
-            {!items.length && <p>暂无待处理的研发提醒。</p>}
+            {!items.length && (
+              <EmptyState
+                icon={Bell}
+                compact
+                title="暂无待处理的研发提醒"
+                description="需要关注的研发进展会显示在这里。"
+              />
+            )}
             {items.map((item) => (
               <article key={item.id}>
                 <strong>{item.title}</strong>

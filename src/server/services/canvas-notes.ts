@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../shared/pagination";
 import type { Database } from "bun:sqlite";
 import { z } from "zod";
 import { AppError } from "../../shared/errors";
@@ -60,9 +61,9 @@ export class CanvasNotes {
     // Return summaries only; embedded images stay out of the management list.
     const rows = this.db
       .query(
-        `SELECT id,name,version,created_at,updated_at,json_array_length(content,'$.nodes') AS nodeCount, (SELECT substr(group_concat(json_extract(value,'$.text'),' '),1,140) FROM json_each(canvas_notes.content,'$.nodes') WHERE json_extract(value,'$.text')<>'') AS preview FROM canvas_notes WHERE ${where} ORDER BY updated_at DESC,id DESC LIMIT 20 OFFSET ?`,
+        `SELECT id,name,version,created_at,updated_at,json_array_length(content,'$.nodes') AS nodeCount, (SELECT substr(group_concat(json_extract(value,'$.text'),' '),1,140) FROM json_each(canvas_notes.content,'$.nodes') WHERE json_extract(value,'$.text')<>'') AS preview FROM canvas_notes WHERE ${where} ORDER BY updated_at DESC,id DESC LIMIT ${PAGE_SIZE} OFFSET ?`,
       )
-      .all(query, (page - 1) * 20) as (Row & {
+      .all(query, (page - 1) * PAGE_SIZE) as (Row & {
       nodeCount: number;
       preview: string | null;
     })[];
@@ -76,7 +77,7 @@ export class CanvasNotes {
         nodeCount: row.nodeCount,
         preview: row.preview || "",
       })),
-      meta: { total, page, pageSize: 20 },
+      meta: { total, page, pageSize: PAGE_SIZE },
     };
   }
   save(id: string | null, input: unknown, actor: Actor) {

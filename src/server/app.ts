@@ -1,6 +1,7 @@
 import { prepareDevelopmentSources } from "./services/development-sources";
 import type { DevelopmentTask } from "../shared/development-task";
 import { Bookmarks } from "./services/bookmarks";
+import { AIWorkflows } from "./services/ai-workflows";
 import { version } from "../package.json";
 import { ReportExports } from "./services/report-exports";
 import { ReportAI } from "./services/report-ai";
@@ -80,19 +81,15 @@ export function createApp(options: {
         }
         const business = {
           bookmarks: new Bookmarks(db).get(),
-          sprints: sprints
-            .list()
-            .data.map((sprint) => ({
-              sprint,
-              items: sprints
-                .board(sprint.id)
-                .items.map((item) => ({
-                  id: item.id,
-                  title: item.title,
-                  status: item.status,
-                  version: item.version,
-                })),
+          sprints: sprints.list().data.map((sprint) => ({
+            sprint,
+            items: sprints.board(sprint.id).items.map((item) => ({
+              id: item.id,
+              title: item.title,
+              status: item.status,
+              version: item.version,
             })),
+          })),
         };
         const signatureBusiness = JSON.stringify(business);
         if (signatureBusiness !== businessSignature) {
@@ -126,6 +123,7 @@ export function createApp(options: {
       domainModels,
       notes: new CanvasNotes(db),
       bookmarks: new Bookmarks(db),
+      workflows: new AIWorkflows(db),
       dailyReports,
       reportAI,
       assistant,
@@ -367,12 +365,19 @@ export function createApp(options: {
         domainModels,
         notes,
         bookmarks,
+        workflows,
         dailyReports,
         reportAI,
         assistant,
         chat,
         development,
       } = scoped(req);
+      if (url.pathname === "/api/v1/ai-workflows") {
+        if (req.method === "GET") return reply({ data: workflows.get() });
+        if (req.method === "PUT")
+          return reply({ data: workflows.save(await json(req), actor) });
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
       if (url.pathname === "/api/v1/bookmarks") {
         if (req.method === "GET") return reply({ data: bookmarks.get() });
         if (req.method === "PUT")

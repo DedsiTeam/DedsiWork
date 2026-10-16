@@ -1,3 +1,5 @@
+import { EmptyState } from "../components/empty-state";
+import { AIWorkflowLibrary } from "../components/ai-workflows";
 import { VoicePreview } from "../components/voice-preview";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useNavigate, useSearchParams } from "react-router";
@@ -26,6 +28,7 @@ import {
   Boxes,
   ListTodo,
   X,
+  Workflow,
 } from "lucide-react";
 import { api } from "../api";
 import { Button } from "../components/ui/button";
@@ -77,6 +80,7 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
     stored("dedsiwork:agent-view") === "voice" ? "voice" : "text",
   );
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
   useEffect(() => {
     if (!historyOpen) return;
     const escape = (event: KeyboardEvent) => {
@@ -375,6 +379,56 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
       if (alive.current) setSending(false);
     }
   }
+  async function runWorkflow(prompt: string) {
+    if (busy || loading || !status?.ready)
+      throw new Error("请等待当前回复结束，并确认 Codex 已连接。");
+    setSending(true);
+    setError("");
+    let id = "";
+    try {
+      const { data: created } = await api<{ data: ChatSnapshot }>(
+        "/api/v1/chat/threads",
+        {
+          method: "POST",
+          body: JSON.stringify(model ? { model } : {}),
+        },
+      );
+      id = created.chat.id;
+      draft.current.set(selected, { text, images });
+      selectedRef.current = id;
+      setSelected(id);
+      store(selectionKey, id);
+      accept(created);
+      setChats((previous) => [created.chat, ...previous]);
+      setText(prompt);
+      setImages([]);
+      setView("text");
+      setHistoryOpen(false);
+      follow.current = true;
+      const { data } = await api<{ data: ChatSnapshot }>(
+        `/api/v1/chat/threads/${id}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            text: prompt,
+            images: [],
+            clientId: crypto.randomUUID(),
+            ...(model ? { model } : {}),
+          }),
+        },
+      );
+      if (alive.current && selectedRef.current === id) {
+        accept(data);
+        setText("");
+        draft.current.delete(id);
+      }
+    } catch (e) {
+      if (alive.current) setError((e as Error).message);
+      throw e;
+    } finally {
+      if (alive.current) setSending(false);
+    }
+  }
   async function deleteChat() {
     if (!deleteTarget || deleting) return;
     const id = deleteTarget.id;
@@ -475,6 +529,15 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   }
   return (
     <div className="workspace-content chat-page">
+      {workflowOpen && (
+        <AIWorkflowLibrary
+          key={workspace?.id}
+          onClose={() => setWorkflowOpen(false)}
+          onRun={runWorkflow}
+          canRun={Boolean(status?.ready) && !busy && !loading && !deleting}
+          initialPrompt={text}
+        />
+      )}
       <AlertDialog.Root
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => {
@@ -536,6 +599,16 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
           >
             <Plus />
             新对话
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={sending || deleting}
+            onClick={() => setWorkflowOpen(true)}
+          >
+            <Workflow />
+            AI 模板
           </Button>
           <span className={`chat-connection${status?.ready ? " ready" : ""}`}>
             {connecting ? (
@@ -628,7 +701,12 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                 </button>
               </div>
               {chats.length === 0 && (
-                <p className="chat-history-empty">暂无历史对话</p>
+                <EmptyState
+                  icon={MessageSquare}
+                  compact
+                  title="暂无历史对话"
+                  description="开始对话后，可以在这里继续查看。"
+                />
               )}
               <div className="chat-history-list">
                 {chats.map((chat) => (
@@ -703,10 +781,12 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                 正在加载对话…
               </p>
             ) : !snapshot?.items.length ? (
-              <div className="chat-empty">
-                <MessageSquare size={26} strokeWidth={1.4} />
-                <h2>有什么需要一起完成？</h2>
-              </div>
+              <EmptyState
+                className="chat-empty"
+                icon={MessageSquare}
+                title="有什么需要一起完成？"
+                description="聊聊你的想法，或描述需要完成的工作。"
+              />
             ) : (
               snapshot.items.map((item) => (
                 <div key={item.id}>

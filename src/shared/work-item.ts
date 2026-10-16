@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "./pagination";
 import { z } from "zod";
 import { MAX_DESCRIPTION_LENGTH } from "./description";
 
@@ -65,7 +66,7 @@ export const listSchema = z
     type: z.enum(types).optional(),
     priority: z.enum(priorities).optional(),
     page: z.coerce.number().int().min(1).max(100000).default(1),
-    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+    pageSize: z.coerce.number().int().min(1).max(100).default(PAGE_SIZE),
     unplanned: z.enum(["true", "false"]).default("false"),
     deleted: z.enum(["true", "false"]).default("false"),
   })

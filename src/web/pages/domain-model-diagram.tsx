@@ -1,3 +1,4 @@
+import { EmptyState } from "../components/empty-state";
 import {
   useEffect,
   useRef,
@@ -182,7 +183,11 @@ function ElementCard({
               </div>
             ))
           ) : (
-            <p className="dm-tree-empty">暂无字段</p>
+            <EmptyState
+              compact
+              title="暂无字段"
+              description="在设计页添加字段后即可查看。"
+            />
           )}
         </div>
       )}
@@ -440,9 +445,11 @@ function ModelTree({ model }: { model: DomainModel }) {
                               ))
                             ) : (
                               <li>
-                                <div className="dm-tree-node dm-tree-placeholder">
-                                  暂无{elementLabels[kind]}
-                                </div>
+                                <EmptyState
+                                  compact
+                                  title={`暂无${elementLabels[kind]}`}
+                                  description="在设计页添加对应设计项。"
+                                />
                               </li>
                             )}
                           </ul>

@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../shared/pagination";
 import {
   buildPeriodReport,
   periodQuerySchema,
@@ -71,12 +72,12 @@ export class DailyReports {
     ).n;
     const rows = this.db
       .query(
-        `SELECT * FROM daily_reports WHERE ${where} ORDER BY date DESC,id DESC LIMIT 20 OFFSET ?`,
+        `SELECT * FROM daily_reports WHERE ${where} ORDER BY date DESC,id DESC LIMIT ${PAGE_SIZE} OFFSET ?`,
       )
-      .all(...args, (value.page - 1) * 20) as Row[];
+      .all(...args, (value.page - 1) * PAGE_SIZE) as Row[];
     return {
       data: rows.map((row) => this.map(row)),
-      meta: { total, page: value.page, pageSize: 20 },
+      meta: { total, page: value.page, pageSize: PAGE_SIZE },
     };
   }
   private activeReports() {

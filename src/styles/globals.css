@@ -35,14 +35,14 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: var(--ui-radius-compact);
+  --radius-md: var(--ui-radius-control);
+  --radius-lg: var(--ui-radius-panel);
+  --radius-xl: var(--ui-radius-card);
 }
 
 :root {
-  --radius: 0.6rem;
+  --radius: var(--ui-radius-control);
   --background: #ffffff;
   --foreground: #0d0c22;
   --card: #ffffff;
@@ -77,7 +77,7 @@
 }
 
 .dark {
-  --radius: 0.6rem;
+  --radius: var(--ui-radius-control);
   --background: #ffffff;
   --foreground: #0d0c22;
   --card: #ffffff;

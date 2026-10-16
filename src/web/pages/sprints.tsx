@@ -1,3 +1,5 @@
+import { PAGE_SIZE } from "../../shared/pagination";
+import { EmptyState } from "../components/empty-state";
 import { Textarea } from "../components/ui/textarea";
 import {
   developmentStatusLabels,
@@ -157,7 +159,7 @@ export function SprintsPage() {
     [cancelled, setCancelled] = useState(false);
   const [candidates, setCandidates] = useState<Page<WorkItem>>({
       data: [],
-      meta: { total: 0, page: 1, pageSize: 20 },
+      meta: { total: 0, page: 1, pageSize: PAGE_SIZE },
     }),
     [candidatePage, setCandidatePage] = useState(1),
     [candidateLoading, setCandidateLoading] = useState(false),
@@ -224,7 +226,7 @@ export function SprintsPage() {
     setCandidateLoading(true);
     const timer = setTimeout(() => {
       void api<Page<WorkItem>>(
-        `/api/v1/work-items?unplanned=true&pageSize=20&page=${candidatePage}&q=${encodeURIComponent(candidateQ)}`,
+        `/api/v1/work-items?unplanned=true&pageSize=${PAGE_SIZE}&page=${candidatePage}&q=${encodeURIComponent(candidateQ)}`,
       )
         .then((r) => {
           if (alive) setCandidates(r);
@@ -695,11 +697,11 @@ export function SprintsPage() {
         )}
       </div>
       {!board ? (
-        <div className="empty-state">
-          <Columns3 size={28} />
-          <h2>{!loaded || id ? "正在读取冲刺…" : "规划下一轮工作"}</h2>
-          <p>创建冲刺，设置目标，再加入这一轮要完成的工作项。</p>
-        </div>
+        <EmptyState
+          icon={Columns3}
+          title={!loaded || id ? "正在读取冲刺…" : "创建第一个冲刺"}
+          description="设置目标，安排这一轮要完成的工作项。"
+        />
       ) : (
         <>
           {taskError && (
@@ -803,14 +805,25 @@ export function SprintsPage() {
                 <div className="sprint-column-cards">
                   {visible.filter((i) => i.status === status).map(card)}
                   {!visible.some((i) => i.status === status) && (
-                    <p className="sprint-column-empty">
-                      {search ||
-                      filter !== "all" ||
-                      type !== "all" ||
-                      priority !== "all"
-                        ? "没有匹配的工作项"
-                        : "暂无工作项"}
-                    </p>
+                    <EmptyState
+                      compact
+                      title={
+                        search ||
+                        filter !== "all" ||
+                        type !== "all" ||
+                        priority !== "all"
+                          ? "没有匹配的工作项"
+                          : "暂无工作项"
+                      }
+                      description={
+                        search ||
+                        filter !== "all" ||
+                        type !== "all" ||
+                        priority !== "all"
+                          ? "调整筛选条件后重试。"
+                          : "这一阶段的工作项会显示在这里。"
+                      }
+                    />
                   )}
                 </div>
               </section>
@@ -1039,7 +1052,11 @@ export function SprintsPage() {
                   ))
                 )}
                 {!candidateLoading && !candidates.data.length && (
-                  <p>没有可加入的工作项</p>
+                  <EmptyState
+                    compact
+                    title="没有可加入的工作项"
+                    description="调整关键词，或先创建新的工作项。"
+                  />
                 )}
               </div>
               <div className="pagination">
@@ -1052,12 +1069,12 @@ export function SprintsPage() {
                 </Button>
                 <span>
                   {candidatePage} /{" "}
-                  {Math.max(1, Math.ceil(candidates.meta.total / 20))}
+                  {Math.max(1, Math.ceil(candidates.meta.total / PAGE_SIZE))}
                 </span>
                 <Button
                   variant="ghost"
                   disabled={
-                    candidatePage * 20 >= candidates.meta.total ||
+                    candidatePage * PAGE_SIZE >= candidates.meta.total ||
                     candidateLoading
                   }
                   onClick={() => setCandidatePage((p) => p + 1)}

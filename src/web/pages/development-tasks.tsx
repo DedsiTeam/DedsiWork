@@ -1,3 +1,5 @@
+import { PAGE_SIZE } from "../../shared/pagination";
+import { EmptyState } from "../components/empty-state";
 import { DevelopmentItemAcceptance } from "../components/development-item-acceptance";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
@@ -157,23 +159,15 @@ export function DevelopmentTasksPage() {
       {loading ? (
         <p role="status">正在加载研发任务…</p>
       ) : !filtered.length ? (
-        <div className="dev-empty">
-          <Code2 size={32} />
-          <h2>
-            {tasks.length ? "暂无符合条件的任务" : "开始你的第一个研发任务"}
-          </h2>
-          <p>
-            使用工作空间本地工作目录，关联工作项与领域模型，交给 Codex 实现。
-          </p>
-          {!tasks.length && (
-            <Button asChild>
-              <Link to="/development-tasks/new">
-                <Plus />
-                新建研发任务
-              </Link>
-            </Button>
-          )}
-        </div>
+        <EmptyState
+          icon={Code2}
+          title={tasks.length ? "没有符合条件的研发任务" : "创建第一个研发任务"}
+          description={
+            tasks.length
+              ? "切换任务状态，查看其他研发任务。"
+              : "关联工作项与领域模型，交给 Codex 推进实现。"
+          }
+        />
       ) : (
         <div className="dev-task-grid">
           {filtered.map((task) => (
@@ -357,7 +351,11 @@ function SourcePicker({
             ) : error ? (
               <p role="alert">{error}</p>
             ) : !data.length ? (
-              <p>没有找到可关联的内容。</p>
+              <EmptyState
+                compact
+                title="没有可关联的内容"
+                description="试试其他名称或关键词。"
+              />
             ) : (
               data.map((value) => (
                 <button
@@ -387,11 +385,11 @@ function SourcePicker({
               上一页
             </Button>
             <span>
-              {page} / {Math.max(1, Math.ceil(total / 20))}
+              {page} / {Math.max(1, Math.ceil(total / PAGE_SIZE))}
             </span>
             <Button
               variant="outline"
-              disabled={page * 20 >= total}
+              disabled={page * PAGE_SIZE >= total}
               onClick={() => setPage((p) => p + 1)}
             >
               下一页
@@ -798,15 +796,21 @@ export function DevelopmentTaskPage() {
               <Status task={task} />
             </Link>
           ))}
-          {!visible.length && (
-            <p className="dev-task-sidebar-message" role="status">
-              {loading
-                ? "正在加载…"
-                : query
-                  ? "没有匹配的任务"
-                  : "暂无研发任务"}
-            </p>
-          )}
+          {!visible.length &&
+            (loading ? (
+              <p className="dev-task-sidebar-message" role="status">
+                正在加载…
+              </p>
+            ) : (
+              <EmptyState
+                icon={Code2}
+                compact
+                title={query ? "没有匹配的任务" : "暂无研发任务"}
+                description={
+                  query ? "试试其他关键词。" : "新建任务后会显示在这里。"
+                }
+              />
+            ))}
         </nav>
         <Button variant="ghost" asChild>
           <Link to="/development-tasks">查看全部任务</Link>
@@ -1269,14 +1273,18 @@ function DevelopmentTaskDetail() {
             }}
           >
             {!task.snapshot?.items.length && (
-              <div className="dev-empty">
-                <Code2 size={28} />
-                <p>
-                  {task.status === "draft"
-                    ? "点击“开始研发”，Codex 将创建执行计划并开始实现。"
-                    : "正在准备执行环境…"}
-                </p>
-              </div>
+              <EmptyState
+                icon={Code2}
+                compact
+                title={
+                  task.status === "draft" ? "研发尚未开始" : "正在准备执行环境"
+                }
+                description={
+                  task.status === "draft"
+                    ? "点击“开始研发”，创建执行计划并开始实现。"
+                    : "执行记录将在任务开始后显示。"
+                }
+              />
             )}
             {task.snapshot?.items.map((item, index) =>
               index === 0 && item.role === "user" ? (

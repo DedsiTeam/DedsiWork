@@ -3,15 +3,15 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   align-items: stretch;
-  gap: 16px;
+  gap: 20px;
   border: 0;
   padding: 8px 0;
 }
 .collection-card-grid .collection-card {
   min-width: 0;
-  padding: 20px;
+  padding: 24px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-card);
   background: var(--card);
   color: var(--card-foreground);
   box-shadow: var(--shadow-card);
@@ -141,7 +141,7 @@
 .app-shell .collection-card-grid .model-entry .dm-row-actions {
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid var(--border);
+  border-top: 0;
   padding-top: 12px;
   width: 100%;
 }

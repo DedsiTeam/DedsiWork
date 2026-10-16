@@ -4,8 +4,28 @@
 @import "./chat.css";
 
 :root {
-  --radius: 0.6rem;
-  --background: #ffffff;
+  /* Shared UI geometry: see docs/UI规范.md. */
+  --ui-radius-detail: 2px;
+  --ui-radius-compact: 6px;
+  --ui-radius-control: 8px;
+  --ui-radius-panel: 12px;
+  --ui-radius-card: 20px;
+  --ui-radius-dialog: var(--ui-radius-card);
+  --ui-radius-popover: var(--ui-radius-panel);
+  --ui-radius-pill: 999px;
+  --ui-radius-button: var(--ui-radius-pill);
+  --ui-radius-circle: 50%;
+  --radius: var(--ui-radius-control);
+  --ui-control-height: 36px;
+  --ui-control-height-sm: 32px;
+  --ui-control-height-lg: 40px;
+  --ui-icon-size: 16px;
+  --ui-font-size: 13px;
+  --ui-font-size-sm: 12px;
+  --ui-control-padding: 12px;
+  --ui-transition: 180ms ease;
+  --ui-primary-hover: color-mix(in srgb, var(--primary) 88%, var(--background));
+  --background: #f8f8f8;
   --foreground: #0d0c22;
   --card: #ffffff;
   --card-foreground: #0d0c22;
@@ -28,15 +48,16 @@
   --chart-3: rgb(13 12 34 / 0.6);
   --chart-4: rgb(13 12 34 / 0.4);
   --chart-5: rgb(13 12 34 / 0.2);
-  --sidebar: rgb(13 12 34 / 0.025);
+  --sidebar: #ffffff;
   --sidebar-foreground: #0d0c22;
   --sidebar-primary: #0d0c22;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: rgb(13 12 34 / 0.07);
+  --sidebar-selection-background: rgb(13 12 34 / 0.12);
   --sidebar-accent-foreground: #0d0c22;
   --sidebar-border: rgb(13 12 34 / 0.1);
   --sidebar-ring: rgb(13 12 34 / 0.3);
-  --workspace-background: #ffffff;
+  --workspace-background: var(--background);
   --shadow-card: 0 1px 2px rgb(13 12 34 / 0.02);
   --shadow-card-hover: 0 5px 18px rgb(13 12 34 / 0.04);
   --shadow-floating: 0 8px 24px rgb(13 12 34 / 0.15);
@@ -131,7 +152,7 @@ button:disabled {
   height: 38px;
   background: #0d0c22;
   color: white;
-  border-radius: 11px;
+  border-radius: var(--ui-radius-panel);
   flex-shrink: 0;
   box-shadow: 0 3px 8px rgb(13 12 34 / 0.082);
 }
@@ -151,7 +172,7 @@ button:disabled {
   padding: 12px 10px;
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-control);
   font-size: 12px;
   font-weight: 550;
 }
@@ -162,7 +183,7 @@ button:disabled {
 .workspace-avatar {
   background: rgb(13 12 34 / 0.271);
   border: 1px solid rgb(13 12 34 / 0.502);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   width: 29px;
   height: 34px;
   display: grid;
@@ -198,7 +219,7 @@ button:disabled {
   border: none;
   background: transparent;
   color: rgb(13 12 34 / 0.627);
-  border-radius: 7px;
+  border-radius: var(--ui-radius-control);
   font-size: 12px;
   text-align: left;
   transition: background 0.15s;
@@ -226,7 +247,7 @@ button:disabled {
 .mcp-card {
   padding: 17px 14px;
   border: 1px solid rgb(13 12 34 / 0.439);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-panel);
   background: linear-gradient(140deg, #ffffff, rgb(13 12 34 / 0.133));
   margin-bottom: 18px;
 }
@@ -237,7 +258,7 @@ button:disabled {
   height: 34px;
   color: #0d0c22;
   background: rgb(13 12 34 / 0.251);
-  border-radius: 7px;
+  border-radius: var(--ui-radius-control);
 }
 .mcp-card h3 {
   font-size: 12px;
@@ -273,7 +294,7 @@ button:disabled {
 .connected > span {
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: var(--ui-radius-circle);
   background: #0d0c22;
   box-shadow: 0 0 0 3px rgb(13 12 34 / 0.094);
 }
@@ -314,7 +335,7 @@ button:disabled {
   gap: 6px;
   border: 1px solid var(--border);
   padding: 5px 9px;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-compact);
   font-size: 10px;
   color: rgb(13 12 34 / 0.519);
 }
@@ -362,7 +383,7 @@ h1 {
   border: 1px solid rgb(13 12 34 / 0.083);
   color: rgb(13 12 34 / 0.523);
   font-weight: 500;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-compact);
   padding: 2px 8px;
   letter-spacing: 0;
 }
@@ -382,7 +403,7 @@ h1 {
 }
 .overview > div {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-panel);
   padding: 21px 23px;
   display: flex;
   align-items: center;
@@ -396,7 +417,7 @@ h1 {
   color: #0d0c22;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-panel);
 }
 .metric-icon.progress {
   background: rgb(13 12 34 / 0.086);
@@ -437,7 +458,7 @@ h1 {
 .list-panel {
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-panel);
   overflow: hidden;
   min-width: 0;
 }
@@ -515,7 +536,7 @@ h1 {
   height: 34px;
   box-shadow: none;
   border-color: rgb(13 12 34 / 0.071);
-  border-radius: 5px;
+  border-radius: var(--ui-radius-control);
 }
 .sort-label {
   white-space: nowrap;
@@ -607,7 +628,7 @@ tbody tr:last-child td {
   width: 30px;
   height: 32px;
   border: 1px solid rgb(13 12 34 / 0.063);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-compact);
   flex-shrink: 0;
 }
 .status {
@@ -618,7 +639,7 @@ tbody tr:last-child td {
   white-space: nowrap;
   color: rgb(13 12 34 / 0.52);
   padding: 4px 7px;
-  border-radius: 5px;
+  border-radius: var(--ui-radius-compact);
   background: rgb(13 12 34 / 0.046);
 }
 .status-in_progress {
@@ -686,7 +707,7 @@ tbody tr:last-child td {
 .empty-state > span {
   width: 64px;
   height: 64px;
-  border-radius: 17px;
+  border-radius: var(--ui-radius-panel);
   background: rgb(13 12 34 / 0.125);
   border: 1px solid rgb(13 12 34 / 0.271);
   color: #0d0c22;
@@ -723,7 +744,7 @@ tbody tr:last-child td {
 }
 .editor {
   border: 1px solid rgb(13 12 34 / 0.109);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-dialog);
   box-shadow: 0 5px 24px rgb(13 12 34 / 0.024);
   background: white;
   overflow: hidden;
@@ -833,7 +854,7 @@ tbody tr:last-child td {
   color: #0d0c22;
   width: 17px;
   height: 17px;
-  border-radius: 50%;
+  border-radius: var(--ui-radius-circle);
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -869,7 +890,7 @@ tbody tr:last-child td {
   border: 1px solid rgb(13 12 34 / 0.522);
   color: #0d0c22;
   padding: 12px 14px;
-  border-radius: 7px;
+  border-radius: var(--ui-radius-control);
   font-size: 12px;
   line-height: 1.8;
   margin: 12px 0;
@@ -889,7 +910,7 @@ tbody tr:last-child td {
   z-index: 50;
   background: white;
   border: 1px solid #0d0c22;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-control);
   box-shadow: 0 6px 30px rgb(13 12 34 / 0.082);
   padding: 12px 17px;
   display: flex;
@@ -945,7 +966,7 @@ tbody tr:last-child td {
   color: #0d0c22;
   padding: 20px;
   border: 1px solid rgb(13 12 34 / 0.077);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-control);
   overflow: auto;
   font-size: 12px;
   line-height: 1.9;
@@ -1012,7 +1033,7 @@ tbody tr:last-child td {
   height: 42px;
   background: rgb(13 12 34 / 0.188);
   color: #0d0c22;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-panel);
   margin-bottom: 12px;
 }
 .pairing-card form label {
@@ -1074,7 +1095,7 @@ tbody tr:last-child td {
   background: white;
   color: #0d0c22;
   border: 1px solid #0d0c22;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-dialog);
   box-shadow: 0 20px 70px rgb(13 12 34 / 0.188);
 }
 .confirmation-content h2 {
@@ -1094,7 +1115,7 @@ tbody tr:last-child td {
 }
 .rich-text {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-control);
   overflow: hidden;
   background: white;
 }
@@ -1154,7 +1175,7 @@ tbody tr:last-child td {
   max-width: 100%;
   max-height: 320px;
   margin: 12px 0;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   object-fit: contain;
 }
 .rich-text .tiptap .ProseMirror-selectednode {
@@ -1200,7 +1221,7 @@ tbody tr:last-child td {
 .dm-section {
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-panel);
 }
 .dm-list {
   overflow: hidden;
@@ -1360,7 +1381,7 @@ tbody tr:last-child td {
   width: 100%;
   min-height: 36px;
   border: 1px solid var(--input);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   padding: 8px 12px;
   font: inherit;
   font-size: 13px;
@@ -1387,7 +1408,7 @@ tbody tr:last-child td {
   align-items: center;
   gap: 8px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--ui-radius-control);
   padding: 9px 12px;
   font-size: 12px;
   text-decoration: none;
@@ -1410,7 +1431,7 @@ tbody tr:last-child td {
 }
 .dm-element {
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-panel);
   padding: 20px;
   margin-top: 16px;
   background: rgb(13 12 34 / 0.015);
@@ -1433,7 +1454,7 @@ tbody tr:last-child td {
   height: 36px;
   padding: 0 12px;
   border: 1px solid var(--input);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-control);
   background: #ffffff;
   color: var(--foreground);
   font: inherit;
@@ -1490,7 +1511,7 @@ tbody tr:last-child td {
   padding: 14px 20px;
   background: rgb(255 255 255 / 0.949);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-panel);
   box-shadow: 0 3px 16px rgb(13 12 34 / 0.031);
 }
 .dm-save-bar > span {
@@ -1514,7 +1535,7 @@ tbody tr:last-child td {
   width: 100%;
   padding: 11px 12px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--ui-radius-control);
   background: transparent;
   color: #0d0c22;
   font-size: 13px;
@@ -1555,7 +1576,7 @@ tbody tr:last-child td {
   height: 32px;
   margin: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--ui-radius-control);
   background: transparent;
   color: rgb(13 12 34 / 0.452);
   transition:

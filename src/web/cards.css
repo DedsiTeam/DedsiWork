@@ -1,0 +1,127 @@
+/* Shared content-card surfaces; layout remains with each business module. */
+:root
+  :is(
+    [data-slot="card"],
+    .space-card,
+    .collection-card,
+    .dev-task-card,
+    .report-card,
+    .note-card,
+    .bookmark-tile,
+    .sprint-overview
+  ) {
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-card);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color var(--ui-transition),
+    box-shadow var(--ui-transition),
+    transform var(--ui-transition);
+}
+:root
+  :is(
+    .space-card,
+    .collection-card,
+    .dev-task-card,
+    .report-card,
+    .note-card,
+    .bookmark-tile
+  ):is(:hover, :focus-within) {
+  border-color: var(--input);
+  background: var(--card);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+:root .collection-card:has(.task-checkbox:checked) {
+  background: var(--accent);
+  border-color: var(--ring);
+}
+:root
+  :is(.space-card-icon, .model-entry-icon, .note-card-icon, .report-card-icon) {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: var(--ui-radius-circle);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+:root
+  :is(
+    .collection-card .task-copy > strong,
+    .collection-card .model-entry-copy h2,
+    .dev-task-card h2,
+    .report-card-title h2,
+    .note-card h2
+  ) {
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+}
+:root
+  :is(
+    .note-card p,
+    .note-card footer,
+    .note-card-delete,
+    .report-card-summary,
+    .dev-card-requirement,
+    .bookmark-description
+  ) {
+  color: var(--muted-foreground);
+}
+:root
+  :is(.note-card-main, .report-card-main, .bookmark-tile > a):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  border-radius: inherit;
+}
+:root .sprint-card {
+  border-radius: var(--ui-radius-panel);
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color var(--ui-transition),
+    box-shadow var(--ui-transition);
+}
+:root .sprint-card:is(:hover, :focus-within) {
+  border-color: var(--input);
+  box-shadow: var(--shadow-card-hover);
+}
+:root .sprint-card.insert-before {
+  box-shadow: 0 -3px 0 var(--primary);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root
+    :is(
+      [data-slot="card"],
+      .space-card,
+      .collection-card,
+      .dev-task-card,
+      .report-card,
+      .note-card,
+      .bookmark-tile,
+      .sprint-overview,
+      .sprint-card
+    ) {
+    transition: none;
+    transform: none;
+  }
+  :root
+    :is(
+      .space-card,
+      .collection-card,
+      .dev-task-card,
+      .report-card,
+      .note-card,
+      .bookmark-tile
+    ):is(:hover, :focus-within) {
+    transform: none;
+  }
+}

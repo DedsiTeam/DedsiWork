@@ -1,3 +1,4 @@
+import { workflowLibrarySchema } from "../../shared/ai-workflow";
 import { bookmarkSaveSchema } from "../../shared/bookmarks";
 import { parseStoredDailyReport } from "../../shared/daily-report";
 import { canvasNoteInputSchema } from "../../shared/canvas-note";
@@ -41,6 +42,7 @@ const tables = [
   "assistant_model_links",
   "chat_history_snapshots",
   "bookmarks",
+  "ai_workflows",
   "canvas_notes",
   "daily_reports",
   "development_tasks",
@@ -245,9 +247,10 @@ export class WorkspaceBackups {
             n: number;
           }
         ).n;
-        if (![8, 9, 10, 11, 12, 13].includes(version)) throw new Error();
+        if (![8, 9, 10, 11, 12, 13, 14].includes(version)) throw new Error();
         for (const table of tables) {
           if (
+            (table === "ai_workflows" && version < 14) ||
             (table === "bookmarks" && version < 13) ||
             (table === "canvas_notes" && version === 8) ||
             (table === "daily_reports" && version < 10) ||
@@ -350,7 +353,8 @@ export class WorkspaceBackups {
               .transaction(() => {
                 for (const table of tables) {
                   if (
-                    (table === "bookmarks" ||
+                    (table === "ai_workflows" ||
+                      table === "bookmarks" ||
                       table === "canvas_notes" ||
                       table === "daily_reports" ||
                       table === "development_tasks") &&
@@ -485,6 +489,13 @@ export class WorkspaceBackups {
                       .strict(),
                   ).parse(JSON.parse(row.history));
                 }
+                for (const row of target
+                  .query("SELECT version,workflows_json FROM ai_workflows")
+                  .all() as { version: number; workflows_json: string }[])
+                  workflowLibrarySchema.parse({
+                    expectedVersion: row.version,
+                    workflows: JSON.parse(row.workflows_json),
+                  });
                 for (const row of target
                   .query("SELECT version,groups_json FROM bookmarks")
                   .all() as { version: number; groups_json: string }[])

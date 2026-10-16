@@ -1,3 +1,4 @@
+import { EmptyState } from "../components/empty-state";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -292,11 +293,11 @@ export function WorkspacesPage() {
           正在加载工作空间…
         </div>
       ) : spaces.length === 0 ? (
-        <div className="spaces-empty">
-          <FolderOpen size={32} strokeWidth={1.3} />
-          <h2>创建第一个工作空间</h2>
-          <p>点击右上角“新建工作空间”，开始记录和安排你的工作。</p>
-        </div>
+        <EmptyState
+          icon={FolderOpen}
+          title="创建第一个工作空间"
+          description="在工作空间中整理任务、沉淀设计，推进项目。"
+        />
       ) : (
         <div className="spaces-grid">
           {spaces.map((space) => (
@@ -336,11 +337,6 @@ export function WorkspacesPage() {
                   </span>
                 </span>
                 <span className="space-card-footer">
-                  <span className="space-card-time">
-                    {space.lastOpenedAt
-                      ? `最近打开：${new Date(space.lastOpenedAt).toLocaleDateString("zh-CN")}`
-                      : "尚未打开"}
-                  </span>
                   <span className="space-card-enter">
                     {opening === space.id ? "正在打开…" : "进入空间"}
                     <ArrowRight size={14} />
@@ -430,7 +426,8 @@ export function WorkspacesPage() {
                   {restorePreview.counts.sprints} 冲刺 ·{" "}
                   {restorePreview.counts.chats} 对话 ·{" "}
                   {restorePreview.counts.notes || 0} 无边记
-                  {" · "}{restorePreview.counts.developmentTasks || 0} 研发任务
+                  {" · "}
+                  {restorePreview.counts.developmentTasks || 0} 研发任务
                 </div>
               </div>
             )}

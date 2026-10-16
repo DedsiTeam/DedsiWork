@@ -179,17 +179,15 @@ export function App() {
         notify,
       }}
     >
-      <div className={`app-shell${manager ? " space-manager-shell" : ""}`}>
+      <div
+        className={`app-shell${manager ? " space-manager-shell" : " workspace-shell"}`}
+      >
         {!manager && workspace && <Sidebar key={workspace.id} />}
         <main className="main-area">
           <header
             className="topbar"
             data-native-controls-inset={
-              isTauri() &&
-              /Mac/i.test(navigator.platform) &&
-              (manager || !workspace)
-                ? true
-                : undefined
+              isTauri() && /Mac/i.test(navigator.platform) ? true : undefined
             }
             {...windowDrag}
           >

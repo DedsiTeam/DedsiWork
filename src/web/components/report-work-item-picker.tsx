@@ -1,3 +1,5 @@
+import { PAGE_SIZE } from "../../shared/pagination";
+import { EmptyState } from "./empty-state";
 import { Choice } from "./choice";
 import type { Sprint, SprintBoard } from "../../shared/sprint";
 import { useEffect, useState } from "react";
@@ -20,7 +22,7 @@ export function ReportWorkItemPicker({
     [error, setError] = useState("");
   const [result, setResult] = useState<Page<WorkItem>>({
     data: [],
-    meta: { page: 1, pageSize: 20, total: 0 },
+    meta: { page: 1, pageSize: PAGE_SIZE, total: 0 },
   });
   useEffect(() => {
     const controller = new AbortController(),
@@ -30,7 +32,7 @@ export function ReportWorkItemPicker({
         (async () => {
           if (scope === "all")
             return api<Page<WorkItem>>(
-              `/api/v1/work-items?${new URLSearchParams({ q: search, page: String(page), pageSize: "20" })}`,
+              `/api/v1/work-items?${new URLSearchParams({ q: search, page: String(page), pageSize: String(PAGE_SIZE) })}`,
               { signal: controller.signal },
             );
           const { data: sprints } = await api<{ data: Sprint[] }>(
@@ -39,7 +41,10 @@ export function ReportWorkItemPicker({
           );
           const current = sprints.find((s) => s.state === "active");
           if (!current)
-            return { data: [], meta: { page: 1, pageSize: 20, total: 0 } };
+            return {
+              data: [],
+              meta: { page: 1, pageSize: PAGE_SIZE, total: 0 },
+            };
           const { data: board } = await api<{ data: SprintBoard }>(
             `/api/v1/sprints/${current.id}`,
             { signal: controller.signal },
@@ -50,8 +55,8 @@ export function ReportWorkItemPicker({
               .includes(search.toLowerCase()),
           );
           return {
-            data: items.slice((page - 1) * 20, page * 20),
-            meta: { page, pageSize: 20, total: items.length },
+            data: items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+            meta: { page, pageSize: PAGE_SIZE, total: items.length },
           };
         })()
           .then((r) => {
@@ -108,11 +113,15 @@ export function ReportWorkItemPicker({
             ) : error ? (
               <p role="alert">{error}</p>
             ) : !result.data.length ? (
-              <p>
-                {scope === "sprint"
-                  ? "当前没有进行中的冲刺或匹配的工作项，可切换到全部工作项。"
-                  : "没有找到工作项。"}
-              </p>
+              <EmptyState
+                compact
+                title="没有可关联的工作项"
+                description={
+                  scope === "sprint"
+                    ? "切换到全部工作项，或调整筛选条件。"
+                    : "试试其他关键词。"
+                }
+              />
             ) : (
               result.data.map((item) => (
                 <button key={item.id} onClick={() => onSelect(item)}>
@@ -135,12 +144,12 @@ export function ReportWorkItemPicker({
               上一页
             </Button>
             <span>
-              {page} / {Math.max(1, Math.ceil(result.meta.total / 20))}
+              {page} / {Math.max(1, Math.ceil(result.meta.total / PAGE_SIZE))}
             </span>
             <Button
               size="sm"
               variant="outline"
-              disabled={page * 20 >= result.meta.total}
+              disabled={page * PAGE_SIZE >= result.meta.total}
               onClick={() => setPage((v) => v + 1)}
             >
               下一页

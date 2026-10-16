@@ -7,7 +7,7 @@
   align-items: center;
   position: relative;
   background: radial-gradient(ellipse at 50% 38%, #f7f4fe 0, #fff 62%);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-panel);
   padding: 20px 24px;
 }
 .voice-preview-label {
@@ -21,7 +21,7 @@
 .voice-preview-label span {
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: var(--ui-radius-circle);
   background: #b7a4dc;
 }
 .voice-stage {
@@ -67,7 +67,7 @@
 }
 .voice-state-picker button {
   border: 0;
-  border-radius: 20px;
+  border-radius: var(--ui-radius-button);
   padding: 6px 13px;
   font-size: 11px;
   color: #9a92a6;
@@ -93,7 +93,7 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--ui-radius-circle);
   border: 1px solid #ebe7f0;
   color: #8e849d;
   background: #fff9;

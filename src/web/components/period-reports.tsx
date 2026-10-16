@@ -1,3 +1,4 @@
+import { EmptyState } from "./empty-state";
 import { DatePicker } from "./date-picker";
 import { useReportExport } from "../report-export";
 import { ReportAIPanel } from "./report-ai";
@@ -100,7 +101,11 @@ export function PeriodReports({
   }
   function matters(items: MatterSummary[]) {
     return !items.length ? (
-      <p className="report-help">这个时段没有事项记录。</p>
+      <EmptyState
+        compact
+        title="暂无事项记录"
+        description="这个时段的事项会在填写日报后显示。"
+      />
     ) : (
       items.map((item) => (
         <article className="period-matter" key={item.key}>
@@ -285,9 +290,10 @@ export function PeriodReports({
               report={report}
             />
             {!report.reportCount && (
-              <p className="report-add-hint">
-                当前时段没有 日报。先记录日报，再刷新汇总。
-              </p>
+              <EmptyState
+                title="当前时段暂无日报"
+                description="先记录日报，再刷新查看汇总。"
+              />
             )}
             {preview ? (
               <article className="report-preview">
@@ -314,9 +320,11 @@ export function PeriodReports({
                             </span>
                             <span>暂无记录</span>
                           </summary>
-                          <p className="report-help">
-                            这一周没有日报，补写后即可纳入汇总。
-                          </p>
+                          <EmptyState
+                            compact
+                            title="这一周暂无日报"
+                            description="补写日报后即可纳入汇总。"
+                          />
                         </details>
                       ) : (
                         <section className="period-week" key={week.start}>

@@ -1,3 +1,4 @@
+import { EmptyState } from "../components/empty-state";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
@@ -194,6 +195,11 @@ export function BookmarksPage() {
         <p role="status" className="bookmarks-empty">
           正在读取网址…
         </p>
+      ) : !groups.length && !error ? (
+        <EmptyState
+          title="创建第一个网址分组"
+          description="按主题收集常用网址，让常用资源触手可及。"
+        />
       ) : (
         groups.map((group) => (
           <section className="bookmark-section" key={group.id}>
@@ -325,9 +331,11 @@ export function BookmarksPage() {
               ))}
             </div>
             {!group.links.length && (
-              <p className="bookmark-group-empty">
-                还没有网址，点击“添加网址”收录第一个链接。
-              </p>
+              <EmptyState
+                compact
+                title="分组里还没有网址"
+                description="添加常用网址，整理这一组资源。"
+              />
             )}
           </section>
         ))

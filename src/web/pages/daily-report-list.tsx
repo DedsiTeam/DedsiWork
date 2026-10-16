@@ -1,3 +1,5 @@
+import { PAGE_SIZE } from "../../shared/pagination";
+import { EmptyState } from "../components/empty-state";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
@@ -43,7 +45,7 @@ function DailyReportCards() {
   const page = Math.max(1, Math.min(100000, Number(params.get("page")) || 1));
   const [list, setList] = useState<DailyReportList>({
     data: [],
-    meta: { total: 0, page: 1, pageSize: 20 },
+    meta: { total: 0, page: 1, pageSize: PAGE_SIZE },
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -87,7 +89,11 @@ function DailyReportCards() {
           if (controller.signal.aborted) return;
           if (page > 1 && !result.data.length) {
             filter(
-              { page: String(Math.max(1, Math.ceil(result.meta.total / 20))) },
+              {
+                page: String(
+                  Math.max(1, Math.ceil(result.meta.total / PAGE_SIZE)),
+                ),
+              },
               false,
             );
           } else setList(result);
@@ -228,23 +234,23 @@ function DailyReportCards() {
               正在加载日报…
             </p>
           ) : !list.data.length ? (
-            <div className="report-card-empty">
-              <CalendarDays size={36} />
-              <h2>
-                {trash
+            <EmptyState
+              icon={CalendarDays}
+              title={
+                trash
                   ? "回收站为空"
                   : search || month
                     ? "没有符合条件的日报"
-                    : "记录每一天的进展"}
-              </h2>
-              <p>
-                {trash
+                    : "创建第一份日报"
+              }
+              description={
+                trash
                   ? "删除的日报会显示在这里。"
                   : search || month
                     ? "调整搜索或月份筛选后重试。"
-                    : "点击“新增日报”，在填报页面记录工作与成果。"}
-              </p>
-            </div>
+                    : "记录每天的工作进展与成果。"
+              }
+            />
           ) : (
             <section className="report-card-grid" aria-label="日报卡片列表">
               {list.data.map((report) => {
@@ -329,12 +335,12 @@ function DailyReportCards() {
               上一页
             </Button>
             <span>
-              {page}/{Math.max(1, Math.ceil(list.meta.total / 20))}
+              {page}/{Math.max(1, Math.ceil(list.meta.total / PAGE_SIZE))}
             </span>
             <Button
               size="sm"
               variant="outline"
-              disabled={loading || page * 20 >= list.meta.total}
+              disabled={loading || page * PAGE_SIZE >= list.meta.total}
               onClick={() => filter({ page: String(page + 1) }, false)}
             >
               下一页

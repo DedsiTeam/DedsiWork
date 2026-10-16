@@ -208,6 +208,7 @@ fn main() {
     let service = Arc::new(Service::default());
     let managed = service.clone();
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![show_context_menu])
         .on_menu_event(|app, event| {
             let script = match event.id.as_ref() {
@@ -242,6 +243,7 @@ fn main() {
                     .permission("core:window:allow-scale-factor")
                     .permission("core:window:allow-set-position")
                     .permission("core:window:allow-toggle-maximize")
+                    .permission("notification:default")
                     .permission("allow-context-menu"),
             )?;
             let back = MenuItem::with_id(app, "context-back", "返回", true, None::<&str>)?;

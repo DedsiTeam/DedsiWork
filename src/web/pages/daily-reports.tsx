@@ -237,11 +237,11 @@ function DailyReportEditor() {
     return request;
   }, []);
   useEffect(() => {
-    if (!dirty || !selected || selected.deletedAt) return;
+    if (busy || !dirty || !selected || selected.deletedAt) return;
     setSaveState("等待保存…");
     const timer = setTimeout(() => void flush(), 1000);
     return () => clearTimeout(timer);
-  }, [form, dirty, selected?.deletedAt, flush]);
+  }, [form, dirty, selected?.deletedAt, flush, busy]);
   useEffect(() => {
     if (!dirty) return;
     const guard = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -302,10 +302,11 @@ function DailyReportEditor() {
     }
   }
   async function purge() {
-    const record = recordRef.current;
-    if (!record?.deletedAt || busy) return;
+    if (!recordRef.current || busy) return;
     setBusy(true);
     try {
+      if (pending.current) await pending.current;
+      const record = recordRef.current!;
       await api(`/api/v1/daily-reports/${record.id}/purge`, {
         method: "POST",
         body: JSON.stringify({
@@ -420,6 +421,13 @@ function DailyReportEditor() {
   return (
     <div className="workspace-content reports-content">
       <div className="page-heading report-edit-page-heading">
+        <h1>
+          {selected?.deletedAt
+            ? "查看已删除日报"
+            : isNew
+              ? "新增日报"
+              : "修改日报"}
+        </h1>
         <div>
           <Button
             variant="ghost"
@@ -429,23 +437,16 @@ function DailyReportEditor() {
             <ArrowLeft />
             返回日报列表
           </Button>
-          <h1>
-            {selected?.deletedAt
-              ? "查看已删除日报"
-              : isNew
-                ? "新增日报"
-                : "修改日报"}
-          </h1>
+          {!selected?.deletedAt && (
+            <Button
+              onClick={() => void saveForm()}
+              disabled={busy || loading || !form || (!!selected && !dirty)}
+            >
+              <Save />
+              {busy ? "保存中…" : "保存日报"}
+            </Button>
+          )}
         </div>
-        {!selected?.deletedAt && (
-          <Button
-            onClick={() => void saveForm()}
-            disabled={busy || loading || !form || (!!selected && !dirty)}
-          >
-            <Save />
-            {busy ? "保存中…" : "保存日报"}
-          </Button>
-        )}
       </div>
       {error && (
         <div className="message error" role="alert">
@@ -518,6 +519,7 @@ function DailyReportEditor() {
                   <Button
                     size="sm"
                     variant="destructive"
+                    className="report-purge-button"
                     disabled={busy}
                     onClick={() => {
                       setError("");
@@ -863,7 +865,7 @@ function DailyReportEditor() {
             <AlertDialog.Description>
               {deleteAction === "purge"
                 ? `永久删除 ${selected?.date} 日报？删除后无法恢复。`
-                : `将 ${selected?.date} 日报移入回收站？可以随时恢复。`}
+                : `将 ${selected?.date} 日报移入回收站后可以恢复；选择永久删除将直接删除，无法恢复。`}
             </AlertDialog.Description>
             {error && (
               <p className="message error" role="alert">
@@ -876,8 +878,21 @@ function DailyReportEditor() {
                   取消
                 </Button>
               </AlertDialog.Cancel>
+              {deleteAction === "delete" && (
+                <Button
+                  variant="destructive"
+                  className="report-purge-button"
+                  disabled={busy}
+                  onClick={() => void purge()}
+                >
+                  {busy ? "正在删除…" : "永久删除"}
+                </Button>
+              )}
               <Button
                 variant="destructive"
+                className={
+                  deleteAction === "purge" ? "report-purge-button" : undefined
+                }
                 disabled={busy}
                 onClick={() =>
                   void (deleteAction === "purge" ? purge() : lifecycle())

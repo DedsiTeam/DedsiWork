@@ -88,6 +88,13 @@ export class WorkspaceStore {
   first() {
     return this.legacyId() || this.list()[0]?.id;
   }
+  entries(): Workspace[] {
+    return (
+      this.db
+        .query("SELECT state FROM workspaces WHERE deleted_at IS NULL")
+        .all() as { state: string }[]
+    ).map((row) => JSON.parse(row.state));
+  }
   list(): WorkspaceSummary[] {
     return (
       this.db

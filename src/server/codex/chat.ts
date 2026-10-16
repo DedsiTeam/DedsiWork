@@ -1,5 +1,6 @@
 import { chatProposals, chatProposalSchema } from "../../shared/chat-proposal";
 import { domainModelInstructions } from "./app-server";
+import { workItemPlanningInstructions } from "./work-item-planning";
 import type { Workspace } from "../../shared/workspace";
 import type { Database } from "bun:sqlite";
 import { mkdirSync, realpathSync, statSync, existsSync } from "node:fs";
@@ -44,7 +45,7 @@ const questionMethods = new Set([
   "tool/requestUserInput",
 ]);
 
-const assistantInstructions = `你是 DedsiWork AI 助手，正常进行自由对话，可以使用 Codex 工具。根据对话情况，在用户讨论可执行需求或明确要求创建时，建议创建工作项；用户讨论领域建模时，建议创建领域模型。信息不足先澄清，不要把闲聊强制拆成工作项。需要创建时在自然语言解释后附加一个标记为 dedsiwork 的 Markdown JSON 代码块，符合以下 schema：${JSON.stringify(z.toJSONSchema(chatProposalSchema))}。应用会将代码块显示为可预览编辑的创建卡片。不要把草稿 JSON 直接写在正文里，不要在自然语言中重复全部字段；正文只用一两句话说明草稿范围和下一步操作。仅提议草稿，不能声称已经保存，必须由用户点击卡片预览并确认后创建。不要通过 shell、MCP、数据库或 HTTP 绕过应用确认创建 DedsiWork 工作项或模型。用户希望修改草稿时返回更新后的完整代码块。工作项 description 使用纯文本，默认优先级 normal。领域模型规则：${domainModelInstructions}`;
+const assistantInstructions = `你是 DedsiWork AI 助手，正常进行自由对话，可以使用 Codex 工具。根据对话情况，在用户讨论可执行需求或明确要求创建时，建议创建工作项；用户讨论领域建模时，建议创建领域模型。信息不足先澄清，不要把闲聊强制拆成工作项。需要创建时在自然语言解释后附加一个标记为 dedsiwork 的 Markdown JSON 代码块，符合以下 schema：${JSON.stringify(z.toJSONSchema(chatProposalSchema))}。应用会将代码块显示为可预览编辑的创建卡片。不要把草稿 JSON 直接写在正文里，不要在自然语言中重复全部字段；正文只用一两句话说明草稿范围和下一步操作。仅提议草稿，不能声称已经保存，必须由用户点击卡片预览并确认后创建。不要通过 shell、MCP、数据库或 HTTP 绕过应用确认创建 DedsiWork 工作项或模型。用户希望修改草稿时返回更新后的完整代码块。工作项 description 使用纯文本，默认优先级 normal。${workItemPlanningInstructions}领域模型规则：${domainModelInstructions}`;
 
 export class CodexChat extends CodexAppServer {
   private sessions = new Map<string, Session>();
@@ -58,7 +59,7 @@ export class CodexChat extends CodexAppServer {
   private instructions() {
     const space = this.workspaceInfo?.();
     return (
-      assistantInstructions +
+      (this.developmentInstructions || assistantInstructions) +
       (space
         ? `\n当前工作空间：${space.name}。背景说明：${space.description}。只围绕当前工作空间的数据与需求开展工作。`
         : "")
@@ -68,6 +69,7 @@ export class CodexChat extends CodexAppServer {
     private db: Database,
     dataDir: string,
     private workspaceInfo?: () => Workspace,
+    private developmentInstructions?: string,
   ) {
     super("chat");
     this.fallbackWorkspace = join(resolve(dataDir), "chat-workspace");
@@ -103,7 +105,9 @@ export class CodexChat extends CodexAppServer {
   async exportHistories(actor: Actor) {
     this.access(actor);
     const rows = this.db
-      .query(`SELECT ${columns} FROM codex_chats`)
+      .query(
+        `SELECT ${columns} FROM codex_chats WHERE id ${this.developmentInstructions ? "IN" : "NOT IN"} (SELECT json_extract(state,'$.chatId') FROM development_tasks WHERE json_extract(state,'$.chatId') IS NOT NULL)`,
+      )
       .all() as Row[];
     for (const row of rows) {
       try {
@@ -178,6 +182,15 @@ export class CodexChat extends CodexAppServer {
       throw new AppError("FORBIDDEN", "对话需要写入权限", 403);
   }
   private row(id: string, actor: Actor): Row {
+    if (
+      !this.developmentInstructions &&
+      this.db
+        .query(
+          "SELECT id FROM development_tasks WHERE json_extract(state,'$.chatId')=?",
+        )
+        .get(id)
+    )
+      throw new AppError("DEVELOPMENT_CHAT", "请从研发任务页面操作此会话", 409);
     this.access(actor);
     z.uuid().parse(id);
     const row = this.db
@@ -191,7 +204,7 @@ export class CodexChat extends CodexAppServer {
     return (
       this.db
         .query(
-          `SELECT ${columns} FROM codex_chats WHERE owner=? ORDER BY updated_at DESC LIMIT 100`,
+          `SELECT ${columns} FROM codex_chats WHERE owner=? AND id NOT IN (SELECT json_extract(state,'$.chatId') FROM development_tasks WHERE json_extract(state,'$.chatId') IS NOT NULL) ORDER BY updated_at DESC LIMIT 100`,
         )
         .all(actor.identity) as Row[]
     ).map((row) => this.summary(row));
@@ -272,6 +285,17 @@ export class CodexChat extends CodexAppServer {
       nextCursor: session.cursor,
     };
   }
+  checkpoint(id: string) {
+    const session = this.sessions.get(id);
+    if (!session) return this.disconnectedSnapshots.get(id) || null;
+    if (this.checkpointRevisions.get(id) !== session.revision) {
+      this.persist(session);
+      this.checkpointRevisions.set(id, session.revision);
+    }
+    return this.snapshot(session);
+  }
+  private checkpointRevisions = new Map<string, number>();
+  private disconnectedSnapshots = new Map<string, ChatSnapshot>();
   private state(row: Row): Session {
     return {
       wireThreadId: row.id,
@@ -446,6 +470,10 @@ export class CodexChat extends CodexAppServer {
       ? new Map([...session.items, ...older])
       : new Map([...older, ...session.items]);
     session.cursor = page.nextCursor;
+    if (!session.running)
+      for (const item of session.items.values())
+        if (["inProgress", "in_progress"].includes(item.status || ""))
+          item.status = "interrupted";
     session.revision++;
     this.persist(session);
   }
@@ -710,6 +738,10 @@ export class CodexChat extends CodexAppServer {
     session.stopping = false;
     if (turn?.error?.message) session.error = clip(turn.error.message, 1000);
     if (turn?.status === "interrupted") session.error = "已停止回复";
+    if (turn?.status === "interrupted")
+      for (const item of session.items.values())
+        if (["inProgress", "in_progress"].includes(item.status || ""))
+          item.status = "interrupted";
     session.requests.clear();
     this.persist(session);
   }
@@ -732,6 +764,22 @@ export class CodexChat extends CodexAppServer {
     const session = this.sessions.get(root);
     if (!session) return;
     session.revision++;
+    if (message.method === "turn/plan/updated") {
+      session.items.set(`plan:${params.turnId}`, {
+        id: `plan:${params.turnId}`,
+        type: "plan",
+        role: "tool",
+        text: [
+          params.explanation,
+          ...(params.plan || []).map(
+            (step: any) =>
+              `${step.status === "completed" ? "✓" : step.status === "inProgress" || step.status === "in_progress" ? "→" : "○"} ${step.step}`,
+          ),
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      });
+    }
     if (
       message.method === "turn/started" &&
       params.threadId === session.wireThreadId
@@ -778,6 +826,15 @@ export class CodexChat extends CodexAppServer {
           ...previous,
           text: clip(previous.text + params.delta),
         });
+    }
+    if (message.method === "item/plan/delta") {
+      const previous = session.items.get(params.itemId);
+      session.items.set(params.itemId, {
+        id: params.itemId,
+        type: "plan",
+        role: "tool",
+        text: clip((previous?.text || "") + params.delta),
+      });
     }
     if (message.method === "error" && params.willRetry !== true)
       session.error = clip(params.error?.message || "Codex 发生错误", 1000);
@@ -890,6 +947,12 @@ export class CodexChat extends CodexAppServer {
       if (session.running) session.error = error.message;
       session.running = false;
       session.requests.clear();
+      session.revision++;
+      for (const item of session.items.values())
+        if (["inProgress", "in_progress"].includes(item.status || ""))
+          item.status = "interrupted";
+      this.persist(session);
+      this.disconnectedSnapshots.set(session.row.id, this.snapshot(session));
     }
     this.sessions.clear();
     this.routes.clear();

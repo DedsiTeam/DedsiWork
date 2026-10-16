@@ -7,12 +7,12 @@ import {
   FolderOpen,
   Plus,
   MoreHorizontal,
-  Search,
   Pencil,
   Trash2,
   LoaderCircle,
   Download,
   Upload,
+  ArrowRight,
 } from "lucide-react";
 import { api } from "../api";
 import { Button } from "../components/ui/button";
@@ -31,6 +31,7 @@ type RestorePreview = {
     sprints: number;
     notes: number;
     chats: number;
+    developmentTasks?: number;
   };
 };
 const blank = { name: "", description: "", directory: "" };
@@ -41,8 +42,7 @@ export function WorkspacesPage() {
   const [spaces, setSpaces] = useState<WorkspaceSummary[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
-  const [q, setQ] = useState(""),
-    [revision, setRevision] = useState(0),
+  const [revision, setRevision] = useState(0),
     [opening, setOpening] = useState("");
   const [editing, setEditing] = useState<WorkspaceSummary | null | undefined>(
       undefined,
@@ -256,9 +256,6 @@ export function WorkspacesPage() {
       setDeleting(false);
     }
   }
-  const filtered = spaces.filter((space) =>
-    (space.name + space.description).toLowerCase().includes(q.toLowerCase()),
-  );
   return (
     <div className="workspace-content spaces-page">
       <div className="page-heading">
@@ -278,15 +275,6 @@ export function WorkspacesPage() {
           </Button>
         </div>
       </div>
-      <label className="spaces-search">
-        <Search size={15} />
-        <input
-          aria-label="搜索工作空间"
-          placeholder="搜索工作空间…"
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-        />
-      </label>
       {error && (
         <div className="message" role="alert">
           {error}
@@ -311,7 +299,7 @@ export function WorkspacesPage() {
         </div>
       ) : (
         <div className="spaces-grid">
-          {filtered.map((space) => (
+          {spaces.map((space) => (
             <article className="space-card" key={space.id}>
               <button
                 className="space-card-open"
@@ -325,21 +313,38 @@ export function WorkspacesPage() {
                 }}
               >
                 <span className="space-card-title">
-                  <Folder size={19} strokeWidth={1.5} />
+                  <span className="space-card-icon">
+                    <Folder size={21} strokeWidth={1.5} />
+                  </span>
                   <strong>{space.name}</strong>
                   {opening === space.id && (
                     <LoaderCircle size={13} className="ai-spin" />
                   )}
                 </span>
-                <span className="space-card-counts">
-                  {space.counts.items} 工作项<span>·</span>
-                  {space.counts.models} 领域模型<span>·</span>
-                  {space.counts.notes || 0} 无边记
+                <span className="space-card-description">
+                  {space.description || "在这里整理任务、沉淀设计，推进项目。"}
                 </span>
-                <span className="space-card-time">
-                  {space.lastOpenedAt
-                    ? `最近打开：${new Date(space.lastOpenedAt).toLocaleDateString("zh-CN")}`
-                    : "尚未打开"}
+                <span className="space-card-counts">
+                  <span>
+                    <strong>{space.counts.items}</strong>工作项
+                  </span>
+                  <span>
+                    <strong>{space.counts.models}</strong>领域模型
+                  </span>
+                  <span>
+                    <strong>{space.counts.notes || 0}</strong>无边记
+                  </span>
+                </span>
+                <span className="space-card-footer">
+                  <span className="space-card-time">
+                    {space.lastOpenedAt
+                      ? `最近打开：${new Date(space.lastOpenedAt).toLocaleDateString("zh-CN")}`
+                      : "尚未打开"}
+                  </span>
+                  <span className="space-card-enter">
+                    {opening === space.id ? "正在打开…" : "进入空间"}
+                    <ArrowRight size={14} />
+                  </span>
                 </span>
               </button>
               <button
@@ -389,9 +394,6 @@ export function WorkspacesPage() {
               )}
             </article>
           ))}
-          {filtered.length === 0 && (
-            <p className="spaces-no-results">没有匹配的工作空间</p>
-          )}
         </div>
       )}
       <Dialog.Root
@@ -428,6 +430,7 @@ export function WorkspacesPage() {
                   {restorePreview.counts.sprints} 冲刺 ·{" "}
                   {restorePreview.counts.chats} 对话 ·{" "}
                   {restorePreview.counts.notes || 0} 无边记
+                  {" · "}{restorePreview.counts.developmentTasks || 0} 研发任务
                 </div>
               </div>
             )}
@@ -618,7 +621,7 @@ export function WorkspacesPage() {
               个冲刺、{removing?.counts.notes || 0} 个无边记和{" "}
               {removing?.counts.models}{" "}
               个领域模型，以及该空间的数据库、附件和内部文件将被物理删除，无法撤销。
-              关联的本地代码目录和已导出的备份文件保留。
+              研发任务记录也将删除。关联的本地代码目录、研发工作树和已导出的备份文件保留。
             </AlertDialog.Description>
             <label className="space-delete-name">
               输入工作空间名称确认

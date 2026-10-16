@@ -104,22 +104,22 @@ function DailyReportCards() {
       controller.abort();
     };
   }, [mode, search, month, trash, page, revision]);
-  async function remove() {
+  async function remove(permanent = !!deleting?.deletedAt) {
     if (!deleting || busy) return;
     setBusy(true);
     setDeleteError("");
     try {
       await api(
-        `/api/v1/daily-reports/${deleting.id}${deleting.deletedAt ? "/purge" : ""}`,
+        `/api/v1/daily-reports/${deleting.id}${permanent ? "/purge" : ""}`,
         {
-          method: deleting.deletedAt ? "POST" : "DELETE",
+          method: permanent ? "POST" : "DELETE",
           body: JSON.stringify({
             expectedVersion: deleting.version,
-            ...(deleting.deletedAt ? { confirmed: true } : {}),
+            ...(permanent ? { confirmed: true } : {}),
           }),
         },
       );
-      notify(deleting.deletedAt ? "日报已永久删除" : "日报已移入回收站");
+      notify(permanent ? "日报已永久删除" : "日报已移入回收站");
       setDeleting(null);
       setRevision((value) => value + 1);
     } catch (e) {
@@ -357,7 +357,7 @@ function DailyReportCards() {
             <AlertDialog.Description>
               {deleting?.deletedAt
                 ? `永久删除 ${deleting.date} 日报？删除后无法恢复。`
-                : `将 ${deleting?.date} 日报移入回收站？可以随时恢复。`}
+                : `将 ${deleting?.date} 日报移入回收站后可以恢复；选择永久删除将直接删除，无法恢复。`}
             </AlertDialog.Description>
             {deleteError && (
               <p role="alert" className="message error">
@@ -370,8 +370,21 @@ function DailyReportCards() {
                   取消
                 </Button>
               </AlertDialog.Cancel>
+              {!deleting?.deletedAt && (
+                <Button
+                  variant="destructive"
+                  className="report-purge-button"
+                  disabled={busy}
+                  onClick={() => void remove(true)}
+                >
+                  {busy ? "正在删除…" : "永久删除"}
+                </Button>
+              )}
               <Button
                 variant="destructive"
+                className={
+                  deleting?.deletedAt ? "report-purge-button" : undefined
+                }
                 disabled={busy}
                 onClick={() => void remove()}
               >

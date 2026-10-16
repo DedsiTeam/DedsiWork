@@ -223,12 +223,18 @@ test("read-only actors cannot create, change, delete or restore", () => {
     service.lifecycle(report.id, { expectedVersion: 1 }, true, reader),
   ).toThrow("需要写入权限");
 });
-test("permanent deletion requires trash, confirmation, write access and current version", () => {
+test("permanent deletion supports active reports and requires confirmation, write access and current version", () => {
   const report = service.save(null, input(), actor);
   const target = { expectedVersion: report.version, confirmed: true };
-  expect(() => service.purge(report.id, target, actor)).toThrow(
-    "只能永久删除回收站中的日报",
-  );
+  const active = service.save(null, input("2026-10-17"), actor);
+  expect(
+    service.purge(
+      active.id,
+      { expectedVersion: active.version, confirmed: true },
+      actor,
+    ),
+  ).toEqual({ id: active.id });
+  expect(() => service.get(active.id)).toThrow("日报不存在");
   const deleted = service.lifecycle(
     report.id,
     { expectedVersion: report.version },
@@ -389,7 +395,7 @@ test("REST routes preserve workspace isolation, auth, method and version boundar
     const target = { expectedVersion: 4, confirmed: true };
     expect((await request(purgePath, "GET", undefined, a)).status).toBe(405);
     expect(
-      (await request(purgePath, "POST", { ...target, expectedVersion: 3 }, a))
+      (await request(purgePath, "POST", { ...target, expectedVersion: 2 }, a))
         .status,
     ).toBe(409);
     expect(

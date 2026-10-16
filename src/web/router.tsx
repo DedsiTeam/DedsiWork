@@ -13,11 +13,31 @@ import { DomainModelPage } from "./pages/domain-model";
 import { DomainModelDiagramPage } from "./pages/domain-model-diagram";
 import { AssistantPage } from "./pages/assistant";
 import { SprintsPage } from "./pages/sprints";
+import {
+  DevelopmentTasksPage,
+  DevelopmentTaskPage,
+  DevelopmentTaskCreatePage,
+} from "./pages/development-tasks";
 export const router = createBrowserRouter([
   {
     path: "/",
     Component: App,
     children: [
+      {
+        path: "development-tasks",
+        Component: DevelopmentTasksPage,
+        handle: { title: "研发任务" },
+      },
+      {
+        path: "development-tasks/new",
+        Component: DevelopmentTaskCreatePage,
+        handle: { title: "新建研发任务" },
+      },
+      {
+        path: "development-tasks/:id",
+        Component: DevelopmentTaskPage,
+        handle: { title: "研发任务" },
+      },
       {
         path: "daily-reports",
         Component: DailyReportsPage,

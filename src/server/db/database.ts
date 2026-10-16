@@ -212,5 +212,17 @@ export function openDatabase(path: string) {
       );
     }).immediate();
   }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=12").get()
+  ) {
+    db.transaction(() => {
+      db.exec(`CREATE TABLE development_tasks (
+        id TEXT PRIMARY KEY, owner TEXT NOT NULL, state TEXT NOT NULL, updated_at TEXT NOT NULL
+      ); CREATE INDEX development_tasks_owner ON development_tasks(owner,updated_at DESC);`);
+      db.query("INSERT INTO schema_migrations VALUES (12,?)").run(
+        new Date().toISOString(),
+      );
+    }).immediate();
+  }
   return db;
 }

@@ -1,0 +1,559 @@
+.dev-page {
+  color: #0d0c22;
+}
+.dev-page .page-heading h1 {
+  font-size: 25px;
+}
+.dev-page .page-heading p {
+  margin: 10px 0 0;
+}
+.dev-filters,
+.dev-actions,
+.dev-section-title,
+.dev-card-heading,
+.dev-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dev-filters {
+  margin: 0 0 22px;
+}
+.dev-filters > span {
+  margin-left: auto;
+  color: #8a8995;
+  font-size: 12px;
+}
+.dev-task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 18px;
+}
+.dev-task-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid #e5e5eb;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  background: white;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s;
+}
+.dev-task-card:hover {
+  border-color: #bcbac7;
+  box-shadow: 0 5px 18px #0d0c2208;
+}
+.dev-task-card:focus-visible {
+  outline: 2px solid #777185;
+  outline-offset: 3px;
+}
+.dev-card-heading {
+  justify-content: space-between;
+  color: #777582;
+}
+.dev-task-card h2 {
+  margin: 20px 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dev-card-requirement {
+  color: #868590;
+  font-size: 12px;
+  height: 40px;
+  line-height: 20px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dev-card-branch {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin-top: 20px;
+  font-size: 12px;
+  color: #656372;
+  overflow-wrap: anywhere;
+}
+.dev-card-sources {
+  margin: 12px 0 20px;
+  font-size: 11px;
+  color: #8c8b97;
+}
+.dev-task-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16px;
+  margin-top: auto;
+  border-top: 1px solid #eeeef2;
+  color: #92919d;
+  font-size: 10px;
+}
+.dev-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  background: #f2f2f5;
+  color: #777582;
+}
+.dev-status-running,
+.dev-status-preparing {
+  background: #efedf8;
+  color: #67558c;
+}
+.dev-status-waiting {
+  background: #fff5e3;
+  color: #98631c;
+}
+.dev-status-failed,
+.dev-status-interrupted {
+  background: #fff0ef;
+  color: #b85148;
+}
+.dev-status-completed {
+  background: #eaf6ee;
+  color: #337449;
+}
+.dev-status-review {
+  background: #eaf2fb;
+  color: #456d9b;
+}
+.dev-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.dev-empty {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #8a8897;
+  font-size: 13px;
+  text-align: center;
+}
+.dev-empty h2 {
+  color: #565462;
+  font-size: 18px;
+  margin: 0;
+}
+.dev-empty p {
+  margin: 0;
+}
+.dev-create-form {
+  max-width: 960px;
+  margin: 0 auto;
+}
+.dev-create-form fieldset {
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.dev-panel {
+  border: 1px solid #e6e5eb;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  background: #fff;
+  min-width: 0;
+}
+.dev-panel h2 {
+  margin: 0 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.dev-panel h3 {
+  font-size: 13px;
+  font-weight: 500;
+}
+.dev-create-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+  color: #686674;
+  margin-top: 20px;
+}
+.dev-create-form textarea,
+.dev-create-form select,
+.dev-composer textarea {
+  width: 100%;
+  border: 1px solid #dedde5;
+  border-radius: 7px;
+  padding: 10px 12px;
+  font: inherit;
+  line-height: 1.7;
+  color: #343140;
+  background: white;
+}
+.dev-create-form textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+.dev-create-form textarea:focus-visible,
+.dev-create-form select:focus-visible,
+.dev-composer textarea:focus-visible {
+  outline: 2px solid #bbb6cd;
+  outline-offset: 1px;
+}
+.dev-directory {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dev-directory output {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  border-radius: 7px;
+  border: 1px dashed #dcdbe3;
+  color: #85828f;
+  background: #fafafb;
+}
+.dev-help {
+  font-size: 11px;
+  color: #96939f;
+  line-height: 1.8;
+  margin: 12px 0 0;
+}
+.dev-form-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.dev-source-group {
+  margin-top: 24px;
+}
+.dev-source-group > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dev-source-group h3 {
+  margin: 0;
+}
+.dev-source-group small,
+.dev-sources small {
+  margin-left: 8px;
+  color: #9995a3;
+  font-weight: 400;
+  font-size: 11px;
+}
+.dev-source-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.dev-source-chips > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  background: #f4f3f7;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.dev-source-chips button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #9994a5;
+  padding: 2px;
+}
+.dev-source-chips p {
+  color: #9995a3;
+  font-size: 12px;
+  margin: 0;
+}
+.dev-create-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.dev-create-footer > span {
+  font-size: 11px;
+  color: #96929f;
+}
+.dev-source-picker {
+  width: 600px;
+}
+.dev-source-picker > input {
+  margin-top: 20px;
+}
+.dev-source-options {
+  max-height: 380px;
+  overflow: auto;
+  margin: 16px 0;
+}
+.dev-source-options > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 10px;
+  border: 0;
+  border-bottom: 1px solid #f0eff3;
+  background: white;
+  text-align: left;
+  color: #55505f;
+  font-size: 13px;
+  cursor: pointer;
+}
+.dev-source-options > button:hover,
+.dev-source-options > button[aria-pressed="true"] {
+  background: #f6f5f9;
+}
+.dev-source-options > button > span {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.dev-source-options small {
+  font-size: 10px;
+  color: #a09aa9;
+}
+.dev-source-options > p {
+  font-size: 13px;
+  color: #9995a3;
+}
+.dev-source-picker .dev-actions {
+  justify-content: flex-end;
+  font-size: 12px;
+}
+.dev-detail-title {
+  min-width: 0;
+}
+.dev-detail-title h1 {
+  overflow-wrap: anywhere;
+}
+.dev-task-overview dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 32px;
+  margin: 0 0 24px;
+}
+.dev-task-overview dl > div {
+  min-width: 0;
+}
+.dev-task-overview dt {
+  font-size: 11px;
+  color: #9993a2;
+  margin-bottom: 8px;
+}
+.dev-task-overview dd {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 12px;
+  color: #635d6f;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.dev-task-overview dd > svg {
+  flex-shrink: 0;
+}
+.dev-task-overview .dev-actions {
+  flex-wrap: wrap;
+}
+.dev-login {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  margin: 16px 0;
+}
+.dev-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid #e6e3eb;
+  margin: 24px 0;
+}
+.dev-tabs > button {
+  padding: 10px 0 14px;
+  border: 0;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  color: #96909f;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.dev-tabs > button[aria-selected="true"] {
+  border-color: #40364f;
+  color: #40364f;
+}
+.dev-live-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eeebf2;
+  font-size: 11px;
+  color: #938b9d;
+}
+.dev-live-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dev-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #b7b2be;
+}
+.dev-live-dot.connected {
+  background: #62a479;
+}
+.dev-timeline {
+  max-height: 60vh;
+  min-height: 230px;
+  overflow: auto;
+  padding: 22px 4px 10px;
+  overflow-anchor: none;
+}
+.dev-timeline .chat-message {
+  margin: 18px 0;
+  max-width: 100%;
+}
+.dev-timeline .chat-tool {
+  margin: 12px 0;
+}
+.dev-timeline .chat-tool pre,
+.dev-initial-context pre,
+.dev-changes pre,
+.dev-sources pre {
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 500px;
+  font:
+    11px/1.8 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  background: #f8f7fa;
+  padding: 16px;
+  border-radius: 6px;
+  color: #655e70;
+}
+.dev-initial-context summary {
+  cursor: pointer;
+  color: #9992a3;
+  font-size: 11px;
+}
+.dev-progress .chat-request {
+  margin: 20px 0;
+}
+.dev-composer {
+  border-top: 1px solid #eeebf2;
+  padding-top: 20px;
+}
+.dev-composer textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-size: 12px;
+}
+.dev-composer > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.dev-composer span {
+  font-size: 11px;
+  color: #9992a3;
+}
+.dev-section-title {
+  justify-content: space-between;
+}
+.dev-section-title h2 {
+  margin-bottom: 0;
+}
+.dev-changes h3 {
+  margin-top: 24px;
+}
+.dev-sources p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #77707f;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.dev-sources h2:not(:first-child) {
+  margin-top: 28px;
+}
+.dev-sources details {
+  padding: 14px 0;
+  border-bottom: 1px solid #eeebf2;
+}
+.dev-sources summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+@media (max-width: 1150px) {
+  .dev-task-overview dl {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .dev-detail-title {
+    flex-wrap: wrap;
+  }
+}
+
+.confirmation-content.dev-merge-dialog {
+  width: min(960px, calc(100vw - 48px));
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.dev-merge-body {
+  max-height: 55vh;
+  overflow: auto;
+  margin: 20px 0;
+  font-size: 12px;
+}
+.dev-merge-body p {
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.dev-merge-body pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 14px;
+  border-radius: 6px;
+  background: #f6f5f8;
+  font:
+    11px/1.8 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+}
+.dev-merge-body h3 {
+  margin-top: 20px;
+  font-size: 13px;
+}
+.dev-merge-body summary {
+  cursor: pointer;
+  margin-top: 16px;
+}

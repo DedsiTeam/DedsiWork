@@ -12,6 +12,7 @@ const runPicker: RunPicker = (command, args) =>
 export async function chooseWorkspaceDirectory(
   platform: NodeJS.Platform = process.platform,
   run: RunPicker = runPicker,
+  prompt = "选择工作空间目录",
 ): Promise<string> {
   if (platform !== "darwin" && platform !== "win32")
     throw new AppError("UNSUPPORTED_PLATFORM", "请填写本地目录的完整路径");
@@ -20,7 +21,7 @@ export async function chooseWorkspaceDirectory(
     if (platform === "darwin") {
       ({ stdout } = await run("/usr/bin/osascript", [
         "-e",
-        'POSIX path of (choose folder with prompt "选择工作空间目录")',
+        `POSIX path of (choose folder with prompt ${JSON.stringify(prompt)})`,
       ]));
     } else {
       // EncodedCommand uses UTF-16LE; explicit UTF-8 output preserves Chinese paths.
@@ -30,7 +31,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
 $picker = New-Object System.Windows.Forms.FolderBrowserDialog
 try {
-  $picker.Description = '选择工作空间目录'
+  $picker.Description = '${prompt.replace(/'/g, "''")}'
   $picker.ShowNewFolderButton = $true
   if ($picker.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     [Console]::WriteLine($picker.SelectedPath)

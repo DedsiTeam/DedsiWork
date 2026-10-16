@@ -41,6 +41,7 @@ const tables = [
   "chat_history_snapshots",
   "canvas_notes",
   "daily_reports",
+  "development_tasks",
 ];
 const packageSchema = z
   .object({
@@ -99,6 +100,7 @@ export class WorkspaceBackups {
       models: n("domain_models"),
       sprints: n("sprints"),
       chats: n("codex_chats"),
+      developmentTasks: db.query("SELECT name FROM sqlite_master WHERE name='development_tasks' AND type='table'").get() ? n("development_tasks") : 0,
       notes: db
         .query(
           "SELECT name FROM sqlite_master WHERE name='canvas_notes' AND type='table'",
@@ -235,11 +237,12 @@ export class WorkspaceBackups {
             n: number;
           }
         ).n;
-        if (![8, 9, 10, 11].includes(version)) throw new Error();
+        if (![8, 9, 10, 11, 12].includes(version)) throw new Error();
         for (const table of tables) {
           if (
             (table === "canvas_notes" && version === 8) ||
-            (table === "daily_reports" && version < 10)
+            (table === "daily_reports" && version < 10) ||
+            (table === "development_tasks" && version < 12)
           )
             continue;
           const schema = db
@@ -338,7 +341,9 @@ export class WorkspaceBackups {
               .transaction(() => {
                 for (const table of tables) {
                   if (
-                    (table === "canvas_notes" || table === "daily_reports") &&
+                    (table === "canvas_notes" ||
+                      table === "daily_reports" ||
+                      table === "development_tasks") &&
                     !source
                       .query(
                         "SELECT name FROM sqlite_master WHERE name=? AND type='table'",
@@ -369,6 +374,74 @@ export class WorkspaceBackups {
                 target.exec(
                   "UPDATE chat_history_snapshots SET restored=1,thread_id=NULL",
                 );
+                for (const row of target
+                  .query("SELECT id,state FROM development_tasks")
+                  .all() as { id: string; state: string }[]) {
+                  const state = JSON.parse(row.state);
+                  z.object({
+                    id: z.literal(row.id),
+                    title: z.string().max(120),
+                    requirement: z.string().max(16000),
+                    repository: z.string(),
+                    worktree: z.string(),
+                    branch: z.string(),
+                    baseBranch: z.string(),
+                    baseCommit: z.string(),
+                    model: z.string(),
+                    version: z.number().int().positive(),
+                    createdAt: z.iso.datetime(),
+                    updatedAt: z.iso.datetime(),
+                    chatId: z.uuid().nullable(),
+                    sources: z.object({
+                      items: z
+                        .array(
+                          z.object({
+                            id: z.uuid(),
+                            title: z.string(),
+                            version: z.number().int().positive(),
+                          }),
+                        )
+                        .max(20),
+                      models: z
+                        .array(
+                          z.object({
+                            id: z.uuid(),
+                            name: z.string(),
+                            version: z.number().int().positive(),
+                          }),
+                        )
+                        .max(10),
+                    }),
+                    snapshot: z
+                      .object({
+                        revision: z.number(),
+                        items: z.array(
+                          z.object({
+                            id: z.string(),
+                            role: z.enum(["user", "assistant", "tool"]),
+                            type: z.string(),
+                            text: z.string(),
+                            status: z.string().optional(),
+                            images: z.array(z.string()).optional(),
+                          }),
+                        ),
+                      })
+                      .nullable(),
+                  }).parse(state);
+                  state.status = "interrupted";
+                  state.restored = true;
+                  state.error =
+                    "备份恢复的研发任务仅供查阅，代码目录不包含在备份中。请重新选择目录创建新任务。";
+                  if (state.snapshot) {
+                    state.snapshot.running = false;
+                    state.snapshot.requests = [];
+                  }
+                  target
+                    .query(
+                      "UPDATE development_tasks SET owner=?,state=? WHERE id=?",
+                    )
+                    .run(actor.identity, JSON.stringify(state), row.id);
+                }
                 target
                   .query("UPDATE assistant_flows SET owner=?")
                   .run(actor.identity);

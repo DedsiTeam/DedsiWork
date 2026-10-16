@@ -18,8 +18,9 @@ import { AppError, errorBody } from "../shared/errors";
 import { versionSchema } from "../shared/work-item";
 import { DomainModelService } from "./services/domain-models";
 import { CodexChat, openChatGPT, openChatLink } from "./codex/chat";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { AssistantService } from "./services/assistant";
+import { DevelopmentTasks } from "./services/development-tasks";
 
 export function createApp(options: {
   dbPath: string;
@@ -40,6 +41,13 @@ export function createApp(options: {
       domainModels = new DomainModelService(db);
     const assistant = new AssistantService(db, service, domainModels);
     const chat = new CodexChat(db, dirname(path), () => workspaces.get(id));
+    const development = new DevelopmentTasks(
+      db,
+      dirname(path),
+      service,
+      domainModels,
+      join(dirname(options.dbPath), "development-worktrees", id),
+    );
     const mcp = createMcp(service, sprints);
     const dailyReports = new DailyReports(db),
       reportAI = new ReportAI(dailyReports);
@@ -53,10 +61,12 @@ export function createApp(options: {
       reportAI,
       assistant,
       chat,
+      development,
       mcp,
       async close() {
         await Promise.allSettled([
           chat.close(),
+          development.close(),
           assistant.close(),
           reportAI.close(),
         ]);
@@ -156,6 +166,30 @@ export function createApp(options: {
           404,
         );
       const actor = auth.actor(req, requestId);
+      if (
+        url.pathname === "/api/v1/development-notifications" &&
+        req.method === "GET"
+      ) {
+        const data = workspaces
+          .entries()
+          .filter((space) => !deletingSpaces.has(space.id))
+          .flatMap((space) =>
+            bundle(space.id)
+              .development.notifications(actor)
+              .map((task) => ({
+                id: task.attention!.id,
+                taskId: task.id,
+                workspaceId: space.id,
+                workspaceName: space.name,
+                title: task.title,
+                status: task.attention!.status,
+                createdAt: task.attention!.createdAt,
+              })),
+          );
+        return reply({
+          data: data.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+        });
+      }
       if (url.pathname === "/api/v1/workspaces") {
         if (req.method === "GET") return reply({ data: workspaces.list() });
         if (req.method === "POST")
@@ -191,8 +225,23 @@ export function createApp(options: {
       if (backup && req.method === "POST") {
         const id = z.uuid().parse(backup[1]);
         const value = bundle(id);
+        if (
+          value.development
+            .list(actor)
+            .some((task) =>
+              ["preparing", "running", "waiting", "stopping"].includes(
+                task.status,
+              ),
+            )
+        )
+          throw new AppError(
+            "DEVELOPMENT_BUSY",
+            "请先停止正在执行的研发任务，再备份工作空间",
+            409,
+          );
         deletingSpaces.add(id);
         try {
+          await value.development.chat.exportHistories(actor);
           return reply({
             data: await backups.backup(id, value.db, value.chat, actor),
           });
@@ -252,7 +301,94 @@ export function createApp(options: {
         reportAI,
         assistant,
         chat,
+        development,
       } = scoped(req);
+      if (
+        url.pathname === "/api/v1/development-tasks/select-directory" &&
+        req.method === "POST"
+      )
+        return reply({ data: await development.selectDirectory(actor) });
+      if (
+        url.pathname === "/api/v1/development-tasks/status" &&
+        req.method === "GET"
+      )
+        return reply({ data: await development.chat.status(actor) });
+      if (
+        url.pathname === "/api/v1/development-tasks/login" &&
+        req.method === "POST"
+      )
+        return reply({ data: await development.chat.signIn(actor) });
+      if (url.pathname === "/api/v1/development-tasks") {
+        if (req.method === "GET")
+          return reply({ data: development.list(actor) });
+        if (req.method === "POST")
+          return reply(
+            { data: await development.create(await json(req), actor) },
+            201,
+          );
+      }
+      const developmentMatch =
+        /^\/api\/v1\/development-tasks\/([^/]+)(?:\/(events|start|stop|messages|complete|changes|open-directory|handoff|requests|merge-preview|merge|cleanup|acknowledge)(?:\/([^/]+))?)?$/.exec(
+          url.pathname,
+        );
+      if (developmentMatch) {
+        const id = z.uuid().parse(developmentMatch[1]),
+          action = developmentMatch[2];
+        if (req.method === "GET") {
+          if (!action) return reply({ data: development.get(id, actor) });
+          if (action === "events")
+            return development.stream(id, actor, req.signal);
+          if (action === "changes")
+            return reply({ data: await development.changes(id, actor) });
+          if (action === "merge-preview")
+            return reply({
+              data: await development.merging.preview(id, actor),
+            });
+        }
+        if (req.method === "POST") {
+          if (action === "acknowledge") {
+            const input = z
+              .object({ notificationId: z.uuid() })
+              .strict()
+              .parse(await json(req));
+            return reply({
+              data: development.acknowledge(id, input.notificationId, actor),
+            });
+          }
+          if (action === "cleanup")
+            return reply({
+              data: await development.merging.cleanup(id, actor),
+            });
+          if (action === "merge")
+            return reply({
+              data: await development.merging.merge(id, await json(req), actor),
+            });
+          if (action === "start")
+            return reply({ data: await development.start(id, actor) });
+          if (action === "stop")
+            return reply({ data: await development.stop(id, actor) });
+          if (action === "complete")
+            return reply({ data: development.complete(id, actor) });
+          if (action === "messages")
+            return reply({
+              data: await development.message(id, await json(req), actor),
+            });
+          if (action === "open-directory")
+            return reply({ data: await development.openDirectory(id, actor) });
+          if (action === "handoff")
+            return reply({ data: await development.handoff(id, actor) });
+          if (action === "requests" && developmentMatch[3])
+            return reply({
+              data: await development.answer(
+                id,
+                z.uuid().parse(developmentMatch[3]),
+                await json(req),
+                actor,
+              ),
+            });
+        }
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
       if (
         url.pathname === "/api/v1/notes/export-image" &&
         req.method === "POST"

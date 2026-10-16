@@ -2,6 +2,7 @@ import { NavLink, useLocation } from "react-router";
 import { MessageSquare } from "lucide-react";
 import { navigation } from "../navigation";
 import { useWindowDrag } from "./window-drag";
+import { version } from "../../package.json";
 
 export function Sidebar() {
   const windowDrag = useWindowDrag();
@@ -41,7 +42,7 @@ export function Sidebar() {
                       aria-label={item.label}
                       title={item.label}
                       className={({ isActive }) =>
-                        `nav-item ${isActive || (item.to === "/work-items" && pathname.startsWith("/work-items/") && !pathname.startsWith("/work-items/sprints")) || (item.to === "/domain-models" && pathname.startsWith("/domain-models/")) || (item.to === "/notes" && pathname.startsWith("/notes/")) ? "active" : ""}`
+                        `nav-item ${isActive || (item.to === "/work-items" && pathname.startsWith("/work-items/") && !pathname.startsWith("/work-items/sprints")) || (item.to === "/domain-models" && pathname.startsWith("/domain-models/")) || (item.to === "/development-tasks" && pathname.startsWith("/development-tasks/")) || (item.to === "/notes" && pathname.startsWith("/notes/")) ? "active" : ""}`
                       }
                     >
                       <item.icon size={16} />
@@ -53,6 +54,7 @@ export function Sidebar() {
           </section>
         ))}
       </nav>
+      <div className="sidebar-version">{version}</div>
     </aside>
   );
 }

@@ -6,6 +6,7 @@ import {
   Boxes,
   StickyNote,
   CalendarDays,
+  Code2,
 } from "lucide-react";
 export const navigation = [
   {
@@ -22,6 +23,12 @@ export const navigation = [
     label: "领域模型",
     icon: Boxes,
     children: [{ to: "/domain-models", label: "模型管理", icon: Boxes }],
+  },
+  {
+    id: "development",
+    label: "研发任务",
+    icon: Code2,
+    children: [{ to: "/development-tasks", label: "研发任务", icon: Code2 }],
   },
   {
     id: "notes",

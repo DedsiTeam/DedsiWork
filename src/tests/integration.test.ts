@@ -677,3 +677,24 @@ test("empty sprint deletion works across REST and MCP and requires confirmation"
     await reader.close();
   }
 });
+
+test("development reminders require authentication and acknowledging requires CSRF", async () => {
+  expect(
+    (await fetch(`${origin}/api/v1/development-notifications`)).status,
+  ).toBe(401);
+  const { cookie } = await webSession();
+  const result = await fetch(`${origin}/api/v1/development-notifications`, {
+    headers: { Cookie: cookie },
+  });
+  expect(result.status).toBe(200);
+  expect((await result.json()).data).toEqual([]);
+  const response = await fetch(
+    `${origin}/api/v1/development-tasks/${crypto.randomUUID()}/acknowledge`,
+    {
+      method: "POST",
+      headers: { Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ notificationId: crypto.randomUUID() }),
+    },
+  );
+  expect(response.status).toBe(403);
+});

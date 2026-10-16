@@ -1,0 +1,65 @@
+.development-notice-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #777585;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.development-notice-trigger:hover {
+  background: #f0eff3;
+  color: #0d0c22;
+}
+.development-notice-trigger span {
+  min-width: 17px;
+  padding: 1px 4px;
+  background: #0d0c22;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 10px;
+}
+.confirmation-content.development-notice-dialog {
+  width: min(620px, calc(100vw - 40px));
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.development-notice-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.development-notice-heading button {
+  border: 0;
+  background: transparent;
+  padding: 5px;
+  cursor: pointer;
+}
+.development-notice-settings {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.development-notice-list {
+  max-height: 48vh;
+  overflow: auto;
+}
+.development-notice-list article {
+  border-top: 1px solid #e9e8ef;
+  padding: 18px 0;
+}
+.development-notice-list article p {
+  margin: 8px 0;
+}
+.development-notice-list article small {
+  color: #777585;
+}
+.development-notice-list article > div {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}

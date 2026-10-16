@@ -1,3 +1,4 @@
+import { DevelopmentNotifications } from "./components/development-notifications";
 import { WorkspaceSwitcher } from "./components/workspace-switcher";
 import type { Workspace } from "../shared/workspace";
 import { useCallback, useEffect, useState } from "react";
@@ -181,6 +182,7 @@ export function App() {
         {!manager && workspace && <Sidebar key={workspace.id} />}
         <main className="main-area">
           <header className="topbar" {...windowDrag}>
+            <DevelopmentNotifications />
             {!manager && <WorkspaceSwitcher />}
           </header>
           {spaceReady && (manager || workspace) ? (

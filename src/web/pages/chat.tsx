@@ -962,7 +962,7 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   );
 }
 
-function ChatMessage({
+export function ChatMessage({
   item,
   onLinkError,
 }: {
@@ -978,11 +978,15 @@ function ChatMessage({
           <small>
             {item.status === "completed"
               ? "已完成"
-              : item.status === "failed"
-                ? "失败"
-                : item.status === "inProgress"
-                  ? "进行中"
-                  : item.status || ""}
+              : item.status === "declined"
+                ? "已拒绝"
+                : item.status === "interrupted"
+                  ? "已中断"
+                  : item.status === "failed"
+                    ? "失败"
+                    : item.status === "inProgress"
+                      ? "进行中"
+                      : item.status || ""}
           </small>
         </summary>
         <pre>{item.text}</pre>
@@ -1032,14 +1036,16 @@ function ChatMessage({
   );
 }
 
-function RequestCard({
+export function RequestCard({
   request,
   chatId,
   onResult,
+  endpoint,
 }: {
   request: ChatRequest;
   chatId: string;
   onResult: (snapshot: ChatSnapshot) => void;
+  endpoint?: string;
 }) {
   const { notify } = useWorkspace();
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -1071,7 +1077,7 @@ function RequestCard({
     setError("");
     try {
       const result = await api<{ data: ChatSnapshot }>(
-        `/api/v1/chat/threads/${chatId}/requests/${request.id}`,
+        endpoint || `/api/v1/chat/threads/${chatId}/requests/${request.id}`,
         {
           method: "POST",
           body: JSON.stringify({

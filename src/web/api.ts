@@ -43,3 +43,45 @@ export async function api<T>(
   }
   return result as T;
 }
+
+export async function subscribeApi<T>(
+  path: string,
+  signal: AbortSignal,
+  onData: (data: T) => void,
+) {
+  const response = await fetch(path, {
+    signal,
+    headers: { "X-Workspace-Id": workspaceId, Accept: "text/event-stream" },
+  });
+  if (!response.ok) {
+    const result = await response.json();
+    if (response.status === 401)
+      window.dispatchEvent(new Event("session-expired"));
+    throw new Error(result.error?.message || "进度连接失败");
+  }
+  if (!response.body) throw new Error("当前环境不支持实时进度连接");
+  const reader = response.body.getReader(),
+    decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    while (!signal.aborted) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let end: number;
+      while ((end = buffer.indexOf("\n\n")) !== -1) {
+        const frame = buffer.slice(0, end);
+        buffer = buffer.slice(end + 2);
+        const data = frame
+          .split("\n")
+          .filter((line) => line.startsWith("data: "))
+          .map((line) => line.slice(6))
+          .join("\n");
+        if (data) onData(JSON.parse(data));
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}

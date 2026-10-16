@@ -80,7 +80,7 @@ let closing = false;
 async function shutdown() {
   if (closing) return;
   closing = true;
-  await server.stop();
+  await server.stop(true);
   await app.close();
   process.exit(0);
 }

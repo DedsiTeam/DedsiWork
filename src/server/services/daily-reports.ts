@@ -266,12 +266,6 @@ export class DailyReports {
             "日报已更新，请刷新后重试",
             409,
           );
-        if (!report.deletedAt)
-          throw new AppError(
-            "REPORT_NOT_DELETED",
-            "只能永久删除回收站中的日报",
-            409,
-          );
         this.db.query("DELETE FROM daily_reports WHERE id=?").run(id);
         return { id };
       })

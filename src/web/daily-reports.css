@@ -127,13 +127,19 @@
   gap: 20px;
   margin-top: 24px;
 }
+.report-purge-button[data-slot="button"] {
+  background: #dc2626;
+  color: #ffffff;
+}
+.report-purge-button[data-slot="button"]:hover {
+  background: #b91c1c;
+}
 .report-edit-page-heading > div {
   display: flex;
   align-items: center;
   gap: 20px;
 }
-.report-edit-page-heading > div > button {
-  padding-left: 0;
+.report-edit-page-heading > div > button:first-child {
   color: var(--muted-foreground);
 }
 .report-editor.report-page-editor {

@@ -4,14 +4,13 @@ import {
 } from "@modelcontextprotocol/client";
 import { createMcp } from "../server/mcp/handler";
 import { SprintService } from "../server/services/sprints";
-import { test, expect } from "bun:test";
+import { test, expect, afterAll } from "bun:test";
 import {
   mkdtempSync,
   mkdirSync,
   writeFileSync,
   rmSync,
   existsSync,
-  chmodSync,
   readFileSync,
   realpathSync,
 } from "node:fs";
@@ -49,8 +48,34 @@ export async function until<T>(
     if (predicate(v)) return v;
     await Bun.sleep(50);
   }
-  throw new Error("等待状态超时");
+  throw new Error(`等待状态超时：${JSON.stringify(read())}`);
 }
+// Spawn a native executable on every platform: Windows cannot execute a
+// shebang-only script through child_process.spawn without a shell.
+const cliDirectory = mkdtempSync(join(tmpdir(), "dedsiwork-fixture-cli-"));
+const fixtureCli = join(
+  cliDirectory,
+  process.platform === "win32" ? "fixture-cli.exe" : "fixture-cli",
+);
+afterAll(() => rmSync(cliDirectory, { recursive: true, force: true }));
+const compiled = Bun.spawnSync([
+  process.execPath,
+  "build",
+  "--compile",
+  resolve(import.meta.dir, "helpers/codex-development-fixture.ts"),
+  "--outfile",
+  fixtureCli,
+]);
+if (compiled.exitCode !== 0)
+  throw new Error(`Failed to compile Codex fixture: ${compiled.stderr.toString()}`);
+
+// Re-sign Bun's compiled binary so macOS accepts its embedded fixture payload.
+if (process.platform === "darwin") {
+  const signed = Bun.spawnSync(["codesign", "--force", "--sign", "-", fixtureCli]);
+  if (signed.exitCode !== 0)
+    throw new Error(`Failed to sign Codex fixture: ${signed.stderr.toString()}`);
+}
+
 export function fixture() {
   const dir = realpathSync(
       mkdtempSync(join(tmpdir(), "dedsiwork-development-test-")),
@@ -70,12 +95,7 @@ export function fixture() {
     "-m",
     "baseline",
   );
-  const cli = join(dir, "fixture-cli");
-  writeFileSync(
-    cli,
-    `#!${process.execPath}\nimport ${JSON.stringify(resolve(import.meta.dir, "helpers/codex-development-fixture.ts"))};\n`,
-  );
-  chmodSync(cli, 0o700);
+  const cli = fixtureCli;
   const oldCli = process.env.DEDSIWORK_CODEX_PATH,
     oldState = process.env.DEVELOPMENT_FIXTURE_DIR;
   process.env.DEDSIWORK_CODEX_PATH = cli;
@@ -117,12 +137,7 @@ export function fixture() {
       autoStart = false,
       sources: { itemIds?: string[]; modelIds?: string[] } = {},
     ) {
-      const token = crypto.randomUUID();
-      (dev as any).selections.set(token, {
-        owner: actor.identity,
-        repository: repo,
-        expires: Date.now() + 60000,
-      });
+      const { token } = await dev.selectDirectory(actor);
       // Preserve legacy drafts for resume/merge tests; auto-start tests use the real entry point.
       const start = dev.start;
       if (!autoStart) dev.start = async (id, who) => dev.get(id, who);
@@ -291,18 +306,14 @@ test("backup restores development sources/history read-only, retries idempotentl
       items,
       models,
       join(f.dir, "backup-trees"),
+      () => f.repo,
     ),
     chat = new CodexChat(db, dirname(path));
   const output = join(f.dir, "development.dwb");
   Object.defineProperty(backups, "pick", { value: async () => output });
   try {
     const item = items.create({ title: "备份工作项" }, actor);
-    const token = crypto.randomUUID();
-    (dev as any).selections.set(token, {
-      owner: actor.identity,
-      repository: f.repo,
-      expires: Date.now() + 60000,
-    });
+    const { token } = await dev.selectDirectory(actor);
     const task = await dev.create(
       {
         title: "备份研发任务",

@@ -1,5 +1,10 @@
 # DedsiWork
 
+## 0.0.3 更新
+
+- AI 助手仅保留文字对话，移除语音预览页面及入口。
+- 安装包、服务信息与 MCP 版本统一升级为 `0.0.3`，沿用原数据目录。
+
 ## 0.0.2 更新
 
 - 日报改为卡片列表，新增和修改使用独立填报页面，保留自动保存及未保存离开提醒。
@@ -53,26 +58,26 @@ bun run desktop:info
 
 桌面版从 `0.0.1` 开始发布。仓库的 `Build Desktop Installers` workflow 在推送 `v*` 标签时自动生成 Windows x64 NSIS 安装包，以及 macOS Apple Silicon、Intel 两种 DMG 安装包，也支持在 GitHub Actions 页面通过 `Run workflow` 手动运行。
 
-提交并推送版本变更与 workflow 后，发布 `0.0.2` 执行：
+提交并推送版本变更与 workflow 后，发布 `0.0.3` 执行：
 
 ```sh
-git tag v0.0.2
-git push origin v0.0.2
+git tag v0.0.3
+git push origin v0.0.3
 ```
 
 推送版本标签后，三个平台全部构建成功才会自动发布 GitHub Release。打开 [版本下载页](https://github.com/DedsiTeam/DedsiWork/releases)，选择对应版本，在发布说明中点击系统下载链接，或在 Assets 直接下载安装包：
 
-- `DedsiWork-v0.0.2-Windows-x64.exe`：Windows 64 位。
-- `DedsiWork-v0.0.2-macOS-AppleSilicon.dmg`：M 系列芯片 Mac。
-- `DedsiWork-v0.0.2-macOS-Intel.dmg`：Intel Mac。
+- `DedsiWork-v0.0.3-Windows-x64.exe`：Windows 64 位。
+- `DedsiWork-v0.0.3-macOS-AppleSilicon.dmg`：M 系列芯片 Mac。
+- `DedsiWork-v0.0.3-macOS-Intel.dmg`：Intel Mac。
 
 Release 安装包不受 Actions Artifacts 的 7 天保留期限制。重新运行同一标签的 workflow 会更新该版本的安装包和发布说明。
 
 手动运行分支上的 workflow 只打包，不创建 Release。测试下载步骤：登录 GitHub，打开仓库 → Actions → Build Desktop Installers → 点击对应运行记录 → 在页面底部的 Artifacts 下载 ZIP，解压得到安装包：
 
-- `DedsiWork-Windows-x64-v0.0.2`：Windows `.exe` 安装包。
-- `DedsiWork-macOS-AppleSilicon-v0.0.2`：M 系列芯片 Mac 的 `.dmg` 安装包。
-- `DedsiWork-macOS-Intel-v0.0.2`：Intel Mac 的 `.dmg` 安装包。
+- `DedsiWork-Windows-x64-v0.0.3`：Windows `.exe` 安装包。
+- `DedsiWork-macOS-AppleSilicon-v0.0.3`：M 系列芯片 Mac 的 `.dmg` 安装包。
+- `DedsiWork-macOS-Intel-v0.0.3`：Intel Mac 的 `.dmg` 安装包。
 
 产物保留 7 天，过期后可重新手动运行 workflow。打开 DMG 后将 DedsiWork 拖入 Applications。macOS CI 使用 ad-hoc 签名，尚未配置 Apple Developer ID 签名与公证；首次打开可能需要在“系统设置 → 隐私与安全性”允许打开。
 

@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { Server, Link2, Database } from "lucide-react";
+import {
+  Server,
+  Link2,
+  Database,
+  Info as InfoIcon,
+  Copy,
+  Check,
+} from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Button } from "../components/ui/button";
+import { version } from "../../package.json";
 import {
   Card,
   CardContent,
@@ -18,6 +28,19 @@ type Info = {
   runtime: string;
 };
 export function ServiceInfo() {
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [copyState, setCopyState] = useState<
+    "idle" | "copying" | "copied" | "error"
+  >("idle");
+  async function copyVersion() {
+    setCopyState("copying");
+    try {
+      await navigator.clipboard.writeText(version);
+      setCopyState("copied");
+    } catch {
+      setCopyState("error");
+    }
+  }
   const [info, setInfo] = useState<Info | null>(null),
     [error, setError] = useState("");
   useEffect(() => {
@@ -31,6 +54,68 @@ export function ServiceInfo() {
         <div>
           <h1>服务与 MCP</h1>
         </div>
+        <Dialog.Root
+          open={aboutOpen}
+          onOpenChange={(open) => {
+            setAboutOpen(open);
+            setCopyState("idle");
+          }}
+        >
+          <Dialog.Trigger asChild>
+            <Button variant="outline">
+              <InfoIcon aria-hidden="true" />
+              关于 DedsiWork
+            </Button>
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-overlay" />
+            <Dialog.Content className="confirmation-content">
+              <Dialog.Title>关于 DedsiWork</Dialog.Title>
+              <Dialog.Description>
+                DedsiWork · 本地工作管理客户端
+              </Dialog.Description>
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <span>
+                  版本{" "}
+                  <span className="select-text font-medium">{version}</span>
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyVersion}
+                  disabled={copyState === "copying"}
+                >
+                  {copyState === "copied" ? (
+                    <Check aria-hidden="true" />
+                  ) : (
+                    <Copy aria-hidden="true" />
+                  )}
+                  {copyState === "copied"
+                    ? "已复制"
+                    : copyState === "copying"
+                      ? "正在复制…"
+                      : "复制版本号"}
+                </Button>
+              </div>
+              <div
+                role="status"
+                aria-live="polite"
+                className="muted text-sm mb-4"
+              >
+                {copyState === "copied"
+                  ? "版本号已复制"
+                  : copyState === "error"
+                    ? "复制失败，请选中版本号手动复制。"
+                    : ""}
+              </div>
+              <div className="confirmation-actions">
+                <Dialog.Close asChild>
+                  <Button>关闭</Button>
+                </Dialog.Close>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       </div>
       {error && (
         <div role="alert" className="message">

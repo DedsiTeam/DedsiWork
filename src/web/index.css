@@ -24,6 +24,9 @@
   --ui-font-size-sm: 12px;
   --ui-control-padding: 12px;
   --ui-transition: 180ms ease;
+  --ui-page-padding-inline: 24px;
+  --ui-page-padding-block: 8px;
+  --ui-page-heading-gap: 20px;
   --ui-primary-hover: color-mix(in srgb, var(--primary) 88%, var(--background));
   --background: #f8f8f8;
   --foreground: #0d0c22;

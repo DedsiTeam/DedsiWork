@@ -1,4 +1,4 @@
-/* Desktop chat keeps the workspace's fixed 2rem margins. */
+/* Desktop chat shares the workspace page spacing. */
 .app-shell .sidebar .sidebar-chat {
   padding: 9px 10px;
   min-height: 36px;

@@ -27,14 +27,6 @@ body,
 .app-shell .sidebar {
   background: var(--sidebar) !important;
 }
-.sidebar-version {
-  flex-shrink: 0;
-  margin-top: 4px;
-  color: var(--muted-foreground);
-  font-size: 10px;
-  line-height: 14px;
-  text-align: center;
-}
 :is(
   .space-card,
   .note-card,
@@ -214,10 +206,6 @@ body,
   margin-top: auto;
   padding-top: 8px;
 }
-.workspace-shell .sidebar-version {
-  color: var(--muted-foreground);
-  margin-top: 6px;
-}
 .workspace-shell .main-area {
   padding: 0 20px 16px;
 }
@@ -235,10 +223,22 @@ body,
   border-radius: 0;
   box-shadow: none;
   min-height: calc(100vh - var(--header-height) - 32px);
-  padding: 0 2rem;
+  padding: var(--ui-page-padding-block) var(--ui-page-padding-inline);
 }
-.workspace-shell .main-area > .chat-page {
+.workspace-shell
+  .main-area
+  > :is(.chat-page, .note-editor-content, .dm-editor-page, .dm-diagram-page) {
   height: calc(100vh - var(--header-height) - 32px);
+  min-height: 0;
+}
+.app-shell .page-heading {
+  margin-bottom: var(--ui-page-heading-gap);
+}
+.workspace-shell .main-area > .note-editor-content {
+  gap: var(--ui-page-heading-gap);
+}
+.space-manager-shell .main-area > .spaces-page {
+  padding: var(--ui-page-padding-inline);
 }
 .workspace-shell .chat-composer {
   border-radius: var(--ui-radius-panel);

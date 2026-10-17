@@ -2,7 +2,6 @@ import { NavLink, useLocation } from "react-router";
 import { MessageSquare } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { navigation } from "../navigation";
-import { version } from "../../package.json";
 
 const items = [
   { to: "/assistant", label: "AI 助手", icon: MessageSquare },
@@ -105,10 +104,7 @@ export function Sidebar() {
       >
         {items.map(renderItem)}
       </nav>
-      <div className="sidebar-footer">
-        {renderItem(settings)}
-        <div className="sidebar-version">{version}</div>
-      </div>
+      <div className="sidebar-footer">{renderItem(settings)}</div>
     </aside>
   );
 }

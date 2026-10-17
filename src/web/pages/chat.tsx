@@ -1,6 +1,5 @@
 import { EmptyState } from "../components/empty-state";
 import { AIWorkflowLibrary } from "../components/ai-workflows";
-import { VoicePreview } from "../components/voice-preview";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useNavigate, useSearchParams } from "react-router";
 import { businessActionLabels } from "../../shared/assistant-business";
@@ -18,7 +17,6 @@ import {
   ImagePlus,
   LoaderCircle,
   MessageSquare,
-  AudioLines,
   History,
   Folder,
   Plus,
@@ -76,9 +74,6 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   const selectionKey = `dedsiwork:${workspace?.id}:chat-selected`;
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [view, setView] = useState(() =>
-    stored("dedsiwork:agent-view") === "voice" ? "voice" : "text",
-  );
   const [historyOpen, setHistoryOpen] = useState(false);
   const [workflowOpen, setWorkflowOpen] = useState(false);
   useEffect(() => {
@@ -402,7 +397,6 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
       setChats((previous) => [created.chat, ...previous]);
       setText(prompt);
       setImages([]);
-      setView("text");
       setHistoryOpen(false);
       follow.current = true;
       const { data } = await api<{ data: ChatSnapshot }>(
@@ -624,20 +618,6 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
           </span>
         </div>
         <div className="dm-heading-actions">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={view === "voice" ? "切换到文字模式" : "切换到语音模式"}
-            title={view === "voice" ? "切换到文字模式" : "切换到语音模式"}
-            onClick={() => {
-              const next = view === "voice" ? "text" : "voice";
-              setView(next);
-              store("dedsiwork:agent-view", next);
-            }}
-          >
-            {view === "voice" ? <MessageSquare /> : <AudioLines />}
-          </Button>
           {!status?.ready && (
             <Button
               variant="outline"
@@ -741,18 +721,7 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
             </aside>
           </>
         )}
-        {view === "voice" && (
-          <VoicePreview
-            onReturn={() => {
-              setView("text");
-              store("dedsiwork:agent-view", "text");
-            }}
-          />
-        )}
-        <div
-          className="chat-conversation"
-          style={view === "voice" ? { display: "none" } : undefined}
-        >
+        <div className="chat-conversation">
           <div
             className="chat-scroll"
             ref={scroll}

@@ -1,6 +1,6 @@
-/* Compact desktop workspace. Content margins stay fixed at 2rem. */
+/* Compact desktop workspace. Geometry is shared across pages. */
 .app-shell .page-heading {
-  margin-bottom: 22px;
+  margin-bottom: var(--ui-page-heading-gap);
   min-height: 32px;
   gap: 16px;
 }

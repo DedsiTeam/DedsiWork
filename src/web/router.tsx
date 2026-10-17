@@ -1,3 +1,6 @@
+import { TodayPage } from "./pages/today";
+import { LibraryPage } from "./pages/library";
+import { WorkflowsPage } from "./pages/workflows";
 import { BookmarksPage } from "./pages/bookmarks";
 import { DailyReportPage } from "./pages/daily-reports";
 import { DailyReportsPage } from "./pages/daily-report-list";
@@ -24,6 +27,13 @@ export const router = createBrowserRouter([
     path: "/",
     Component: App,
     children: [
+      { path: "today", Component: TodayPage, handle: { title: "今日工作台" } },
+      { path: "library", Component: LibraryPage, handle: { title: "资料库" } },
+      {
+        path: "workflows",
+        Component: WorkflowsPage,
+        handle: { title: "工作流" },
+      },
       {
         path: "bookmarks",
         Component: BookmarksPage,

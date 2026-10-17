@@ -20,6 +20,7 @@ import {
   type WorkflowLibrary,
   type WorkflowSource,
   type WorkflowTemplate,
+  type WorkflowRun,
 } from "../../shared/ai-workflow";
 import { PAGE_SIZE } from "../../shared/pagination";
 import { api } from "../api";
@@ -37,7 +38,7 @@ export function AIWorkflowLibrary({
   initialPrompt = "",
 }: {
   onClose: () => void;
-  onRun: (prompt: string) => Promise<void>;
+  onRun: (prompt: string, chatId?: string) => Promise<void>;
   canRun: boolean;
   initialPrompt?: string;
 }) {
@@ -152,7 +153,16 @@ export function AIWorkflowLibrary({
     try {
       const prompt = renderWorkflow(current, values, sources, notes);
       setRunning(true);
-      await onRun(prompt);
+      const { data: execution } = await api<{ data: WorkflowRun }>(
+        "/api/v1/ai-workflows/runs",
+        {
+          method: "POST",
+          body: JSON.stringify({ template: current, values, sources, notes }),
+        },
+      );
+      if (execution.status === "failed" || !execution.chatId)
+        throw new Error(execution.error || "运行失败，请到执行记录查看详情");
+      await onRun(prompt, execution.chatId);
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -169,7 +179,10 @@ export function AIWorkflowLibrary({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="workflow-dialog" aria-describedby={undefined}>
+        <Dialog.Content
+          className="workflow-dialog"
+          aria-describedby={undefined}
+        >
           <header className="workflow-heading">
             <div>
               <Dialog.Title>AI 模板</Dialog.Title>

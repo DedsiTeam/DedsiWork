@@ -11,6 +11,24 @@ import {
 } from "lucide-react";
 export const navigation = [
   {
+    id: "today",
+    label: "今日工作台",
+    icon: LayoutList,
+    children: [{ to: "/today", label: "今日工作台", icon: LayoutList }],
+  },
+  {
+    id: "library",
+    label: "资料库",
+    icon: Boxes,
+    children: [{ to: "/library", label: "资料库", icon: Boxes }],
+  },
+  {
+    id: "workflows",
+    label: "工作流",
+    icon: ListTodo,
+    children: [{ to: "/workflows", label: "工作流", icon: ListTodo }],
+  },
+  {
     id: "bookmarks",
     label: "网址导航",
     icon: Globe,

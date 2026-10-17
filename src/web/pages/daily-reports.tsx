@@ -1,3 +1,4 @@
+import { ReportActivityPicker } from "../components/report-activity";
 import { PAGE_SIZE } from "../../shared/pagination";
 import { EmptyState } from "../components/empty-state";
 import { DatePicker } from "../components/date-picker";
@@ -565,6 +566,18 @@ function DailyReportEditor() {
                 className="report-fields"
                 disabled={busy || !!selected?.deletedAt}
               >
+                <ReportActivityPicker
+                  key={form.date}
+                  date={form.date}
+                  matters={form.matters}
+                  onAdd={(values) => {
+                    if (form.matters.length + values.length > 100) {
+                      setError("每天最多记录 100 个事项");
+                      return;
+                    }
+                    change("matters", [...form.matters, ...values]);
+                  }}
+                />
                 <div className="report-section-heading">
                   <h3>工作事项</h3>
                   <div>

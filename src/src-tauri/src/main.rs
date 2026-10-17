@@ -16,7 +16,7 @@ use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
-use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{Manager, RunEvent, WebviewWindowBuilder, WindowEvent};
 
 struct ChineseContextMenu(Menu<tauri::Wry>);
 
@@ -258,7 +258,7 @@ fn main() {
                 &[&back, &reload, &separator, &cut, &copy, &paste, &select_all],
             )?));
             let window =
-                WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+                WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
                     .disable_drag_drop_handler()
                     .devtools(false)
                     .transparent(false)
@@ -272,8 +272,6 @@ fn main() {
                 .hidden_title(true)
                 .traffic_light_position(tauri::LogicalPosition::new(16.0, 20.0));
             window
-                .inner_size(1360.0, 900.0)
-                .min_inner_size(1100.0, 720.0)
                 .on_navigation(move |url| {
                     (url.scheme() == "http"
                         && url.host_str() == Some("127.0.0.1")

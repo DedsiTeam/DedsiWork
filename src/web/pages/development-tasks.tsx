@@ -1,3 +1,4 @@
+import { descriptionContent } from "../components/rich-text";
 import { PAGE_SIZE } from "../../shared/pagination";
 import { EmptyState } from "../components/empty-state";
 import { DevelopmentItemAcceptance } from "../components/development-item-acceptance";
@@ -26,6 +27,7 @@ import { Input } from "../components/ui/input";
 import { useWorkspace } from "../workspace-context";
 import { ChatMessage, RequestCard } from "./chat";
 import {
+  captureDevelopmentDelivery,
   developmentStatusLabels,
   type DevelopmentTask,
   type RepositorySelection,
@@ -418,6 +420,41 @@ export function DevelopmentTaskCreatePage() {
   const [items, setItems] = useState<SourceOption[]>([]),
     [models, setModels] = useState<SourceOption[]>([]),
     [picker, setPicker] = useState<"items" | "models" | null>(null);
+  const linkedModelSources = useRef(new Set<string>());
+  const selectedItemIds = items.map((item) => item.id).join(",");
+  useEffect(() => {
+    const ids = selectedItemIds
+      .split(",")
+      .filter((id) => id && !linkedModelSources.current.has(id));
+    if (!ids.length) return;
+    const controller = new AbortController();
+    void Promise.all(
+      ids.map(async (id) => {
+        const { data } = await api<{ data: { models: SourceOption[] } }>(
+          `/api/v1/personal/related/${id}`,
+          { signal: controller.signal },
+        );
+        return { id, models: data.models || [] };
+      }),
+    )
+      .then((results) => {
+        if (controller.signal.aborted) return;
+        results.forEach((result) => linkedModelSources.current.add(result.id));
+        setModels((previous) =>
+          [
+            ...new Map(
+              [...previous, ...results.flatMap((result) => result.models)].map(
+                (model) => [model.id, model],
+              ),
+            ).values(),
+          ].slice(0, 10),
+        );
+      })
+      .catch(() => {
+        /* Optional source discovery must not block direct development. */
+      });
+    return () => controller.abort();
+  }, [selectedItemIds]);
   const [choosing, setChoosing] = useState(false),
     [saving, setSaving] = useState(false),
     [error, setError] = useState("");
@@ -462,6 +499,27 @@ export function DevelopmentTaskCreatePage() {
           })),
         );
         setTitle((previous) => previous || itemResults[0]?.data.title || "");
+        setRequirement(
+          (previous) =>
+            previous ||
+            itemResults
+              .map(({ data }) => {
+                const content = descriptionContent(data.description);
+                const description =
+                  typeof content === "string"
+                    ? new DOMParser().parseFromString(
+                        content.replace(
+                          /<br\s*\/?>|<\/(?:p|li|h[1-6]|blockquote|div)>/gi,
+                          "$&\n",
+                        ),
+                        "text/html",
+                      ).body.textContent || ""
+                    : data.description;
+                return `工作项：${data.title}（${data.id}）\n${description}`;
+              })
+              .join("\n\n")
+              .slice(0, 16000),
+        );
       })
       .catch((error) => {
         if (!controller.signal.aborted)
@@ -494,6 +552,22 @@ export function DevelopmentTaskCreatePage() {
         setSelection(result.data);
         setBase(result.data.currentBranch);
       }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChoosing(false);
+    }
+  }
+  async function initializeRepository() {
+    setChoosing(true);
+    setError("");
+    try {
+      const { data } = await api<{ data: RepositorySelection }>(
+        `${root}/initialize-repository`,
+        { method: "POST" },
+      );
+      setSelection(data);
+      setBase(data.currentBranch);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -588,6 +662,27 @@ export function DevelopmentTaskCreatePage() {
             <p className="dev-help">
               自动使用工作空间的本地工作目录；如需修改，请前往工作空间设置。直接在该目录当前分支执行，保留并使用已有未提交修改，不创建工作树或切换分支。
             </p>
+            {!selection && !choosing && (
+              <div className="dev-actions">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void choose()}
+                >
+                  重新读取目录
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void initializeRepository()}
+                >
+                  初始化空目录
+                </Button>
+                <p className="dev-help">
+                  为选定的空目录建立本地 Git
+                  仓库和初始记录，不上传文件。已有文件的目录不会自动初始化。
+                </p>
+              </div>
+            )}
             <div className="dev-form-columns">
               <label>
                 当前分支
@@ -1059,6 +1154,20 @@ function DevelopmentTaskDetail() {
     );
   const running = active(task),
     canStart = !running && task.status !== "completed" && !task.restored;
+  const delivery =
+    task.deliveryHistory?.at(-1) ||
+    (!running && task.snapshot
+      ? captureDevelopmentDelivery(task.snapshot, task.updatedAt)
+      : null);
+  const revise = (feedback: string) => {
+    setText(feedback);
+    setTab("progress");
+    requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLTextAreaElement>('[aria-label="补充研发要求"]')
+        ?.focus(),
+    );
+  };
   const latest = [...(task.snapshot?.items || [])]
     .reverse()
     .find(
@@ -1159,20 +1268,6 @@ function DevelopmentTaskDetail() {
             <FolderOpen />
             打开研发目录
           </Button>
-          <Button
-            variant="outline"
-            disabled={
-              !!busy ||
-              !task.worktree ||
-              running ||
-              task.status === "completed" ||
-              !!task.restored
-            }
-            onClick={() => void action("handoff")}
-          >
-            <ExternalLink />
-            打开 ChatGPT 接管
-          </Button>
           {task.worktree &&
             !running &&
             task.status !== "completed" &&
@@ -1188,8 +1283,8 @@ function DevelopmentTaskDetail() {
             )}
         </div>
         <p className="dev-help">
-          不自动运行测试，由你测试和验收。外部接管需先停止执行；打开 ChatGPT
-          后需自行提供任务信息，不会自动接续同一会话。
+          Codex
+          在当前任务中持续研发；交付后由你测试和验收，需要调整时提出修改即可继续同一会话。
         </p>
         {!task.executionMode && !task.restored && (
           <p className="dev-help">
@@ -1206,6 +1301,61 @@ function DevelopmentTaskDetail() {
             {task.merge.cleanupError && (
               <span role="alert"> · 清理未完成：{task.merge.cleanupError}</span>
             )}
+          </p>
+        )}
+      </section>
+      <section className="dev-detail-content" aria-label="交付与收尾">
+        <h2>交付与收尾</h2>
+        <p>
+          研发：{developmentStatusLabels[task.status]} ·
+          工作项验收：在下方逐项核对 · 代码：
+          {task.executionMode === "workspace"
+            ? "保留在当前工作目录，提交由你决定"
+            : task.merge
+              ? `已合并到 ${task.merge.targetBranch}`
+              : "尚未合并"}
+        </p>
+        {delivery ? (
+          <>
+            <p className="dev-help">
+              最近交付 · {date(delivery.createdAt)} · 以下为 Codex
+              报告，仍需人工核验。
+              {running ? "当前正在修改，以下为上次交付。" : ""}
+            </p>
+            <h3>完成内容</h3>
+            <pre>{delivery.completed}</pre>
+            <h3>验证结果</h3>
+            <pre>{delivery.verification}</pre>
+            <h3>遗留问题</h3>
+            <pre>{delivery.remaining}</pre>
+            {canStart && task.chatId && task.executionMode === "workspace" && (
+              <Button
+                variant="outline"
+                onClick={() => revise("请基于本次交付继续修改。\n验收反馈：")}
+              >
+                提出修改，继续当前任务
+              </Button>
+            )}
+            {(task.deliveryHistory?.length || 0) > 1 && (
+              <details>
+                <summary>
+                  历次交付（{task.deliveryHistory!.length - 1}）
+                </summary>
+                {task
+                  .deliveryHistory!.slice(0, -1)
+                  .reverse()
+                  .map((item) => (
+                    <article key={item.id}>
+                      <h3>{date(item.createdAt)}</h3>
+                      <pre>{item.raw}</pre>
+                    </article>
+                  ))}
+              </details>
+            )}
+          </>
+        ) : (
+          <p className="dev-help">
+            Codex 完成研发后，将在这里保留完成内容、验证结果与遗留问题。
           </p>
         )}
       </section>
@@ -1416,7 +1566,16 @@ function DevelopmentTaskDetail() {
       )}
       {["review", "completed"].includes(task.status) &&
         task.sources.items.length > 0 && (
-          <DevelopmentItemAcceptance key={task.id} task={task} />
+          <DevelopmentItemAcceptance
+            key={task.id}
+            task={task}
+            onTask={accept}
+            onRevise={
+              canStart && task.executionMode === "workspace" && task.chatId
+                ? revise
+                : undefined
+            }
+          />
         )}
       <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
         <AlertDialog.Portal>

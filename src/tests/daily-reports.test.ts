@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../shared/pagination";
 import { WorkItemService } from "../server/services/work-items";
 import { WorkItemRepository } from "../server/repositories/work-items";
 import { afterEach, beforeEach, expect, test } from "bun:test";
@@ -120,8 +121,10 @@ test("full text search includes outcomes; literal wildcard escaping, month and p
       .list(new URLSearchParams({ date: "2026-10-15" }))
       .data.map((report) => report.date),
   ).toEqual(["2026-10-15"]);
-  expect(service.list(new URLSearchParams()).data).toHaveLength(20);
-  expect(service.list(new URLSearchParams({ page: "2" })).data).toHaveLength(3);
+  expect(service.list(new URLSearchParams()).data).toHaveLength(PAGE_SIZE);
+  expect(service.list(new URLSearchParams({ page: "2" })).data).toHaveLength(
+    23 - PAGE_SIZE,
+  );
 });
 test("quantity validation and metrics keep units separate and retain unknown values", () => {
   const value = input();

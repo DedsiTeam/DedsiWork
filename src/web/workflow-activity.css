@@ -1,0 +1,172 @@
+.workflow-activity {
+  width: 100%;
+  color: var(--foreground);
+}
+.workflow-page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: var(--ui-page-heading-gap);
+}
+.workflow-activity h1 {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.workflow-activity h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+.workflow-activity p {
+  color: var(--muted-foreground);
+  line-height: 1.65;
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+.workflow-shortcuts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  margin-bottom: 36px;
+}
+.workflow-shortcut {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 16px;
+  padding: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-card);
+}
+.workflow-shortcut > button {
+  align-self: center;
+  justify-self: start;
+}
+.workflow-feature-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: var(--secondary);
+  border-radius: var(--ui-radius-circle);
+}
+.workflow-history {
+  min-width: 0;
+}
+.workflow-section-heading {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.workflow-section-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.workflow-section-heading h2 > span {
+  color: var(--muted-foreground);
+  font-weight: 400;
+  font-size: 13px;
+}
+.workflow-activity-entry {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--border);
+}
+.workflow-activity-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.workflow-activity-entry > .workflow-activity-row:first-child {
+  flex-wrap: nowrap;
+}
+.workflow-activity-row strong {
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-run-icon {
+  color: var(--muted-foreground);
+  display: flex;
+}
+.workflow-status {
+  display: inline-flex;
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--ui-radius-compact);
+  background: var(--secondary);
+  color: var(--muted-foreground);
+  margin-left: auto;
+}
+.workflow-status[data-status="running"],
+.workflow-status[data-status="waiting"],
+.workflow-status[data-status="failed"] {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.workflow-activity-entry > p {
+  margin: 8px 0 16px;
+  font-size: 12px;
+}
+.workflow-activity a:not([data-slot="button"]) {
+  color: var(--foreground);
+  text-underline-offset: 3px;
+}
+.workflow-activity details {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.workflow-activity summary {
+  cursor: pointer;
+  color: var(--muted-foreground);
+  width: fit-content;
+}
+.workflow-activity summary:hover {
+  color: var(--foreground);
+}
+.workflow-activity summary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+.workflow-activity pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+  font: inherit;
+  line-height: 1.7;
+  background: var(--muted);
+  padding: 16px;
+  border-radius: var(--ui-radius-panel);
+  max-height: 360px;
+  overflow-y: auto;
+}
+.workflow-inputs {
+  display: grid;
+  gap: 12px;
+}
+.workflow-inputs dt {
+  color: var(--muted-foreground);
+  margin-bottom: 4px;
+}
+.workflow-inputs dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 680px) {
+  .workflow-shortcut {
+    grid-template-columns: auto 1fr;
+    padding: 20px;
+  }
+  .workflow-shortcut > button {
+    grid-column: 2;
+  }
+  .workflow-activity-entry > .workflow-activity-row:first-child {
+    flex-wrap: wrap;
+  }
+}

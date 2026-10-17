@@ -152,7 +152,7 @@ for (const legacy of [false, true])
       new Bookmarks(db).save({ expectedVersion: 0, groups }, actor);
       if (legacy)
         db.exec(
-          "DROP TABLE bookmarks; DELETE FROM schema_migrations WHERE version=13",
+          "DROP TABLE bookmarks; DROP TABLE ai_workflows; DROP TABLE personal_sources; DROP TABLE personal_focus; DROP TABLE report_drafts; DROP TABLE workflow_runs; DELETE FROM schema_migrations WHERE version>=13",
         );
       await backups.backup(space.id, db, chat, actor);
       const preview = await backups.preview(actor);

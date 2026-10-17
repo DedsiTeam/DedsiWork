@@ -1,3 +1,4 @@
+import { ReportDraftHistory } from "./report-draft-history";
 import { useReportExport } from "../report-export";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -251,7 +252,7 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
             整理要求（可选）
             <Input
               aria-label="AI 报告整理要求"
-              placeholder="例如：适合发给主管，简洁一些，突出成果和问题"
+              placeholder="例如：用于个人复盘，简洁一些，突出成果和问题"
               maxLength={2000}
               value={note}
               disabled={running || busy}
@@ -355,6 +356,26 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
           </Button>
         </details>
       )}
+      <ReportDraftHistory
+        report={report}
+        text={cache.text}
+        snapshot={cache.draftSnapshot}
+        onLoad={(draft, initial) => {
+          setCache((previous) =>
+            initial && previous.text
+              ? previous
+              : {
+                  ...previous,
+                  text: draft.text,
+                  draftSnapshot: draft.sourceSnapshot,
+                  candidate: initial ? previous.candidate : previous.text,
+                  snapshot: initial
+                    ? previous.snapshot
+                    : previous.draftSnapshot,
+                },
+          );
+        }}
+      />
       {cache.text && (
         <>
           <div className="report-actions">
@@ -397,7 +418,7 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
             />
           )}
           <p className="report-help">
-            文字稿保留在本次窗口会话中，请及时复制或导出。手动编辑后以当前文字为准。
+            编辑后点击“保存文字稿”写入当前工作空间，保存时保留历史版本和来源快照。
           </p>
         </>
       )}

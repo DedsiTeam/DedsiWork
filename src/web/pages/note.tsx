@@ -1,3 +1,4 @@
+import { prepareAssistantSource } from "../components/personal-actions";
 import { EmptyState } from "../components/empty-state";
 import {
   useEffect,
@@ -341,7 +342,7 @@ async function imageData(file: File) {
 export function NotePage() {
   const { id } = useParams(),
     navigate = useNavigate(),
-    { notify } = useWorkspace();
+    { notify, workspace } = useWorkspace();
   const [note, setNote] = useState<CanvasNote | null>(null),
     [initial, setInitial] = useState<CanvasContent | null>(id ? null : empty),
     [name, setName] = useState("未命名无边记"),
@@ -1164,6 +1165,29 @@ export function NotePage() {
               : "已保存"}
         </span>
         <div className="note-heading-actions">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || loading || !id || dirty || name !== savedName}
+            title="先保存笔记，再将选中文字或整篇文字交给 Codex"
+            onClick={async () => {
+              if (!id || !workspace) return;
+              try {
+                navigate(
+                  await prepareAssistantSource(
+                    "note",
+                    id,
+                    workspace.id,
+                    selection.map((n) => n.id),
+                  ),
+                );
+              } catch (e) {
+                notify((e as Error).message, "error");
+              }
+            }}
+          >
+            用 Codex 拆解需求
+          </Button>
           <Button
             variant="outline"
             size="sm"

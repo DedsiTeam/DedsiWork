@@ -76,3 +76,40 @@ export function renderWorkflow(
     throw new Error("模板内容过长，请精简参数或补充要求后重试。");
   return result;
 }
+
+export const workflowRunSchema = z
+  .object({
+    template: workflowTemplateSchema,
+    values: z.record(z.string().max(40), z.string().max(12000)).default({}),
+    sources: z
+      .array(
+        z.object({
+          kind: z.enum(["items", "models"]),
+          id: z.uuid(),
+          title: z.string().max(300),
+          version: z.number().int().nonnegative(),
+        }),
+      )
+      .max(40)
+      .default([]),
+    notes: z.string().max(12000).default(""),
+  })
+  .strict();
+export type WorkflowRunInput = z.infer<typeof workflowRunSchema>;
+export type WorkflowRun = WorkflowRunInput & {
+  id: string;
+  chatId: string | null;
+  status:
+    | "starting"
+    | "running"
+    | "waiting"
+    | "completed"
+    | "failed"
+    | "cancelled"
+    | "interrupted";
+  createdAt: string;
+  updatedAt: string;
+  error: string | null;
+  result: string;
+  artifacts?: { label: string; url: string }[];
+};

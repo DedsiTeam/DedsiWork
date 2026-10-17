@@ -1,3 +1,6 @@
+import { PersonalWork } from "./services/personal-work";
+import { ReportRecords } from "./services/report-records";
+import { WorkflowExecution } from "./services/workflow-execution";
 import { prepareDevelopmentSources } from "./services/development-sources";
 import type { DevelopmentTask } from "../shared/development-task";
 import { Bookmarks } from "./services/bookmarks";
@@ -113,6 +116,10 @@ export function createApp(options: {
       join(dirname(options.dbPath), "development-worktrees", id),
       () => chat.defaultWorkspace,
     );
+    const personal = new PersonalWork(db, service);
+    const records = new ReportRecords(db);
+    const execution = new WorkflowExecution(db, chat);
+    execution.recoverInterruptedRuns();
     const mcp = createMcp(service, sprints, domainModels, development);
     const dailyReports = new DailyReports(db),
       reportAI = new ReportAI(dailyReports);
@@ -124,6 +131,9 @@ export function createApp(options: {
       notes: new CanvasNotes(db),
       bookmarks: new Bookmarks(db),
       workflows: new AIWorkflows(db),
+      personal,
+      records,
+      execution,
       dailyReports,
       reportAI,
       assistant,
@@ -131,6 +141,7 @@ export function createApp(options: {
       development,
       mcp,
       async close() {
+        await execution.close();
         await Promise.allSettled([
           chat.close(),
           development.close(),
@@ -154,6 +165,7 @@ export function createApp(options: {
   // Keep the existing data file intact; its complete contents become the default space.
   const initialId = workspaces.first();
   const initial = initialId ? bundle(initialId) : null;
+  for (const space of workspaces.entries()) bundle(space.id);
   function scoped(req: Request) {
     const id =
       req.headers.get("x-workspace-id") ||
@@ -366,12 +378,67 @@ export function createApp(options: {
         notes,
         bookmarks,
         workflows,
+        personal,
+        records,
+        execution,
         dailyReports,
         reportAI,
         assistant,
         chat,
         development,
       } = scoped(req);
+      if (url.pathname === "/api/v1/personal/overview" && req.method === "GET")
+        return reply({ data: personal.overview(actor, development, chat) });
+      if (url.pathname === "/api/v1/personal/search" && req.method === "GET")
+        return reply(personal.search(url.searchParams));
+      if (url.pathname === "/api/v1/personal/context" && req.method === "POST")
+        return reply({ data: personal.context(await json(req)) });
+      if (url.pathname === "/api/v1/personal/sources" && req.method === "POST")
+        return reply({ data: personal.link(await json(req), actor) });
+      if (url.pathname === "/api/v1/personal/focus" && req.method === "PUT")
+        return reply({ data: personal.setFocus(await json(req), actor) });
+      const personalMatch =
+        /^\/api\/v1\/personal\/(focus|related)\/([^/]+)$/.exec(url.pathname);
+      if (personalMatch && req.method === "GET")
+        return reply({
+          data:
+            personalMatch[1] === "focus"
+              ? personal.focusState(personalMatch[2]!)
+              : personal.related(personalMatch[2]!, actor),
+        });
+      if (
+        url.pathname === "/api/v1/daily-reports/activity" &&
+        req.method === "GET"
+      )
+        return reply({ data: records.activity(url.searchParams, actor) });
+      if (url.pathname === "/api/v1/daily-reports/drafts") {
+        if (req.method === "GET")
+          return reply({ data: records.list(url.searchParams) });
+        if (req.method === "POST")
+          return reply({ data: records.save(await json(req), actor) });
+      }
+      if (url.pathname === "/api/v1/ai-workflows/runs") {
+        if (req.method === "GET")
+          return reply({
+            data: await execution.list(
+              actor,
+              Number(url.searchParams.get("page") || 1),
+            ),
+          });
+        if (req.method === "POST")
+          return reply({ data: await execution.start(await json(req), actor) });
+      }
+      const runMatch =
+        /^\/api\/v1\/ai-workflows\/runs\/([^/]+)\/(rerun|cancel)$/.exec(
+          url.pathname,
+        );
+      if (runMatch && req.method === "POST")
+        return reply({
+          data:
+            runMatch[2] === "rerun"
+              ? await execution.rerun(runMatch[1]!, actor)
+              : await execution.cancel(runMatch[1]!, actor),
+        });
       if (url.pathname === "/api/v1/ai-workflows") {
         if (req.method === "GET") return reply({ data: workflows.get() });
         if (req.method === "PUT")
@@ -384,6 +451,11 @@ export function createApp(options: {
           return reply({ data: bookmarks.save(await json(req), actor) });
         throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
       }
+      if (
+        url.pathname === "/api/v1/development-tasks/initialize-repository" &&
+        req.method === "POST"
+      )
+        return reply({ data: await development.initializeRepository(actor) });
       if (
         url.pathname === "/api/v1/development-tasks/select-directory" &&
         req.method === "POST"
@@ -409,10 +481,21 @@ export function createApp(options: {
           );
       }
       const developmentMatch =
-        /^\/api\/v1\/development-tasks\/([^/]+)(?:\/(events|start|stop|messages|complete|update-items|changes|open-directory|handoff|requests|merge-preview|merge|cleanup|acknowledge)(?:\/([^/]+))?)?$/.exec(
+        /^\/api\/v1\/development-tasks\/([^/]+)(?:\/(events|start|stop|messages|complete|update-items|acceptance-evidence|changes|open-directory|handoff|requests|merge-preview|merge|cleanup|acknowledge)(?:\/([^/]+))?)?$/.exec(
           url.pathname,
         );
       if (developmentMatch) {
+        if (
+          developmentMatch[2] === "acceptance-evidence" &&
+          req.method === "POST"
+        )
+          return reply({
+            data: development.saveAcceptanceEvidence(
+              z.uuid().parse(developmentMatch[1]),
+              await json(req),
+              actor,
+            ),
+          });
         const id = z.uuid().parse(developmentMatch[1]),
           action = developmentMatch[2];
         if (req.method === "DELETE" && !action)

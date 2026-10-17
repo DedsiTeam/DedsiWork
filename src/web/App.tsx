@@ -33,7 +33,7 @@ export function App() {
       setWorkspace(data);
       setSummary({ total: 0, inProgress: 0, done: 0, trash: 0 });
       setSpaceReady(true);
-      navigate("/assistant");
+      navigate("/today");
     },
     [navigate],
   );

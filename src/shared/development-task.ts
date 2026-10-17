@@ -56,6 +56,11 @@ export type DevelopmentTask = {
     models: (Pick<DomainModel, "id" | "name" | "version"> &
       Partial<DomainModel>)[];
   };
+  deliveryHistory?: DevelopmentDelivery[];
+  acceptanceEvidence?: Record<
+    string,
+    { text: string; updatedAt: string; deliveryId: string | null }
+  >;
   snapshot: ChatSnapshot | null;
   error: string | null;
   version: number;
@@ -113,3 +118,45 @@ export type DevelopmentNotification = {
   status: "review" | "waiting" | "failed" | "interrupted";
   createdAt: string;
 };
+
+export type DevelopmentDelivery = {
+  id: string;
+  createdAt: string;
+  completed: string;
+  verification: string;
+  remaining: string;
+  raw: string;
+};
+
+/** Preserve actual Codex output. Missing sections never imply success. */
+export function captureDevelopmentDelivery(
+  snapshot: ChatSnapshot,
+  createdAt: string,
+): DevelopmentDelivery | null {
+  const lastUser = snapshot.items.findLastIndex((item) => item.role === "user");
+  const reply = snapshot.items
+    .slice(lastUser + 1)
+    .findLast((item) => item.role === "assistant" && item.text.trim());
+  if (!reply) return null;
+  const sections: Record<string, string[]> = {};
+  let heading = "";
+  for (const line of reply.text.split("\n")) {
+    const match = line.match(/^#{1,6}\s*(完成内容|验证结果|遗留问题)\s*$/);
+    if (match) {
+      heading = match[1]!;
+      sections[heading] ||= [];
+    } else if (heading) sections[heading]!.push(line);
+  }
+  return {
+    id: reply.id,
+    createdAt,
+    completed: sections["完成内容"]?.join("\n").trim() || reply.text,
+    verification:
+      sections["验证结果"]?.join("\n").trim() ||
+      "未提供结构化验证结果，请查看原始回复并自行核验。",
+    remaining:
+      sections["遗留问题"]?.join("\n").trim() ||
+      "未明确说明遗留问题，请核对交付范围。",
+    raw: reply.text,
+  };
+}

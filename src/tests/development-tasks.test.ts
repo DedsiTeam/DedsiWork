@@ -1185,3 +1185,61 @@ test("Codex delete failures retain the task and chat for retry", async () => {
     await f.close();
   }
 });
+
+test("acceptance evidence persists, checks version and rejects unrelated work items", async () => {
+  const f = fixture();
+  try {
+    const item = f.items.create(
+      { title: "验收目标", description: "按钮可用" },
+      actor,
+    );
+    const task = await f.create("实现按钮", false, { itemIds: [item.id] });
+    task.status = "review";
+    task.deliveryHistory = [
+      {
+        id: "delivery-1",
+        createdAt: new Date().toISOString(),
+        completed: "实现按钮",
+        verification: "未执行测试",
+        remaining: "人工验收",
+        raw: "report",
+      },
+    ];
+    f.db
+      .query("UPDATE development_tasks SET state=? WHERE id=?")
+      .run(JSON.stringify(task), task.id);
+    const saved = f.dev.saveAcceptanceEvidence(
+      task.id,
+      {
+        itemId: item.id,
+        text: "本地点击按钮，导航正常",
+        expectedVersion: task.version,
+      },
+      actor,
+    );
+    expect(saved.acceptanceEvidence?.[item.id]?.deliveryId).toBe("delivery-1");
+    expect(f.dev.get(task.id, actor).acceptanceEvidence?.[item.id]?.text).toBe(
+      "本地点击按钮，导航正常",
+    );
+    expect(() =>
+      f.dev.saveAcceptanceEvidence(
+        task.id,
+        { itemId: item.id, text: "stale", expectedVersion: task.version },
+        actor,
+      ),
+    ).toThrow("任务已更新");
+    expect(() =>
+      f.dev.saveAcceptanceEvidence(
+        task.id,
+        {
+          itemId: crypto.randomUUID(),
+          text: "unrelated",
+          expectedVersion: saved.version,
+        },
+        actor,
+      ),
+    ).toThrow("工作项未关联");
+  } finally {
+    await f.close();
+  }
+});

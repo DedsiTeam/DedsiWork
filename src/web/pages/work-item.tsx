@@ -1,3 +1,5 @@
+import { FocusActions, RelatedWork } from "../components/personal-actions";
+import "../personal-work.css";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { Editor } from "../components/editor";
@@ -57,6 +59,16 @@ export function WorkItemPage() {
         <div className="assistant-context-bar">
           <AssistantSource kind="work-items" id={item.id} />
           {!item.deletedAt && (
+            <>
+              <Button asChild size="sm">
+                <Link to={`/development-tasks/new?items=${item.id}`}>
+                  开始研发
+                </Link>
+              </Button>
+              <FocusActions id={item.id} />
+            </>
+          )}
+          {!item.deletedAt && (
             <Link
               to={`/assistant?items=${item.id}`}
               className="assistant-context-link"
@@ -66,6 +78,7 @@ export function WorkItemPage() {
           )}
         </div>
       )}
+      {item && !loading && <RelatedWork id={item.id} />}
       {loading ? (
         <p role="status">正在加载工作项…</p>
       ) : error ? (

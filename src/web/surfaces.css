@@ -244,16 +244,16 @@ body,
   border-radius: var(--ui-radius-panel);
   box-shadow: var(--shadow-card-hover);
 }
-@media (max-height: 800px) {
+@media (max-height: 950px) {
   .workspace-shell .sidebar-floating .module-navigation {
     gap: 0;
   }
   .workspace-shell .sidebar-floating .nav-item {
-    gap: 4px;
-    padding-block: 4px;
+    gap: 2px;
+    padding-block: 3px;
   }
   .workspace-shell .sidebar-floating .nav-item .nav-item-icon {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
   }
 }

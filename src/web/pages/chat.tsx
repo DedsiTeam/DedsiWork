@@ -1,3 +1,5 @@
+import { RICH_TEXT_PREFIX } from "../../shared/description";
+import type { SourceKind } from "../../shared/personal-work";
 import { EmptyState } from "../components/empty-state";
 import { AIWorkflowLibrary } from "../components/ai-workflows";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
@@ -130,15 +132,16 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
       .then((values) => {
         if (controller.signal.aborted) return;
         select("");
+        handoffSources.current = values.map(({ data }) => ({
+          kind: "item",
+          id: data.id,
+        }));
         setText(
           "请根据以下工作项设计领域模型，先讨论必要的细节，确认后提供模型草稿：\n" +
             values
-              .map(({ data }) =>
-                JSON.stringify({
-                  id: data.id,
-                  title: data.title,
-                  description: data.description,
-                }),
+              .map(
+                ({ data }) =>
+                  `工作项：${data.title}（${data.id}，版本 ${data.version}）\n${data.description.startsWith(RICH_TEXT_PREFIX) ? new DOMParser().parseFromString(data.description.replace(/<br\s*\/?>|<\/(?:p|li|h[1-6]|blockquote|div)>/gi, "$&\n"), "text/html").body.textContent || "" : data.description}`,
               )
               .join("\n"),
         );
@@ -149,6 +152,39 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
       });
     return () => controller.abort();
   }, [params.get("items")]);
+  const handoffSources = useRef<
+    { kind: SourceKind; id: string; nodeIds?: string[] }[]
+  >([]);
+  const sourceDrafts = useRef(new Map<string, typeof handoffSources.current>());
+  const consumedHandoff = useRef("");
+  useEffect(() => {
+    const token = params.get("handoff");
+    if (!token || consumedHandoff.current === token) return;
+    try {
+      const raw = sessionStorage.getItem(`personal-handoff:${token}`);
+      if (!raw) throw new Error("资料交接已失效，请从来源页面重新发起");
+      const value = JSON.parse(raw);
+      if (value.workspaceId !== workspace?.id)
+        throw new Error("资料属于其他工作空间，请回到来源空间继续");
+      consumedHandoff.current = token;
+      select("");
+      handoffSources.current = value.sources;
+      setText(value.text);
+      const next = new URLSearchParams(params);
+      next.delete("handoff");
+      setParams(next, { replace: true });
+    } catch (e) {
+      notify((e as Error).message, "error");
+    }
+  }, [params.get("handoff"), workspace?.id]);
+  useEffect(() => {
+    const thread = params.get("thread");
+    if (!thread) return;
+    select(thread);
+    const next = new URLSearchParams(params);
+    next.delete("thread");
+    setParams(next, { replace: true });
+  }, [params.get("thread")]);
   async function previewProposal(messageId: string, index: number) {
     if (!selected || busy || openingProposal) return;
     const key = `${messageId}:${index}`;
@@ -194,6 +230,8 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   }, []);
   const busy = sending || Boolean(snapshot?.running);
   function select(id: string) {
+    sourceDrafts.current.set(selected, handoffSources.current);
+    handoffSources.current = sourceDrafts.current.get(id) || [];
     setHistoryOpen(false);
     draft.current.set(selected, { text, images });
     selectedRef.current = id;
@@ -345,6 +383,15 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
           store(selectionKey, id);
         }
       }
+      if (handoffSources.current.length) {
+        await api("/api/v1/personal/sources", {
+          method: "POST",
+          body: JSON.stringify({ chatId: id, sources: handoffSources.current }),
+        });
+        handoffSources.current = [];
+        sourceDrafts.current.delete(selected);
+        sourceDrafts.current.delete(id);
+      }
       const payload = JSON.stringify({ id, text: text.trim(), images, model });
       if (nonce.current.payload !== payload)
         nonce.current = { payload, id: crypto.randomUUID() };
@@ -374,7 +421,26 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
       if (alive.current) setSending(false);
     }
   }
-  async function runWorkflow(prompt: string) {
+  async function runWorkflow(prompt: string, existingChatId?: string) {
+    if (existingChatId) {
+      const { data } = await api<{ data: ChatSnapshot }>(
+        `/api/v1/chat/threads/${existingChatId}`,
+      );
+      draft.current.set(selected, { text, images });
+      selectedRef.current = existingChatId;
+      setSelected(existingChatId);
+      store(selectionKey, existingChatId);
+      accept(data);
+      setChats((previous) => [
+        data.chat,
+        ...previous.filter((chat) => chat.id !== existingChatId),
+      ]);
+      setText("");
+      setImages([]);
+      setHistoryOpen(false);
+      follow.current = true;
+      return;
+    }
     if (busy || loading || !status?.ready)
       throw new Error("请等待当前回复结束，并确认 Codex 已连接。");
     setSending(true);

@@ -1,3 +1,6 @@
+import { installPersonalWork } from "../services/personal-work";
+import { installReportRecords } from "../services/report-records";
+import { initializeWorkflowExecution } from "../services/workflow-execution";
 import { Database } from "bun:sqlite";
 
 export function openDatabase(path: string) {
@@ -247,6 +250,31 @@ export function openDatabase(path: string) {
         new Date().toISOString(),
       );
     }).immediate();
+  }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=15").get()
+  ) {
+    db.transaction(() => {
+      installPersonalWork(db);
+      installReportRecords(db);
+      initializeWorkflowExecution(db);
+      db.query("INSERT INTO schema_migrations VALUES (15,?)").run(
+        new Date().toISOString(),
+      );
+    }).immediate();
+  }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=16").get()
+  ) {
+    db.transaction(() => {
+      db.exec("DROP TABLE IF EXISTS workflow_schedules");
+      db.exec(
+        "UPDATE workflow_runs SET state=json_remove(state,'$.scheduleId') WHERE json_type(state,'$.scheduleId') IS NOT NULL",
+      );
+      db.query("INSERT INTO schema_migrations VALUES (16,?)").run(
+        new Date().toISOString(),
+      );
+    })();
   }
   return db;
 }

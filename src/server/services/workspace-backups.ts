@@ -46,6 +46,10 @@ const tables = [
   "canvas_notes",
   "daily_reports",
   "development_tasks",
+  "personal_focus",
+  "personal_sources",
+  "report_drafts",
+  "workflow_runs",
 ];
 const packageSchema = z
   .object({
@@ -247,9 +251,17 @@ export class WorkspaceBackups {
             n: number;
           }
         ).n;
-        if (![8, 9, 10, 11, 12, 13, 14].includes(version)) throw new Error();
+        if (![8, 9, 10, 11, 12, 13, 14, 15, 16].includes(version))
+          throw new Error();
         for (const table of tables) {
           if (
+            ([
+              "personal_focus",
+              "personal_sources",
+              "report_drafts",
+              "workflow_runs",
+            ].includes(table) &&
+              version < 15) ||
             (table === "ai_workflows" && version < 14) ||
             (table === "bookmarks" && version < 13) ||
             (table === "canvas_notes" && version === 8) ||
@@ -353,7 +365,13 @@ export class WorkspaceBackups {
               .transaction(() => {
                 for (const table of tables) {
                   if (
-                    (table === "ai_workflows" ||
+                    ([
+                      "personal_focus",
+                      "personal_sources",
+                      "report_drafts",
+                      "workflow_runs",
+                    ].includes(table) ||
+                      table === "ai_workflows" ||
                       table === "bookmarks" ||
                       table === "canvas_notes" ||
                       table === "daily_reports" ||
@@ -379,6 +397,11 @@ export class WorkspaceBackups {
                     .iterate() as Iterable<Record<string, any>>)
                     statement.run(...columns.map((column) => row[column]));
                 }
+                target
+                  .query("UPDATE workflow_runs SET owner=?")
+                  .run(actor.identity);
+                target.exec(`UPDATE workflow_runs SET state=json_remove(state,'$.scheduleId');
+                  UPDATE workflow_runs SET state=json_set(state,'$.status','interrupted','$.error','备份恢复的运行仅供查阅，请确认后手动重跑') WHERE json_extract(state,'$.status') IN ('starting','running','waiting');`);
                 target
                   .query("UPDATE codex_chats SET owner=?,cwd=?")
                   .run(

@@ -18,10 +18,14 @@ export class ApiError extends Error {
     super(message);
   }
 }
+let sessionRefresh: Promise<void> | null = null;
+
 export async function api<T>(
   path: string,
   options: RequestInit = {},
+  retrySession = true,
 ): Promise<T> {
+  const requestWorkspace = workspaceId;
   const response = await fetch(path, {
     ...options,
     headers: {
@@ -33,6 +37,33 @@ export async function api<T>(
   });
   const result = await response.json();
   if (!response.ok) {
+    // CSRF rejection happens before mutation; retry only this explicit failure once.
+    if (
+      retrySession &&
+      response.status === 403 &&
+      result.error?.code === "CSRF" &&
+      path.startsWith("/api/")
+    ) {
+      sessionRefresh ??= api<{ data: { csrf: string } }>("/auth/session")
+        .then(({ data }) => setCsrf(data.csrf))
+        .finally(() => {
+          sessionRefresh = null;
+        });
+      await sessionRefresh;
+      options.signal?.throwIfAborted();
+      return api<T>(
+        path,
+        {
+          ...options,
+          headers: {
+            ...options.headers,
+            "X-Workspace-Id": requestWorkspace,
+            "X-CSRF-Token": csrf,
+          },
+        },
+        false,
+      );
+    }
     if (response.status === 401 && !path.startsWith("/auth/"))
       window.dispatchEvent(new Event("session-expired"));
     throw new ApiError(

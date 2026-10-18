@@ -1,6 +1,6 @@
 .bookmarks-page {
-  max-width: 1440px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   width: 100%;
 }
 .bookmarks-actions {

@@ -1,3 +1,4 @@
+import type { RemoteRequirement } from "./remote-mcp";
 import { z } from "zod";
 import type { WorkItem } from "./work-item";
 import type { DomainModel } from "./domain-model";
@@ -6,6 +7,7 @@ export const developmentCreateSchema = z
   .object({
     title: z.string().trim().min(1, "请输入任务名称").max(120),
     requirement: z.string().trim().max(16000).default(""),
+    remoteSnapshotId: z.uuid().optional(),
     directoryToken: z.uuid(),
     baseBranch: z.string().min(1).max(250),
     itemIds: z.array(z.uuid()).max(20).default([]),
@@ -14,7 +16,10 @@ export const developmentCreateSchema = z
   })
   .strict()
   .refine(
-    (v) => v.itemIds.length > 0 || v.requirement.length > 0,
+    (v) =>
+      v.itemIds.length > 0 ||
+      v.requirement.length > 0 ||
+      Boolean(v.remoteSnapshotId),
     "请选择工作项或填写研发要求",
   );
 export const developmentMessageSchema = z
@@ -51,6 +56,7 @@ export type DevelopmentTask = {
   status: DevelopmentStatus;
   chatId: string | null;
   sourceMode?: "references";
+  remoteSource?: RemoteRequirement;
   sources: {
     items: (Pick<WorkItem, "id" | "title" | "version"> & Partial<WorkItem>)[];
     models: (Pick<DomainModel, "id" | "name" | "version"> &

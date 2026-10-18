@@ -21,8 +21,9 @@ let closing = false;
 
 async function handle(req: Request) {
   const url = new URL(req.url);
-  if (url.pathname === "/desktop/start") {
-    const token = url.searchParams.get("token") || "";
+  const bootstrapPath = /^\/desktop\/start\/([^/]+)$/.exec(url.pathname);
+  if (bootstrapPath || url.pathname === "/desktop/start") {
+    const token = bootstrapPath?.[1] || url.searchParams.get("token") || "";
     const expected = Buffer.from(bootstrapToken!);
     const actual = Buffer.from(token);
     if (
@@ -78,6 +79,7 @@ try {
       "/healthz": handle,
       "/healthz/*": handle,
       "/desktop/start": handle,
+      "/desktop/start/*": handle,
     },
     fetch: handle,
   });

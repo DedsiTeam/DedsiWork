@@ -48,7 +48,7 @@ export const domainModelInstructions = `你是领域驱动设计建模助手。�
 /** One private stdio App Server, owned and terminated by the desktop service. */
 export class CodexAppServer<T = DomainModelInput> {
   constructor(
-    private mode: "model" | "chat" = "model",
+    private mode: "model" | "chat" | "image" = "model",
     private generation?: {
       schema: z.ZodType;
       requestSchema?: z.ZodType<{ prompt: string; model?: string }>;
@@ -166,7 +166,7 @@ export class CodexAppServer<T = DomainModelInput> {
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => {
       buffer += chunk;
-      if (buffer.length > 8 * 1024 * 1024) {
+      if (buffer.length > (this.mode === "image" ? 32 : 8) * 1024 * 1024) {
         this.disconnect(
           child,
           new Error("Codex 返回内容过大，请缩小需求后重试"),

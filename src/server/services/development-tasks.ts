@@ -1,3 +1,4 @@
+import type { RemoteRequirements } from "./remote-mcp";
 import type { Database } from "bun:sqlite";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -45,6 +46,7 @@ export class DevelopmentTasks {
     private models: DomainModelService,
     private worktreeRoot: string,
     private workspaceDirectory?: () => string,
+    private remote?: RemoteRequirements,
   ) {
     this.chat = new CodexChat(db, dataDir, undefined, instructions);
     this.merging = new DevelopmentMerge(
@@ -344,9 +346,34 @@ export class DevelopmentTasks {
         : branches[0]!,
     };
   }
-  async create(input: unknown, actor: Actor) {
+  private remoteCreates = new Map<string, Promise<DevelopmentTask>>();
+  async create(input: unknown, actor: Actor): Promise<DevelopmentTask> {
+    const request = developmentCreateSchema.parse(input);
+    if (!request.remoteSnapshotId) return this.createImpl(input, actor);
+    const key = actor.identity + ":" + request.remoteSnapshotId;
+    if (this.remoteCreates.has(key)) return this.remoteCreates.get(key)!;
+    const task = this.createImpl(input, actor).finally(() =>
+      this.remoteCreates.delete(key),
+    );
+    this.remoteCreates.set(key, task);
+    return task;
+  }
+  private async createImpl(input: unknown, actor: Actor) {
     this.access(actor);
     const request = developmentCreateSchema.parse(input);
+    const remoteSource = request.remoteSnapshotId
+      ? this.remote?.get(request.remoteSnapshotId, actor.identity)
+      : undefined;
+    if (request.remoteSnapshotId && !remoteSource)
+      throw new AppError("REMOTE_SNAPSHOT_NOT_FOUND", "需求快照不存在", 404);
+    if (remoteSource) {
+      const existing = this.db
+        .query(
+          "SELECT state FROM development_tasks WHERE owner=? AND json_extract(state,'$.remoteSource.id')=?",
+        )
+        .get(actor.identity, remoteSource.id) as { state: string } | null;
+      if (existing) return JSON.parse(existing.state) as DevelopmentTask;
+    }
     const selection = this.selections.get(request.directoryToken);
     if (
       !selection ||
@@ -406,6 +433,7 @@ export class DevelopmentTasks {
       status: "draft",
       chatId: null,
       sourceMode: "references",
+      ...(remoteSource ? { remoteSource } : {}),
       sources: {
         items: sources.items.map(({ id, title, version }) => ({
           id,

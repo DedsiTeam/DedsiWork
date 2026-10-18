@@ -1,4 +1,6 @@
+import { canvasDesignSchema } from "./canvas-design";
 import { z } from "zod";
+import { shapeTypes } from "./canvas-shapes";
 export const fontOptions = [
   { value: "system", label: "默认字体" },
   { value: "PingFang SC", label: "苹方" },
@@ -74,6 +76,8 @@ export const canvasNodeSchema = z
       "circle",
       "equilateral",
       "connector",
+      "shape",
+      "container",
     ]),
     x: z.number().finite().min(-100000).max(100000),
     y: z.number().finite().min(-100000).max(100000),
@@ -85,6 +89,22 @@ export const canvasNodeSchema = z
     fill: color.default("#ffffff"),
     stroke: color.default("#0d0c22"),
     strokeWidth: z.number().min(0).max(20).default(1),
+    shapeType: z.enum(shapeTypes).optional(),
+    containerId: z.uuid().optional(),
+    groupId: z.uuid().optional(),
+    locked: z.boolean().optional(),
+    uiDesign: z
+      .object({
+        sourceId: z.uuid(),
+        prompt: z.string().max(4000),
+        revision: z.number().int().min(1).max(10000),
+      })
+      .strict()
+      .optional(),
+    designSpec: canvasDesignSchema.optional(),
+    layout: z.enum(["free", "horizontal", "vertical"]).optional(),
+    layoutGap: z.number().finite().min(0).max(1000).optional(),
+    cornerRadius: z.number().finite().min(0).max(10000).optional(),
     text: z.string().max(10000).default(""),
     fontSize: z.number().min(8).max(200).default(24),
     bold: z.boolean().default(false),
@@ -111,6 +131,13 @@ export const canvasNodeSchema = z
   })
   .strict()
   .superRefine((node, ctx) => {
+    if (node.designSpec && node.kind !== "rect") ctx.addIssue({ code: "custom", message: "设计规范卡必须是矩形", path: ["designSpec"] });
+    if (node.kind === "shape" && !node.shapeType)
+      ctx.addIssue({
+        code: "custom",
+        message: "请选择图形",
+        path: ["shapeType"],
+      });
     if (node.kind === "connector" && (!node.line || node.strokeWidth < 0.5))
       ctx.addIssue({
         code: "custom",
@@ -131,7 +158,7 @@ export const canvasNodeSchema = z
       });
   });
 export const canvasContentSchema = z
-  .object({ nodes: z.array(canvasNodeSchema).max(200) })
+  .object({ nodes: z.array(canvasNodeSchema).max(200), design: canvasDesignSchema.optional() })
   .strict()
   .superRefine((value, ctx) => {
     if (new Set(value.nodes.map((n) => n.id)).size !== value.nodes.length)
@@ -173,4 +200,6 @@ export const nodeLabels = {
   circle: "正圆",
   equilateral: "正三角形",
   connector: "连线",
+  shape: "形状",
+  container: "容器",
 };

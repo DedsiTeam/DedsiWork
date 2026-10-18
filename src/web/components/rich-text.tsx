@@ -251,12 +251,13 @@ export function RichText({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="icon-sm"
           disabled={disabled || uploading}
           onClick={() => input.current?.click()}
+          title={uploading ? "读取中…" : "插入图片"}
+          aria-label={uploading ? "读取中…" : "插入图片"}
         >
           <ImagePlus size={16} />
-          {uploading ? "读取中…" : "插入图片"}
         </Button>
         <input
           ref={input}

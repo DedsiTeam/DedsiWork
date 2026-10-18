@@ -1,9 +1,10 @@
+import { useRouteInputs } from "../route-inputs";
 import { RICH_TEXT_PREFIX } from "../../shared/description";
 import type { SourceKind } from "../../shared/personal-work";
 import { EmptyState } from "../components/empty-state";
 import { AIWorkflowLibrary } from "../components/ai-workflows";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate } from "react-router";
 import { businessActionLabels } from "../../shared/assistant-business";
 import { chatProposals, chatProposalContent } from "../../shared/chat-proposal";
 import type { AssistantFlow } from "../../shared/assistant";
@@ -75,7 +76,7 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { notify, workspace } = useWorkspace();
   const selectionKey = `dedsiwork:${workspace?.id}:chat-selected`;
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useRouteInputs("/assistant");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [workflowOpen, setWorkflowOpen] = useState(false);
   useEffect(() => {
@@ -190,11 +191,18 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
     const key = `${messageId}:${index}`;
     setOpeningProposal(key);
     try {
-      const { data } = await api<{ data: AssistantFlow }>(
-        `/api/v1/chat/threads/${selected}/proposals`,
-        { method: "POST", body: JSON.stringify({ messageId, index }) },
-      );
-      if (alive.current) navigate(`/assistant?flow=${data.id}&preview=1`);
+      const { data } = await api<{
+        data: AssistantFlow | { remoteSnapshotId: string };
+      }>(`/api/v1/chat/threads/${selected}/proposals`, {
+        method: "POST",
+        body: JSON.stringify({ messageId, index }),
+      });
+      if (alive.current)
+        navigate(
+          "remoteSnapshotId" in data
+            ? `/development-tasks/new/remote/${data.remoteSnapshotId}`
+            : `/assistant/flow/${data.id}`,
+        );
     } catch (error) {
       notify((error as Error).message, "error");
     } finally {
@@ -653,22 +661,24 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             disabled={sending || deleting}
             onClick={() => select("")}
+            title={"新对话"}
+            aria-label={"新对话"}
           >
             <Plus />
-            新对话
           </Button>
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             disabled={sending || deleting}
             onClick={() => setWorkflowOpen(true)}
+            title={"AI 模板"}
+            aria-label={"AI 模板"}
           >
             <Workflow />
-            AI 模板
           </Button>
           <span className={`chat-connection${status?.ready ? " ready" : ""}`}>
             {connecting ? (
@@ -706,9 +716,11 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
             variant="outline"
             disabled={opening}
             onClick={() => void openApp()}
+            title={opening ? "正在打开…" : "打开 ChatGPT"}
+            aria-label={opening ? "正在打开…" : "打开 ChatGPT"}
+            size="icon-sm"
           >
             <ArrowUpRight />
-            {opening ? "正在打开…" : "打开 ChatGPT"}
           </Button>
         </div>
       </div>
@@ -854,25 +866,33 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                             ) : (
                               <Boxes size={14} />
                             )}
-                            {proposal.kind === "business_action"
-                              ? businessActionLabels[proposal.operation.action]
-                              : proposal.kind !== "domain_model"
-                                ? `${proposal.kind === "development_items" ? "研发任务草稿" : "工作项草稿"} · ${proposal.items.length} 项`
-                                : proposal.model.name}
+                            {proposal.kind === "remote_development"
+                              ? "同事需求 · 本机研发"
+                              : proposal.kind === "business_action"
+                                ? businessActionLabels[
+                                    proposal.operation.action
+                                  ]
+                                : proposal.kind !== "domain_model"
+                                  ? `${proposal.kind === "development_items" ? "研发任务草稿" : "工作项草稿"} · ${proposal.items.length} 项`
+                                  : proposal.model.name}
                           </strong>
                           <span>
-                            {proposal.kind === "business_action"
-                              ? "查看操作范围，确认后执行"
-                              : proposal.kind !== "domain_model"
-                                ? proposal.items
-                                    .map((item) => item.title)
-                                    .join(" · ")
-                                : `领域模型草稿 · ${proposal.model.elements.length} 个设计项 · ${proposal.model.elements.reduce((count, element) => count + element.fields.length, 0)} 个字段`}
+                            {proposal.kind === "remote_development"
+                              ? "需求已读取，预览完整内容并确认本机执行目录"
+                              : proposal.kind === "business_action"
+                                ? "查看操作范围，确认后执行"
+                                : proposal.kind !== "domain_model"
+                                  ? proposal.items
+                                      .map((item) => item.title)
+                                      .join(" · ")
+                                  : `领域模型草稿 · ${proposal.model.elements.length} 个设计项 · ${proposal.model.elements.reduce((count, element) => count + element.fields.length, 0)} 个字段`}
                           </span>
                           <small>
-                            {proposal.kind === "business_action"
-                              ? "预览确认后执行"
-                              : "预览修改后确认保存"}
+                            {proposal.kind === "remote_development"
+                              ? "预览确认后在本机创建并开始研发"
+                              : proposal.kind === "business_action"
+                                ? "预览确认后执行"
+                                : "预览修改后确认保存"}
                           </small>
                         </div>
                         <Button
@@ -883,13 +903,15 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                         >
                           {openingProposal === `${item.id}:${index}`
                             ? "正在打开…"
-                            : proposal.kind === "business_action"
-                              ? "预览操作"
-                              : proposal.kind !== "domain_model"
-                                ? proposal.kind === "development_items"
-                                  ? "预览研发任务"
-                                  : "预览工作项"
-                                : "预览领域模型"}
+                            : proposal.kind === "remote_development"
+                              ? "预览需求并研发"
+                              : proposal.kind === "business_action"
+                                ? "预览操作"
+                                : proposal.kind !== "domain_model"
+                                  ? proposal.kind === "development_items"
+                                    ? "预览研发任务"
+                                    : "预览工作项"
+                                  : "预览领域模型"}
                         </Button>
                       </section>
                     ))}
@@ -1285,9 +1307,11 @@ export function RequestCard({
               notify(error.message, "error"),
             )
           }
+          title={"打开授权页面"}
+          aria-label={"打开授权页面"}
+          size="icon-sm"
         >
           <ArrowUpRight />
-          打开授权页面
         </Button>
       )}
       {custom && !(elicitation && params.mode === "url") && (

@@ -74,19 +74,26 @@ export function DomainModelDiagramPage() {
               </span>
             </div>
           )}
-          <Button variant="outline" asChild>
+          <Button
+            variant="outline"
+            asChild
+            title={"返回列表"}
+            aria-label={"返回列表"}
+            size="icon-sm"
+          >
             <Link to="/domain-models">
               <ArrowLeft />
-              返回列表
             </Link>
           </Button>
           <Button
             variant="outline"
             disabled={loading}
             onClick={() => setRevision((value) => value + 1)}
+            title={"刷新"}
+            aria-label={"刷新"}
+            size="icon-sm"
           >
             <RefreshCw />
-            刷新
           </Button>
         </div>
       </div>

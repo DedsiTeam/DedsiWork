@@ -206,13 +206,14 @@ export function AIWorkflowLibrary({
             <aside className="workflow-library">
               <div className="workflow-library-actions">
                 <Button
-                  size="sm"
+                  size="icon-sm"
                   variant="outline"
                   disabled={busy || loading}
                   onClick={() => create()}
+                  title={"新建"}
+                  aria-label={"新建"}
                 >
                   <Plus />
-                  新建
                 </Button>
                 {initialPrompt.trim() && (
                   <Button
@@ -413,9 +414,14 @@ export function AIWorkflowLibrary({
                     </p>
                   )}
                   <div className="workflow-form-actions">
-                    <Button type="submit" disabled={busy || loading || !canRun}>
+                    <Button
+                      type="submit"
+                      disabled={busy || loading || !canRun}
+                      title={running ? "正在启动…" : "在新对话中运行"}
+                      aria-label={running ? "正在启动…" : "在新对话中运行"}
+                      size="icon-sm"
+                    >
                       <Play />
-                      {running ? "正在启动…" : "在新对话中运行"}
                     </Button>
                   </div>
                 </form>
@@ -525,13 +531,22 @@ function WorkflowSources({
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size="icon-sm"
         aria-expanded={open}
         disabled={disabled}
         onClick={() => setOpen(!open)}
+        title={
+          "关联资料" +
+          " " +
+          (selected.length ? `（${selected.length}）` : "（可选）")
+        }
+        aria-label={
+          "关联资料" +
+          " " +
+          (selected.length ? `（${selected.length}）` : "（可选）")
+        }
       >
         <Plus />
-        关联资料{selected.length ? `（${selected.length}）` : "（可选）"}
       </Button>
       {selected.length > 0 && (
         <div className="workflow-source-tags">
@@ -562,29 +577,31 @@ function WorkflowSources({
           <div className="workflow-source-toolbar">
             <Button
               type="button"
-              size="sm"
+              size="icon-sm"
               variant={kind === "items" ? "secondary" : "ghost"}
               disabled={disabled}
               onClick={() => {
                 setKind("items");
                 setPage(1);
               }}
+              title={"工作项"}
+              aria-label={"工作项"}
             >
               <ListTodo />
-              工作项
             </Button>
             <Button
               type="button"
-              size="sm"
+              size="icon-sm"
               variant={kind === "models" ? "secondary" : "ghost"}
               disabled={disabled}
               onClick={() => {
                 setKind("models");
                 setPage(1);
               }}
+              title={"领域模型"}
+              aria-label={"领域模型"}
             >
               <Boxes />
-              领域模型
             </Button>
           </div>
           <Input

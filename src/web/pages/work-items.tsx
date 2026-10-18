@@ -1,3 +1,4 @@
+import { WorkItemId } from "../components/work-item-id";
 import { PAGE_SIZE } from "../../shared/pagination";
 import { EmptyState } from "../components/empty-state";
 import "../collection-cards.css";
@@ -214,9 +215,13 @@ export function WorkItemsPage({
           </div>
           {view !== "trash" && (
             <div className="sprint-header-actions">
-              <Button onClick={() => open(null)}>
+              <Button
+                onClick={() => open(null)}
+                title={"新建工作项"}
+                aria-label={"新建工作项"}
+                size="icon-sm"
+              >
                 <Plus />
-                新建工作项
               </Button>
             </div>
           )}
@@ -258,7 +263,7 @@ export function WorkItemsPage({
                 <Search size={16} />
                 <Input
                   aria-label="搜索工作项"
-                  placeholder="搜索工作项…"
+                  placeholder="搜索标题、描述或工作项 ID…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -372,12 +377,13 @@ export function WorkItemsPage({
                 ) : (
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon-sm"
                     disabled={!selected.length || loading || purging}
                     onClick={() => confirmPurge(selected)}
+                    title={"批量永久删除"}
+                    aria-label={"批量永久删除"}
                   >
                     <Trash2 />
-                    批量永久删除
                   </Button>
                 )}
               </div>
@@ -448,6 +454,7 @@ export function WorkItemsPage({
                       </span>
                     </span>
                   </button>
+                  <WorkItemId id={item.id} compact />
                   <div className="task-meta">
                     <span className={`priority priority-${item.priority}`}>
                       {priorityLabels[item.priority]}

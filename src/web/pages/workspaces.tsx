@@ -1,6 +1,7 @@
+import { useRouteInputs } from "../route-inputs";
 import { EmptyState } from "../components/empty-state";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
+import {} from "react-router";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import {
@@ -13,7 +14,6 @@ import {
   LoaderCircle,
   Download,
   Upload,
-  ArrowRight,
 } from "lucide-react";
 import { api } from "../api";
 import { Button } from "../components/ui/button";
@@ -39,7 +39,7 @@ const blank = { name: "", description: "", directory: "" };
 export function WorkspacesPage() {
   const { openWorkspace, leaveWorkspace, updateWorkspace, workspace, notify } =
     useWorkspace();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useRouteInputs("/workspaces");
   const [spaces, setSpaces] = useState<WorkspaceSummary[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
@@ -266,13 +266,20 @@ export function WorkspacesPage() {
             variant="outline"
             disabled={transfer}
             onClick={() => void previewRestore()}
+            title={transfer ? "正在处理…" : "恢复工作空间"}
+            aria-label={transfer ? "正在处理…" : "恢复工作空间"}
+            size="icon-sm"
           >
             <Upload />
-            {transfer ? "正在处理…" : "恢复工作空间"}
           </Button>
-          <Button disabled={transfer} onClick={() => edit(null)}>
+          <Button
+            disabled={transfer}
+            onClick={() => edit(null)}
+            title={"新建工作空间"}
+            aria-label={"新建工作空间"}
+            size="icon-sm"
+          >
             <Plus />
-            新建工作空间
           </Button>
         </div>
       </div>
@@ -304,6 +311,8 @@ export function WorkspacesPage() {
             <article className="space-card" key={space.id}>
               <button
                 className="space-card-open"
+                aria-label={`进入工作空间：${space.name}`}
+                aria-busy={opening === space.id}
                 disabled={Boolean(opening) || deleting}
                 onClick={() => {
                   setOpening(space.id);
@@ -334,12 +343,6 @@ export function WorkspacesPage() {
                   </span>
                   <span>
                     <strong>{space.counts.notes || 0}</strong>无边记
-                  </span>
-                </span>
-                <span className="space-card-footer">
-                  <span className="space-card-enter">
-                    {opening === space.id ? "正在打开…" : "进入空间"}
-                    <ArrowRight size={14} />
                   </span>
                 </span>
               </button>

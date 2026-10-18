@@ -1,3 +1,4 @@
+import { useRouteInputs } from "../route-inputs";
 import { PAGE_SIZE } from "../../shared/pagination";
 import { EmptyState } from "../components/empty-state";
 import { Textarea } from "../components/ui/textarea";
@@ -9,7 +10,7 @@ import { SprintReview } from "../components/sprint-review";
 import { DatePicker } from "../components/date-picker";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
 import {
   Plus,
   RefreshCw,
@@ -112,7 +113,7 @@ export function SprintsPage() {
       return next;
     });
   }
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useRouteInputs("/work-items/sprints");
   const id = params.get("sprint") || "";
   const [sprints, setSprints] = useState<Sprint[]>([]),
     [board, setBoard] = useState<SprintBoard | null>(null);
@@ -398,7 +399,7 @@ export function SprintsPage() {
                 </Link>
               ))}
             {!["done", "cancelled"].includes(item.status) && (
-              <Link to={`/development-tasks/new?items=${item.id}`}>
+              <Link to={`/development-tasks/new/items/${item.id}`}>
                 发起研发任务 →
               </Link>
             )}
@@ -502,9 +503,14 @@ export function SprintsPage() {
               {overviewCollapsed ? <ChevronDown /> : <ChevronUp />}
             </Button>
           )}
-          <Button onClick={() => openModal("create")} disabled={busy}>
+          <Button
+            onClick={() => openModal("create")}
+            disabled={busy}
+            title={"新建冲刺"}
+            aria-label={"新建冲刺"}
+            size="icon-sm"
+          >
             <Plus />
-            新建冲刺
           </Button>
         </div>
       </div>
@@ -584,9 +590,11 @@ export function SprintsPage() {
                       setError("");
                       setDeleteTarget(sprint!);
                     }}
+                    title={"删除冲刺"}
+                    aria-label={"删除冲刺"}
+                    size="icon-sm"
                   >
                     <Trash2 />
-                    删除冲刺
                   </Button>
                 )}
                 {!closed && (
@@ -602,9 +610,11 @@ export function SprintsPage() {
                       variant="outline"
                       disabled={busy}
                       onClick={() => openModal("add")}
+                      title={"加入工作项"}
+                      aria-label={"加入工作项"}
+                      size="icon-sm"
                     >
                       <Plus />
-                      加入工作项
                     </Button>
                     {sprint!.state === "planned" ? (
                       <Button
@@ -748,10 +758,25 @@ export function SprintsPage() {
               显示已取消 ({all.filter((x) => x.status === "cancelled").length})
             </label>
             {filter !== "all" && (
-              <Button variant="ghost" onClick={() => setFilter("all")}>
-                {filter === "blocked"
-                  ? "已阻塞"
-                  : statusLabels[filter as WorkItem["status"]]}{" "}
+              <Button
+                variant="ghost"
+                onClick={() => setFilter("all")}
+                title={
+                  (filter === "blocked"
+                    ? "已阻塞"
+                    : statusLabels[filter as WorkItem["status"]]) +
+                  " " +
+                  " "
+                }
+                aria-label={
+                  (filter === "blocked"
+                    ? "已阻塞"
+                    : statusLabels[filter as WorkItem["status"]]) +
+                  " " +
+                  " "
+                }
+                size="icon-sm"
+              >
                 <X />
               </Button>
             )}

@@ -5,6 +5,9 @@ import { generatedModelSchema } from "./domain-model-ai";
 
 export const chatProposalSchema = z.discriminatedUnion("kind", [
   z
+    .object({ kind: z.literal("remote_development"), snapshotId: z.uuid() })
+    .strict(),
+  z
     .object({
       kind: z.literal("business_action"),
       operation: businessOperationSchema,
@@ -57,7 +60,7 @@ export function chatProposalContent(text: string) {
     complete: boolean;
   }[] = [];
   const isPayload = (value: string) =>
-    /^\s*\{\s*"kind"\s*:\s*"(?:work_items|development_items|domain_model|business_action)"/.test(
+    /^\s*\{\s*"kind"\s*:\s*"(?:work_items|development_items|domain_model|business_action|remote_development)"/.test(
       value,
     );
   for (const match of text.matchAll(/```(dedsiwork|json)?[^\S\n]*\n/g)) {
@@ -75,7 +78,7 @@ export function chatProposalContent(text: string) {
       });
   }
   for (const match of text.matchAll(
-    /\{\s*"kind"\s*:\s*"(?:work_items|development_items|domain_model|business_action)"/g,
+    /\{\s*"kind"\s*:\s*"(?:work_items|development_items|domain_model|business_action|remote_development)"/g,
   )) {
     const start = match.index!;
     if (regions.some((region) => start >= region.start && start < region.end))
@@ -135,7 +138,7 @@ export function chatProposalContent(text: string) {
     return "";
   });
   visible = visible.replace(
-    /\{\s*"kind"\s*:\s*"(?:work_items|development_items|domain_model|business_action)?$/,
+    /\{\s*"kind"\s*:\s*"(?:work_items|development_items|domain_model|business_action|remote_development)?$/,
     () => {
       pending = true;
       return "";

@@ -28,7 +28,7 @@ export function AssistantSource({
   return (
     <div className="assistant-provenance">
       <Sparkles size={13} />
-      <Link to={`/assistant?flow=${source.flowId}`} title={source.requirement}>
+      <Link to={`/assistant/flow/${source.flowId}`} title={source.requirement}>
         查看来源需求
       </Link>
       {source.items?.map((item) => (

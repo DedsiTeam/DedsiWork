@@ -3,7 +3,15 @@ import { useReportExport } from "../report-export";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Sparkles, Copy, Download, Square, RefreshCw } from "lucide-react";
+import {
+  Sparkles,
+  Copy,
+  Download,
+  Eye,
+  Pencil,
+  Square,
+  RefreshCw,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -238,9 +246,11 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
         <Button
           onClick={() => void generate()}
           disabled={busy || running || !report.reportCount}
+          title={cache.text ? `重新整理${label}` : `生成${label}`}
+          aria-label={cache.text ? `重新整理${label}` : `生成${label}`}
+          size="icon-sm"
         >
           <Sparkles />
-          {cache.text ? `重新整理${label}` : `生成${label}`}
         </Button>
       </div>
       <details className="report-ai-settings">
@@ -281,9 +291,11 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
             variant="ghost"
             onClick={() => void connect()}
             disabled={connecting}
+            title={connecting ? "正在连接…" : "检查连接"}
+            aria-label={connecting ? "正在连接…" : "检查连接"}
+            size="icon-sm"
           >
             <RefreshCw />
-            {connecting ? "正在连接…" : "检查连接"}
           </Button>
           {connection && !connection.ready && (
             <Button
@@ -300,9 +312,15 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
         </div>
       </details>
       {running && (
-        <Button variant="outline" onClick={() => void stop()} disabled={busy}>
+        <Button
+          variant="outline"
+          onClick={() => void stop()}
+          disabled={busy}
+          title={"停止生成"}
+          aria-label={"停止生成"}
+          size="icon-sm"
+        >
           <Square />
-          停止生成
         </Button>
       )}
       {running && (
@@ -379,25 +397,34 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
       {cache.text && (
         <>
           <div className="report-actions">
-            <Button size="sm" variant="outline" onClick={() => void copy()}>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              title="复制 AI 文字"
+              aria-label="复制 AI 文字"
+              onClick={() => void copy()}
+            >
               <Copy />
-              复制 AI 文字
             </Button>
             <Button
-              size="sm"
-              variant="outline"
+              size="icon-sm"
+              variant={preview ? "secondary" : "ghost"}
+              title={preview ? "编辑文字" : "预览文字"}
+              aria-label={preview ? "编辑文字" : "预览文字"}
+              aria-pressed={preview}
               onClick={() => setPreview(!preview)}
             >
-              {preview ? "编辑文字" : "预览文字"}
+              {preview ? <Pencil /> : <Eye />}
             </Button>
             <Button
-              size="sm"
-              variant="outline"
+              size="icon-sm"
+              variant="ghost"
+              title={exporting ? "请选择保存位置…" : "导出文字稿"}
+              aria-label="导出文字稿"
               onClick={download}
               disabled={exporting}
             >
               <Download />
-              {exporting ? "请选择保存位置…" : "导出文字稿"}
             </Button>
           </div>
           {preview ? (

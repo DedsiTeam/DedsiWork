@@ -12,20 +12,16 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  Search,
   Trash2,
 } from "lucide-react";
 import { api } from "../api";
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
 import type {
   DomainModelList,
   DomainModelSummary,
 } from "../../shared/domain-model";
 
 export function DomainModelsPage() {
-  const [search, setSearch] = useState("");
-  const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
   const [result, setResult] = useState<DomainModelList>({
@@ -38,18 +34,11 @@ export function DomainModelsPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setQ(search.trim());
-      setPage(1);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [search]);
-  useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError("");
     api<DomainModelList>(
-      `/api/v1/domain-models?${new URLSearchParams({ q, page: String(page) })}`,
+      `/api/v1/domain-models?${new URLSearchParams({ page: String(page) })}`,
       { signal: controller.signal },
     )
       .then((value) => {
@@ -62,7 +51,7 @@ export function DomainModelsPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [q, page, revision]);
+  }, [page, revision]);
   async function remove() {
     if (!target || deleting) return;
     setDeleting(true);
@@ -90,30 +79,6 @@ export function DomainModelsPage() {
           </h1>
         </div>
         <div className="dm-heading-actions">
-          <Button asChild>
-            <Link to="/domain-models/new">
-              <Plus />
-              新建领域模型
-            </Link>
-          </Button>
-        </div>
-      </div>
-      <section
-        className="dm-list"
-        aria-label="领域模型列表"
-        aria-busy={loading}
-      >
-        <div className="dm-list-toolbar">
-          <label className="dm-search">
-            <Search size={16} />
-            <Input
-              aria-label="搜索领域模型"
-              placeholder="搜索模型名称或说明…"
-              value={search}
-              maxLength={200}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
           <Button
             variant="ghost"
             size="icon-sm"
@@ -123,7 +88,23 @@ export function DomainModelsPage() {
           >
             <RefreshCw />
           </Button>
+          <Button
+            asChild
+            title={"新建领域模型"}
+            aria-label={"新建领域模型"}
+            size="icon-sm"
+          >
+            <Link to="/domain-models/new">
+              <Plus />
+            </Link>
+          </Button>
         </div>
+      </div>
+      <section
+        className="dm-list"
+        aria-label="领域模型列表"
+        aria-busy={loading}
+      >
         {error && (
           <div className="message" role="alert">
             {error}
@@ -142,12 +123,8 @@ export function DomainModelsPage() {
         ) : !error && result.data.length === 0 ? (
           <EmptyState
             icon={Boxes}
-            title={q ? "没有找到匹配的模型" : "创建第一个领域模型"}
-            description={
-              q
-                ? "试试其他名称或关键词。"
-                : "在一个模型中组织五类设计项，并定义每个字段的类型和说明。"
-            }
+            title="创建第一个领域模型"
+            description="在一个模型中组织五类设计项，并定义每个字段的类型和说明。"
           />
         ) : (
           !error && (

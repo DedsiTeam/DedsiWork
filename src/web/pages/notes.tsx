@@ -5,7 +5,6 @@ import { Link } from "react-router";
 import * as Dialog from "@radix-ui/react-alert-dialog";
 import {
   Plus,
-  Search,
   StickyNote,
   Trash2,
   ChevronLeft,
@@ -13,7 +12,6 @@ import {
 } from "lucide-react";
 import { api } from "../api";
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
 import { useWorkspace } from "../workspace-context";
 import type {
   CanvasNoteList,
@@ -22,9 +20,7 @@ import type {
 import "../notes.css";
 export function NotesPage() {
   const { notify } = useWorkspace();
-  const [search, setSearch] = useState(""),
-    [q, setQ] = useState(""),
-    [page, setPage] = useState(1),
+  const [page, setPage] = useState(1),
     [revision, setRevision] = useState(0);
   const [result, setResult] = useState<CanvasNoteList>({
     data: [],
@@ -36,18 +32,11 @@ export function NotesPage() {
     [busy, setBusy] = useState(false),
     [deleteError, setDeleteError] = useState("");
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setQ(search.trim());
-      setPage(1);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [search]);
-  useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError("");
     api<CanvasNoteList>(
-      `/api/v1/notes?${new URLSearchParams({ q, page: String(page) })}`,
+      `/api/v1/notes?${new URLSearchParams({ page: String(page) })}`,
       { signal: controller.signal },
     )
       .then(setResult)
@@ -58,7 +47,7 @@ export function NotesPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [q, page, revision]);
+  }, [page, revision]);
   async function remove() {
     if (!removing || busy) return;
     setBusy(true);
@@ -87,23 +76,18 @@ export function NotesPage() {
         <h1>
           无边记<span className="title-count">{result.meta.total}</span>
         </h1>
-        <Button asChild>
+        <Button
+          asChild
+          title={"新建无边记"}
+          aria-label={"新建无边记"}
+          size="icon-sm"
+        >
           <Link to="/notes/new">
             <Plus />
-            新建无边记
           </Link>
         </Button>
       </div>
-      <label className="notes-search">
-        <Search size={16} />
-        <Input
-          placeholder="搜索无边记…"
-          aria-label="搜索无边记"
-          value={search}
-          maxLength={200}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </label>
+
       {error && (
         <div className="message" role="alert">
           {error}
@@ -119,12 +103,8 @@ export function NotesPage() {
       ) : !error && result.data.length === 0 ? (
         <EmptyState
           icon={StickyNote}
-          title={q ? "没有找到匹配的无边记" : "创建第一个无边记"}
-          description={
-            q
-              ? "试试其他名称或关键词。"
-              : "用文字、图片和图形，记录并整理你的想法。"
-          }
+          title="创建第一个无边记"
+          description="用文字、图片和图形，记录并整理你的想法。"
         />
       ) : (
         <div className="notes-grid">

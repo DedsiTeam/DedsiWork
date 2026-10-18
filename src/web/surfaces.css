@@ -207,10 +207,10 @@ body,
   padding-top: 8px;
 }
 .workspace-shell .main-area {
-  padding: 0 20px 16px;
+  padding: 0 0 16px;
 }
 .workspace-shell .topbar {
-  margin: 0 -20px 16px -116px;
+  margin: 0 0 16px -96px;
   padding-left: 116px;
   border-bottom: 0;
   color: var(--muted-foreground);

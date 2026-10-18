@@ -1,3 +1,7 @@
+import { PeerConnections, RemoteRequirements } from "./services/remote-mcp";
+import { LanMcp } from "./mcp/lan";
+import { CanvasAssistant } from "./services/canvas-assistant";
+import { CanvasUI } from "./codex/canvas-ui";
 import { PersonalWork } from "./services/personal-work";
 import { ReportRecords } from "./services/report-records";
 import { WorkflowExecution } from "./services/workflow-execution";
@@ -36,6 +40,7 @@ export function createApp(options: {
   origin: string;
   credentialsPath?: string;
 }) {
+  const peers = new PeerConnections(dirname(options.dbPath));
   const workspaces = new WorkspaceStore(options.dbPath);
   const auth = new Auth(options.credentials);
   const backups = new WorkspaceBackups(workspaces);
@@ -52,6 +57,7 @@ export function createApp(options: {
       businessPrompt = "";
     let sourceSignature = "",
       sourcePrompt = "";
+    const remote = new RemoteRequirements(db, peers, dirname(path));
     const chat = new CodexChat(
       db,
       dirname(path),
@@ -107,6 +113,7 @@ export function createApp(options: {
         }
         return sourcePrompt + businessPrompt;
       },
+      (name, input, actor) => remote.tool(name, input, actor),
     );
     const development = new DevelopmentTasks(
       db,
@@ -115,7 +122,10 @@ export function createApp(options: {
       domainModels,
       join(dirname(options.dbPath), "development-worktrees", id),
       () => chat.defaultWorkspace,
+      remote,
     );
+    const canvasUI = new CanvasUI();
+    const canvasAssistant = new CanvasAssistant(db);
     const personal = new PersonalWork(db, service);
     const records = new ReportRecords(db);
     const execution = new WorkflowExecution(db, chat);
@@ -128,7 +138,10 @@ export function createApp(options: {
       service,
       sprints,
       domainModels,
+      remote,
       notes: new CanvasNotes(db),
+      canvasUI,
+      canvasAssistant,
       bookmarks: new Bookmarks(db),
       workflows: new AIWorkflows(db),
       personal,
@@ -147,6 +160,8 @@ export function createApp(options: {
           development.close(),
           assistant.close(),
           reportAI.close(),
+          canvasUI.close(),
+          canvasAssistant.close(),
         ]);
         await mcp.close();
         db.close();
@@ -167,7 +182,11 @@ export function createApp(options: {
   const initial = initialId ? bundle(initialId) : null;
   for (const space of workspaces.entries()) bundle(space.id);
   function scoped(req: Request) {
+    const pathWorkspace = /^\/mcp\/workspace\/([^/]+)$/.exec(
+      new URL(req.url).pathname,
+    )?.[1];
     const id =
+      (pathWorkspace ? z.uuid().parse(pathWorkspace) : null) ||
       req.headers.get("x-workspace-id") ||
       new URL(req.url).searchParams.get("workspace") ||
       workspaces.legacyId();
@@ -228,7 +247,10 @@ export function createApp(options: {
           "cookie" in result ? { "Set-Cookie": result.cookie } : undefined,
         );
       }
-      if (url.pathname === "/mcp") {
+      if (
+        url.pathname === "/mcp" ||
+        /^\/mcp\/workspace\/[^/]+$/.test(url.pathname)
+      ) {
         const actor = auth.actor(req, requestId, true);
         const { mcp } = scoped(req);
         return await mcp.fetch(req, {
@@ -245,6 +267,66 @@ export function createApp(options: {
           404,
         );
       const actor = auth.actor(req, requestId);
+      if (url.pathname.startsWith("/api/v1/colleague-mcp")) {
+        if (actor.source !== "web")
+          throw new AppError("FORBIDDEN", "请在本机客户端管理同事连接", 403);
+        if (url.pathname === "/api/v1/colleague-mcp") {
+          if (req.method === "GET") return reply({ data: peers.list() });
+          if (req.method === "POST")
+            return reply({ data: peers.save(await json(req)) });
+        }
+        const match = /^\/api\/v1\/colleague-mcp\/([^/]+)(?:\/(check))?$/.exec(
+          url.pathname,
+        );
+        if (match) {
+          const id = z.uuid().parse(match[1]);
+          if (match[2] && req.method === "POST") {
+            await peers.call(id);
+            return reply({ data: { connected: true } });
+          }
+          if (!match[2] && req.method === "DELETE") {
+            peers.remove(id);
+            return reply({ data: { removed: true } });
+          }
+        }
+        throw new AppError("NOT_FOUND", "接口不存在", 404);
+      }
+      const remoteMatch =
+        /^\/api\/v1\/remote-requirements\/([^/]+)(?:\/(refresh))?$/.exec(
+          url.pathname,
+        );
+      if (remoteMatch) {
+        if (actor.source !== "web")
+          throw new AppError("FORBIDDEN", "请在本机客户端预览需求", 403);
+        const remote = scoped(req).remote;
+        const snapshot = remote.get(remoteMatch[1]!, actor.identity);
+        if (!remoteMatch[2] && req.method === "GET")
+          return reply({
+            data: {
+              ...snapshot,
+              existingTasks: remote.existing(snapshot, actor.identity),
+            },
+          });
+        if (remoteMatch[2] && req.method === "POST")
+          return reply({
+            data: await remote.read(
+              { connectionId: snapshot.connectionId, itemId: snapshot.item.id },
+              actor.identity,
+            ),
+          });
+      }
+
+      if (url.pathname === "/api/v1/mcp/lan" && req.method === "PUT") {
+        if (actor.source !== "web")
+          throw new AppError("FORBIDDEN", "请在本机客户端设置局域网访问", 403);
+        const { enabled } = z
+          .object({ enabled: z.boolean() })
+          .parse(await json(req));
+        const workspaceId = scoped(req).id;
+        await lan.setEnabled(enabled);
+        return reply({ data: lan.status(workspaceId) });
+      }
+
       if (
         url.pathname === "/api/v1/development-notifications" &&
         req.method === "GET"
@@ -566,10 +648,52 @@ export function createApp(options: {
         req.method === "POST"
       )
         return reply({ data: await notes.exportImage(await json(req), actor) });
+      if (url.pathname === "/api/v1/notes/ui/jobs" && req.method === "POST")
+        return reply(
+          { data: scoped(req).canvasUI.generateImage(await json(req), actor) },
+          202,
+        );
+      const uiJob = /^\/api\/v1\/notes\/ui\/jobs\/([^/]+)(?:\/(cancel))?$/.exec(
+        url.pathname,
+      );
+      if (uiJob) {
+        const engine = scoped(req).canvasUI;
+        if (!uiJob[2] && req.method === "GET")
+          return reply({ data: engine.getImage(uiJob[1]!, actor) });
+        if (uiJob[2] && req.method === "POST")
+          return reply({ data: await engine.cancelImage(uiJob[1]!, actor) });
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
       if (url.pathname === "/api/v1/notes") {
         if (req.method === "GET") return reply(notes.list(url.searchParams));
         if (req.method === "POST")
           return reply({ data: notes.save(null, await json(req), actor) }, 201);
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
+      const canvasChat =
+        /^\/api\/v1\/notes\/([^/]+)\/assistant(?:\/([^/]+)\/(cancel|applied))?$/.exec(
+          url.pathname,
+        );
+      if (canvasChat) {
+        const engine = scoped(req).canvasAssistant;
+        if (!canvasChat[2] && req.method === "DELETE")
+          return reply({ data: await engine.clear(canvasChat[1]!, actor) });
+        if (!canvasChat[2] && req.method === "GET")
+          return reply({ data: engine.list(canvasChat[1]!, actor) });
+        if (!canvasChat[2] && req.method === "POST")
+          return reply(
+            { data: engine.send(canvasChat[1]!, await json(req), actor) },
+            202,
+          );
+        if (canvasChat[2] && req.method === "POST")
+          return reply({
+            data: await engine.update(
+              canvasChat[1]!,
+              canvasChat[2],
+              canvasChat[3]!,
+              actor,
+            ),
+          });
         throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
       }
       const noteMatch = /^\/api\/v1\/notes\/([^/]+)$/.exec(url.pathname);
@@ -670,12 +794,16 @@ export function createApp(options: {
             name: "DedsiWork",
             version,
             databasePath: workspaces.path(workspaceId),
-            mcpUrl: `${base.origin}/mcp?workspace=${workspaceId}`,
+            mcpUrl: `${base.origin}/mcp/workspace/${workspaceId}`,
             credentialsPath: options.credentialsPath || "",
             // Only the paired local UI may reveal the write credential.
             // Bearer clients, especially read-only ones, must not obtain it.
             ...(actor.source === "web"
-              ? { writeToken: options.credentials.writeToken }
+              ? {
+                  writeToken: options.credentials.writeToken,
+                  readToken: options.credentials.readToken,
+                  lan: lan.status(workspaceId),
+                }
               : {}),
             runtime: `Bun ${Bun.version}`,
           },
@@ -773,6 +901,13 @@ export function createApp(options: {
             input.index,
             actor,
           );
+          if (value.proposal.kind === "remote_development") {
+            const snapshot = scoped(req).remote.get(
+              value.proposal.snapshotId,
+              actor.identity,
+            );
+            return reply({ data: { remoteSnapshotId: snapshot.id } });
+          }
           return reply({
             data: assistant.fromChat(
               id,
@@ -963,6 +1098,12 @@ export function createApp(options: {
       return reply({ error: body, requestId }, status);
     }
   }
+  const lan = new LanMcp({
+    origin: options.origin,
+    readToken: options.credentials.readToken,
+    port: Number(base.port) === 65535 ? 65534 : Number(base.port) + 1,
+    handle,
+  });
   return {
     handle,
     service: initial?.service,
@@ -970,6 +1111,7 @@ export function createApp(options: {
     db: initial?.db,
     startAI: () => initial?.chat.start() || Promise.resolve(),
     close: async () => {
+      await lan.close();
       await Promise.allSettled(
         [...bundles.values()].map((value) => value.close()),
       );

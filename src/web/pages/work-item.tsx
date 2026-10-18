@@ -1,3 +1,4 @@
+import { WorkItemId } from "../components/work-item-id";
 import { FocusActions, RelatedWork } from "../components/personal-actions";
 import "../personal-work.css";
 import { useEffect, useState } from "react";
@@ -57,11 +58,12 @@ export function WorkItemPage() {
     <div className="workspace-content editor-page-content">
       {item && !loading && (
         <div className="assistant-context-bar">
+          <WorkItemId id={item.id} />
           <AssistantSource kind="work-items" id={item.id} />
           {!item.deletedAt && (
             <>
               <Button asChild size="sm">
-                <Link to={`/development-tasks/new?items=${item.id}`}>
+                <Link to={`/development-tasks/new/items/${item.id}`}>
                   开始研发
                 </Link>
               </Button>
@@ -70,7 +72,7 @@ export function WorkItemPage() {
           )}
           {!item.deletedAt && (
             <Link
-              to={`/assistant?items=${item.id}`}
+              to={`/assistant/items/${item.id}`}
               className="assistant-context-link"
             >
               用此工作项设计领域模型

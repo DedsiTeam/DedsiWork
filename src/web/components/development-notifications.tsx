@@ -223,7 +223,7 @@ export function DevelopmentNotifications() {
                 <div>
                   <Button variant="outline" asChild>
                     <Link
-                      to={`/development-tasks/${item.taskId}?workspace=${item.workspaceId}`}
+                      to={`/workspace/${item.workspaceId}/development-tasks/${item.taskId}`}
                       onClick={() => setOpen(false)}
                     >
                       查看任务

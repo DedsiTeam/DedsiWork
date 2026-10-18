@@ -304,15 +304,25 @@ export function ModelEditor({
                 </Link>
               </div>
             )}
-            <Button variant="outline" asChild>
+            <Button
+              variant="outline"
+              asChild
+              title={backTo ? "返回助手" : "返回列表"}
+              aria-label={backTo ? "返回助手" : "返回列表"}
+              size="icon-sm"
+            >
               <Link to={backTo || "/domain-models"}>
                 <ArrowLeft />
-                {backTo ? "返回助手" : "返回列表"}
               </Link>
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button
+              type="submit"
+              disabled={saving}
+              title={saving ? "正在保存…" : "保存模型"}
+              aria-label={saving ? "正在保存…" : "保存模型"}
+              size="icon-sm"
+            >
               <Save />
-              {saving ? "正在保存…" : "保存模型"}
             </Button>
           </div>
         </div>
@@ -456,12 +466,13 @@ export function ModelEditor({
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
+                      size="icon-sm"
                       disabled={!canAddElement(kind)}
                       onClick={() => addElement(kind)}
+                      title={"添加" + " " + elementLabels[kind]}
+                      aria-label={"添加" + " " + elementLabels[kind]}
                     >
                       <Plus />
-                      添加{elementLabels[kind]}
                     </Button>
                   </div>
                   {!form.elements.some((element) => element.kind === kind) && (
@@ -584,7 +595,7 @@ export function ModelEditor({
                           <Button
                             type="button"
                             variant="ghost"
-                            size="sm"
+                            size="icon-sm"
                             disabled={element.fields.length >= 100}
                             onClick={() =>
                               updateElement(element.id, (value) => ({
@@ -600,9 +611,10 @@ export function ModelEditor({
                                 ],
                               }))
                             }
+                            title={"添加字段"}
+                            aria-label={"添加字段"}
                           >
                             <Plus />
-                            添加字段
                           </Button>
                         </div>
                         {!element.fields.length ? (

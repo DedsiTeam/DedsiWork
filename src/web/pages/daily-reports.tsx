@@ -127,7 +127,7 @@ function DailyReportEditor() {
       alive.current = false;
     };
   }, []);
-  const listUrl = `/daily-reports${listSearch || `?workspace=${workspace?.id || ""}${selectedTrash()}`}`;
+  const listUrl = `/workspace/${workspace?.id || ""}/daily-reports${listSearch || (selectedTrash() ? "?trash=true" : "")}`;
   function selectedTrash() {
     return recordRef.current?.deletedAt ? "&trash=true" : "";
   }
@@ -179,7 +179,7 @@ function DailyReportEditor() {
   useEffect(() => {
     if (isNew && selected && !dirty && !busy)
       navigate(
-        `/daily-reports/${selected.id}?workspace=${workspace?.id || ""}`,
+        `/workspace/${workspace?.id || ""}/daily-reports/${selected.id}`,
         { replace: true, state: location.state },
       );
   }, [isNew, selected, dirty, busy, navigate, workspace?.id, location.state]);
@@ -436,17 +436,21 @@ function DailyReportEditor() {
             variant="ghost"
             onClick={() => navigate(listUrl)}
             disabled={busy}
+            title={"返回日报列表"}
+            aria-label={"返回日报列表"}
+            size="icon-sm"
           >
             <ArrowLeft />
-            返回日报列表
           </Button>
           {!selected?.deletedAt && (
             <Button
               onClick={() => void saveForm()}
               disabled={busy || loading || !form || (!!selected && !dirty)}
+              title={busy ? "保存中…" : "保存日报"}
+              aria-label={busy ? "保存中…" : "保存日报"}
+              size="icon-sm"
             >
               <Save />
-              {busy ? "保存中…" : "保存日报"}
             </Button>
           )}
         </div>
@@ -490,21 +494,27 @@ function DailyReportEditor() {
                 >
                   {preview ? "继续编辑" : "预览"}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void copy()}>
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  onClick={() => void copy()}
+                  title={"复制日报"}
+                  aria-label={"复制日报"}
+                >
                   <Copy />
-                  复制日报
                 </Button>
                 <Button
-                  size="sm"
+                  size="icon-sm"
                   variant="outline"
                   onClick={download}
                   disabled={exporting}
+                  title={exporting ? "请选择保存位置…" : "导出 Markdown"}
+                  aria-label={exporting ? "请选择保存位置…" : "导出 Markdown"}
                 >
                   <Download />
-                  {exporting ? "请选择保存位置…" : "导出 Markdown"}
                 </Button>
                 <Button
-                  size="sm"
+                  size="icon-sm"
                   variant="outline"
                   disabled={busy || !selected}
                   onClick={() => {
@@ -514,13 +524,14 @@ function DailyReportEditor() {
                       setDeleteAction("delete");
                     }
                   }}
+                  title={selected?.deletedAt ? "恢复" : "删除"}
+                  aria-label={selected?.deletedAt ? "恢复" : "删除"}
                 >
                   <Trash2 />
-                  {selected?.deletedAt ? "恢复" : "删除"}
                 </Button>
                 {selected?.deletedAt && (
                   <Button
-                    size="sm"
+                    size="icon-sm"
                     variant="destructive"
                     className="report-purge-button"
                     disabled={busy}
@@ -528,9 +539,10 @@ function DailyReportEditor() {
                       setError("");
                       setDeleteAction("purge");
                     }}
+                    title={"永久删除"}
+                    aria-label={"永久删除"}
                   >
                     <Trash2 />
-                    永久删除
                   </Button>
                 )}
               </div>
@@ -597,14 +609,15 @@ function DailyReportEditor() {
                       从工作项添加
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon-sm"
                       onClick={() =>
                         change("matters", [...form.matters, blankMatter()])
                       }
                       disabled={form.matters.length >= 100}
+                      title={"添加事项"}
+                      aria-label={"添加事项"}
                     >
                       <Plus />
-                      添加事项
                     </Button>
                   </div>
                 </div>
@@ -861,9 +874,11 @@ function DailyReportEditor() {
                   <Button
                     onClick={() => void saveForm()}
                     disabled={busy || (!!selected && !dirty)}
+                    title={"立即保存"}
+                    aria-label={"立即保存"}
+                    size="icon-sm"
                   >
                     <Save />
-                    立即保存
                   </Button>
                 </div>
               </fieldset>

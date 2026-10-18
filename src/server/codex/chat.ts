@@ -1,3 +1,4 @@
+import { peerTools, peerInstructions } from "../../shared/remote-mcp";
 import { chatProposals, chatProposalSchema } from "../../shared/chat-proposal";
 import { domainModelInstructions } from "./app-server";
 import { workItemPlanningInstructions } from "./work-item-planning";
@@ -60,6 +61,7 @@ export class CodexChat extends CodexAppServer {
     const space = this.workspaceInfo?.();
     return (
       (this.developmentInstructions || assistantInstructions) +
+      (this.peerTool ? peerInstructions : "") +
       (space
         ? `\n当前工作空间：${space.name}。背景说明：${space.description}。只围绕当前工作空间的数据与需求开展工作。`
         : "")
@@ -71,8 +73,17 @@ export class CodexChat extends CodexAppServer {
     private workspaceInfo?: () => Workspace,
     private developmentInstructions?: string,
     private sourceContext?: () => Promise<string>,
+    private peerTool?: (
+      name: string,
+      input: unknown,
+      actor: Actor,
+    ) => Promise<unknown>,
   ) {
     super("chat");
+    if (peerTool)
+      db.run(
+        "CREATE TABLE IF NOT EXISTS peer_tool_threads(id TEXT PRIMARY KEY)",
+      );
     this.fallbackWorkspace = join(resolve(dataDir), "chat-workspace");
   }
   private archived(id: string) {
@@ -352,6 +363,7 @@ export class CodexChat extends CodexAppServer {
       "thread/start",
       {
         cwd,
+        ...(this.peerTool ? { dynamicTools: peerTools } : {}),
         developerInstructions: this.instructions() + context,
         ...(request.model ? { model: request.model } : {}),
         approvalPolicy: "on-request",
@@ -360,6 +372,10 @@ export class CodexChat extends CodexAppServer {
       },
       60000,
     );
+    if (this.peerTool)
+      this.db
+        .query("INSERT OR IGNORE INTO peer_tool_threads VALUES (?)")
+        .run(thread.id);
     const row: Row = {
       id: thread.id,
       title: "新对话",
@@ -543,6 +559,19 @@ export class CodexChat extends CodexAppServer {
         .query("UPDATE codex_chats SET cwd=? WHERE id=?")
         .run(session.row.cwd, id);
     }
+    if (
+      this.peerTool &&
+      session.wireThreadId &&
+      !this.db
+        .query("SELECT id FROM peer_tool_threads WHERE id=?")
+        .get(session.wireThreadId)
+    ) {
+      // Older threads cannot gain dynamic tools on resume. Preserve visible history
+      // and resume the conversation context in a new tool-enabled wire thread.
+      this.routes.delete(session.wireThreadId);
+      session.wireThreadId = null;
+      session.restored = true;
+    }
     session.running = true;
     session.revision++;
     session.stopping = false;
@@ -569,6 +598,7 @@ export class CodexChat extends CodexAppServer {
             "thread/start",
             {
               cwd,
+              ...(this.peerTool ? { dynamicTools: peerTools } : {}),
               ...(request.model ? { model: request.model } : {}),
               developerInstructions:
                 this.conversationInstructions(session) +
@@ -579,6 +609,10 @@ export class CodexChat extends CodexAppServer {
             },
             60000,
           );
+          if (this.peerTool)
+            this.db
+              .query("INSERT OR IGNORE INTO peer_tool_threads VALUES (?)")
+              .run(thread.id);
           session.wireThreadId = thread.id;
           session.row.cwd = cwd;
           this.routes.set(thread.id, id);
@@ -872,6 +906,45 @@ export class CodexChat extends CodexAppServer {
     const root = this.routes.get(threadId);
     const session = root ? this.sessions.get(root) : undefined;
     if (!session) return false;
+    if (message.method === "item/tool/call" && this.peerTool) {
+      const actor: Actor = {
+        source: "web",
+        identity: session.row.owner,
+        writable: true,
+        requestId: crypto.randomUUID(),
+      };
+      void this.peerTool(message.params.tool, message.params.arguments, actor)
+        .then(
+          (value) =>
+            this.send({
+              id: message.id,
+              result: {
+                success: true,
+                contentItems: [
+                  { type: "inputText", text: JSON.stringify(value) },
+                ],
+              },
+            }),
+          (error) =>
+            this.send({
+              id: message.id,
+              result: {
+                success: false,
+                contentItems: [
+                  {
+                    type: "inputText",
+                    text:
+                      error instanceof AppError
+                        ? error.message
+                        : "读取同事需求失败，请重试",
+                  },
+                ],
+              },
+            }),
+        )
+        .catch(() => {});
+      return true;
+    }
     const id = crypto.randomUUID();
     session.requests.set(id, {
       id,

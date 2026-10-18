@@ -170,16 +170,20 @@ export function BookmarksPage() {
             disabled={loading || busy}
             aria-pressed={editing}
             onClick={() => setEditing(!editing)}
+            title={editing ? "完成编辑" : "编辑"}
+            aria-label={editing ? "完成编辑" : "编辑"}
+            size="icon-sm"
           >
             <Pencil />
-            {editing ? "完成编辑" : "编辑"}
           </Button>
           <Button
             disabled={loading || busy}
             onClick={() => open({ kind: "group", groupId: "" })}
+            title={"新建分组"}
+            aria-label={"新建分组"}
+            size="icon-sm"
           >
             <Plus />
-            新建分组
           </Button>
         </div>
       </div>
@@ -249,13 +253,14 @@ export function BookmarksPage() {
                   </>
                 )}
                 <Button
-                  size="sm"
+                  size="icon-sm"
                   variant="ghost"
                   disabled={busy}
                   onClick={() => open({ kind: "link", groupId: group.id })}
+                  title={"添加网址"}
+                  aria-label={"添加网址"}
                 >
                   <Plus />
-                  添加网址
                 </Button>
               </div>
             </header>

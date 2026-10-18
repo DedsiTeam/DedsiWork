@@ -154,8 +154,8 @@
   margin: 0;
 }
 .dev-create-form {
-  max-width: 960px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 .dev-create-form fieldset {
   padding: 0;
@@ -350,8 +350,8 @@
 .dev-detail > .page-heading,
 .dev-detail > .dev-tabs {
   width: 100%;
-  max-width: 1120px;
-  margin-inline: auto;
+  max-width: none;
+  margin-inline: 0;
 }
 .dev-task-overview {
   padding-top: 8px;
@@ -415,8 +415,8 @@
 .dev-progress,
 .dev-detail-content {
   min-width: 0;
-  max-width: 1120px;
-  margin: 0 auto 24px;
+  max-width: none;
+  margin: 0 0 24px;
 }
 .dev-live-heading {
   display: flex;

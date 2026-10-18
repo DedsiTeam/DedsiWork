@@ -61,9 +61,9 @@ export class WorkItemService {
     const values: SQLQueryBindings[] = [];
     if (query.q) {
       where.push(
-        "(instr(lower(title),lower(?))>0 OR instr(lower(description),lower(?))>0)",
+        "(instr(lower(title),lower(?))>0 OR instr(lower(description),lower(?))>0 OR instr(lower(id),lower(?))>0)",
       );
-      values.push(query.q, query.q);
+      values.push(query.q, query.q, query.q);
     }
     for (const key of ["status", "type", "priority"] as const)
       if (query[key]) {

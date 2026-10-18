@@ -312,8 +312,10 @@ export function Editor({
           aria-label={embedded ? "关闭详情" : "返回工作项列表"}
           onClick={close}
           disabled={busy || uploading}
+          title={embedded ? "关闭详情" : "返回列表"}
+          size="icon-sm"
         >
-          <ArrowLeft /> {embedded ? "关闭详情" : "返回列表"}
+          <ArrowLeft />
         </Button>
       </div>
       {error && (

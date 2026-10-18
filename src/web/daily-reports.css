@@ -1,7 +1,7 @@
 .reports-content {
   width: 100%;
-  max-width: 1360px;
-  margin-inline: auto;
+  max-width: none;
+  margin-inline: 0;
   min-width: 0;
 }
 .report-subtitle {
@@ -441,8 +441,8 @@
 }
 .period-content {
   width: 100%;
-  max-width: 1120px;
-  margin-inline: auto;
+  max-width: none;
+  margin-inline: 0;
   min-width: 0;
 }
 .period-editor {
@@ -646,10 +646,10 @@
   margin-bottom: 22px;
   align-items: center;
 }
-.report-tabs > button {
+:root .report-tabs > [data-slot="button"] {
   position: relative;
   height: 42px;
-  padding: 0 2px;
+  padding: 0 1rem;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -657,15 +657,16 @@
   color: var(--muted-foreground);
   font-weight: 500;
 }
-.report-tabs > button:hover {
+:root .report-tabs > [data-slot="button"]:hover {
   background: transparent;
   color: var(--foreground);
 }
-.report-tabs > button[aria-pressed="true"] {
+:root .report-tabs > [data-slot="button"][aria-pressed="true"] {
+  font-weight: 700;
   background: transparent;
   color: var(--primary);
 }
-.report-tabs > button[aria-pressed="true"]::after {
+:root .report-tabs > [data-slot="button"][aria-pressed="true"]::after {
   content: "";
   position: absolute;
   bottom: -1px;
@@ -957,4 +958,46 @@
 .report-work-picker-list > button:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+.report-toolbar > .report-create-action {
+  margin-left: auto;
+}
+
+.reports-content .period-editor {
+  padding: 0;
+}
+.period-toolbar-actions {
+  margin: 0 0 0 auto;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.period-editor .report-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  padding-block: 8px 24px;
+}
+.period-editor .report-metrics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.period-editor .report-metrics strong {
+  margin: 0;
+  font-size: 24px;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+.period-editor .report-metrics span {
+  font-size: 12px;
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .period-editor .report-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
 }

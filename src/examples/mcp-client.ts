@@ -7,18 +7,25 @@ const dataDir = resolve(
   process.env.DEDSIWORK_DATA_DIR || resolve(import.meta.dir, "../data"),
 );
 const credentials = await Bun.file(resolve(dataDir, "access.json")).json();
-const port = process.env.DEDSIWORK_PORT || "3210";
+const port = process.env.DEDSIWORK_PORT || "13210";
+const workspace = process.env.DEDSIWORK_WORKSPACE_ID;
+const mcpPath = workspace
+  ? `/mcp/workspace/${encodeURIComponent(workspace)}`
+  : "/mcp";
 const client = new Client(
   { name: "dedsiwork-example", version: "0.1.0" },
   { versionNegotiation: { mode: "auto" } },
 );
 try {
   await client.connect(
-    new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`), {
-      requestInit: {
-        headers: { Authorization: `Bearer ${credentials.readToken}` },
+    new StreamableHTTPClientTransport(
+      new URL(`http://127.0.0.1:${port}${mcpPath}`),
+      {
+        requestInit: {
+          headers: { Authorization: `Bearer ${credentials.readToken}` },
+        },
       },
-    }),
+    ),
   );
   console.log(
     "Tools:",

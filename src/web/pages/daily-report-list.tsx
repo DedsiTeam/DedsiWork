@@ -68,7 +68,7 @@ function DailyReportCards() {
     );
   }
   const reportUrl = (id: string) =>
-    `/daily-reports/${id}?workspace=${workspace?.id || ""}`;
+    `/workspace/${workspace?.id || ""}/daily-reports/${id}`;
   const reportState = { reportListSearch: location.search };
   useEffect(() => {
     if (mode !== "daily") return;
@@ -157,7 +157,7 @@ function DailyReportCards() {
         {(["daily", "weekly", "monthly"] as const).map((value) => (
           <Button
             key={value}
-            variant={mode === value ? "default" : "ghost"}
+            variant="ghost"
             aria-pressed={mode === value}
             disabled={busy}
             onClick={() => filter({ type: value === "daily" ? "" : value })}
@@ -176,18 +176,6 @@ function DailyReportCards() {
         />
       ) : (
         <>
-          <div className="page-heading">
-            <div>
-              <h1>{trash ? "日报回收站" : "日报管理"}</h1>
-              <p className="report-subtitle">记录进展，沉淀成果。</p>
-            </div>
-            <Button asChild>
-              <Link to={reportUrl("new")} state={reportState}>
-                <Plus />
-                新增日报
-              </Link>
-            </Button>
-          </div>
           <div className="report-toolbar">
             <Input
               aria-label="搜索日报"
@@ -216,6 +204,17 @@ function DailyReportCards() {
             >
               {trash ? "返回日报" : "回收站"}
             </Button>
+            <Button
+              asChild
+              className="report-create-action"
+              title={"新增日报"}
+              aria-label={"新增日报"}
+              size="icon-sm"
+            >
+              <Link to={reportUrl("new")} state={reportState}>
+                <Plus />
+              </Link>
+            </Button>
           </div>
           {error && (
             <div className="message error" role="alert">
@@ -225,10 +224,6 @@ function DailyReportCards() {
               </Button>
             </div>
           )}
-          <div className="report-cards-heading">
-            <span>{trash ? "已删除日报" : "全部日报"}</span>
-            <span>{list.meta.total} 份</span>
-          </div>
           {loading ? (
             <p className="report-card-empty" role="status">
               正在加载日报…
@@ -290,13 +285,14 @@ function DailyReportCards() {
                       <div>
                         {trash ? (
                           <Button
-                            size="sm"
+                            size="icon-sm"
                             variant="ghost"
                             disabled={busy}
                             onClick={() => void restore(report)}
+                            title={"恢复"}
+                            aria-label={"恢复"}
                           >
                             <RotateCcw />
-                            恢复
                           </Button>
                         ) : (
                           <Button size="sm" variant="ghost" asChild>

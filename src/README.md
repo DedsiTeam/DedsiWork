@@ -31,7 +31,7 @@
 ```sh
 cd src
 bun install --frozen-lockfile
-# 先停止占用 3210 端口的网页开发服务；沿用项目现有数据
+# 先停止占用 13210 端口的网页开发服务；沿用项目现有数据
 DEDSIWORK_DATA_DIR="$PWD/data" bun run desktop:dev
 ```
 
@@ -93,13 +93,13 @@ Release 安装包不受 Actions Artifacts 的 7 天保留期限制。重新运�
 ### 运行行为
 
 - 打开应用时启动附带服务；服务就绪后，窗口自动连接网页并建立桌面会话，无需手动输入配对码。
-- 默认网页 `http://127.0.0.1:3210`、API `/api/v1`、MCP `/mcp` 同时可用。外部浏览器自动建立本地会话，无需配对码；MCP 仍要求 Bearer Token。
+- 默认网页 `http://127.0.0.1:13210`、API `/api/v1`、MCP `/mcp` 同时可用。外部浏览器自动建立本地会话，无需配对码；MCP 仍要求 Bearer Token。
 - 桌面自动登录使用短时、一次性的随机启动令牌，不写入日志，不暴露 MCP 令牌。网页没有 shell、文件系统等 Tauri IPC 权限。
 - 点击窗口关闭按钮或按 Alt+F4 时，窗口隐藏到系统托盘，网页、API 和 MCP 继续运行，窗口会话保留。点击托盘图标可重新打开窗口。
 - 只有选择托盘“退出 DedsiWork”才正常退出应用：Rust 通过专用 stdin 管道通知服务关闭 SQLite，并等待退出；超时后只终止自己启动的子进程。父进程意外退出造成管道断开时，服务也会自行退出。
 - 重复打开应用会聚焦已有窗口，不重复启动服务。端口被其他程序占用时显示启动错误，不接管或停止其他进程。
 - 系统托盘使用品牌图标：左键打开主窗口，右键可选择“打开主窗口”或“退出 DedsiWork”；退出时会同时关闭本地服务。
-- **启动桌面版前先停止原有 `bun run dev`**，避免同时占用 3210 端口。可以通过 `DEDSIWORK_PORT` 指定其他端口。
+- **启动桌面版前先停止原有 `bun run dev`**，避免同时占用 13210 端口。可以通过 `DEDSIWORK_PORT` 指定其他端口。
 
 ### 数据和日志
 
@@ -139,7 +139,7 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-打开 [本地工作空间](http://127.0.0.1:3210) 即可直接使用，无需输入配对码。首次启动会自动创建 SQLite 数据库和本地凭据文件；浏览器自动建立有效期为 24 小时的会话，服务重启或会话过期后自动重新连接，保留当前页面地址。
+打开 [本地工作空间](http://127.0.0.1:13210) 即可直接使用，无需输入配对码。首次启动会自动创建 SQLite 数据库和本地凭据文件；浏览器自动建立有效期为 24 小时的会话，服务重启或会话过期后自动重新连接，保留当前页面地址。
 
 开发模式默认数据目录为本项目的 `data`，不会自动填充演示数据。
 
@@ -186,7 +186,7 @@ REST 接口：`GET/POST /api/v1/domain-models`，`GET/PUT/DELETE /api/v1/domain-
 
 ## MCP 接入
 
-连接类型为 **Streamable HTTP**，地址为 `http://127.0.0.1:3210/mcp`。客户端需要发送：
+连接类型为 **Streamable HTTP**，地址为 `http://127.0.0.1:13210/mcp`。客户端需要发送：
 
 ```http
 Authorization: Bearer <access.json 中的 writeToken 或 readToken>
@@ -239,7 +239,7 @@ bun run start
 
 ```powershell
 $env:DEDSIWORK_DATA_DIR = 'C:\Githubs\DedsiWork\src\data'
-$env:DEDSIWORK_PORT = '3210'
+$env:DEDSIWORK_PORT = '13210'
 bun run start
 ```
 
@@ -444,7 +444,7 @@ AI 助手现仅保留自由对话，移除「需求到模型」模式及切换�
 
 首次升级自动创建「默认工作空间」，完整沿用原 `dedsiwork.sqlite`，无需复制或重建原业务记录。工作空间目录登记于 `workspaces.sqlite`；新增空间使用 `data/workspaces/<id>/dedsiwork.sqlite`，业务 schema 继续使用原有迁移。已删除空间不会在下次启动时重新创建。Codex 登录凭据为全局，工作目录、背景说明、历史索引和 UI 对话选择按空间独立。
 
-工作空间 CRUD 接口位于 `/api/v1/workspaces`，编辑传 `expectedVersion`，删除须传 `{confirmed:true,name,expectedVersion}`。删除前关闭该空间拥有的服务并删除本应用数据库，不触碰用户指定的本地工作目录，也不删除 Codex 全局历史文件。现有 REST 接口通过 `X-Workspace-Id` 选择空间；MCP 配置页提供 `/mcp?workspace=<id>` 的空间专属地址。未带空间参数的旧 API/MCP 请求仅兼容指向默认工作空间；默认空间删除后要求显式选择，避免转向其他空间。外部工作项链接携带 `workspace` 参数。
+工作空间 CRUD 接口位于 `/api/v1/workspaces`，编辑传 `expectedVersion`，删除须传 `{confirmed:true,name,expectedVersion}`。删除前关闭该空间拥有的服务并删除本应用数据库，不触碰用户指定的本地工作目录，也不删除 Codex 全局历史文件。现有 REST 接口通过 `X-Workspace-Id` 选择空间；MCP 配置页提供 `/mcp/workspace/<id>` 的空间专属地址。未带空间参数的旧 API/MCP 请求仅兼容指向默认工作空间；默认空间删除后要求显式选择，避免转向其他空间。跨工作空间页面链接使用 `/workspace/<id>/…` 路径。AI 会话、提案、资料交接、冲刺与研发任务来源 ID 均放入路径；查询参数仅用于搜索、筛选、排序、分页等查询条件。旧共享链接继续兼容读取，新导航统一生成路径形式。
 
 按用户要求，仅编译并重启客户端，未运行测试、UI 自动化或实际 AI 生成。
 

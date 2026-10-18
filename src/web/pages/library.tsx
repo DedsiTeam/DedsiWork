@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { api } from "../api";
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
 import { EmptyState } from "../components/empty-state";
 import { prepareAssistantSource } from "../components/personal-actions";
 import { useWorkspace } from "../workspace-context";
@@ -17,8 +16,7 @@ const labels = {
 export function LibraryPage() {
   const { workspace } = useWorkspace(),
     navigate = useNavigate();
-  const [q, setQ] = useState(""),
-    [page, setPage] = useState(1),
+  const [page, setPage] = useState(1),
     [data, setData] = useState<{
       data: SearchEntry[];
       meta: { total: number; pageSize: number };
@@ -29,10 +27,9 @@ export function LibraryPage() {
     setData(null);
     const c = new AbortController();
     const timer = setTimeout(() => {
-      api<NonNullable<typeof data>>(
-        `/api/v1/personal/search?q=${encodeURIComponent(q)}&page=${page}`,
-        { signal: c.signal },
-      )
+      api<NonNullable<typeof data>>(`/api/v1/personal/search?page=${page}`, {
+        signal: c.signal,
+      })
         .then((r) => {
           if (!c.signal.aborted) {
             if (
@@ -54,7 +51,7 @@ export function LibraryPage() {
       clearTimeout(timer);
       c.abort();
     };
-  }, [q, page, workspace?.id]);
+  }, [page, workspace?.id]);
   async function useSource(row: SearchEntry) {
     if (!workspace) return;
     setBusy(row.id);
@@ -71,28 +68,16 @@ export function LibraryPage() {
       <header className="personal-heading">
         <div>
           <h1>资料库</h1>
-          <p className="muted">
-            查找并引用当前空间的工作项、笔记、模型和网址。
-          </p>
         </div>
       </header>
-      <Input
-        className="personal-search-input"
-        aria-label="搜索资料"
-        placeholder="搜索标题、正文或网址"
-        value={q}
-        onChange={(e) => {
-          setQ(e.target.value);
-          setPage(1);
-        }}
-      />
+
       {error && <p role="alert">{error}</p>}
       {!data ? (
         <p role="status">正在查找…</p>
       ) : !data.data.length ? (
         <EmptyState
           title="没有找到资料"
-          description="试试其他关键词，或先记录一些工作内容。"
+          description="先记录一些工作内容，资料会显示在这里。"
         />
       ) : (
         data.data.map((row) => (

@@ -1,9 +1,12 @@
+import { useRouteInputs } from "../route-inputs";
+import type { RemoteRequirement } from "../../shared/remote-mcp";
+import { RemoteRequirementView } from "../components/remote-requirement";
 import { descriptionContent } from "../components/rich-text";
 import { PAGE_SIZE } from "../../shared/pagination";
 import { EmptyState } from "../components/empty-state";
 import { DevelopmentItemAcceptance } from "../components/development-item-acceptance";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import {
@@ -127,10 +130,14 @@ export function DevelopmentTasksPage() {
         <div>
           <h1>研发任务</h1>
         </div>
-        <Button asChild>
+        <Button
+          asChild
+          title={"新建研发任务"}
+          aria-label={"新建研发任务"}
+          size="icon-sm"
+        >
           <Link to="/development-tasks/new">
             <Plus />
-            新建研发任务
           </Link>
         </Button>
       </div>
@@ -406,7 +413,15 @@ function SourcePicker({
 
 export function DevelopmentTaskCreatePage() {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
+  const [params] = useRouteInputs("/development-tasks/new");
+  const remoteId = params.get("remote") || "";
+  const [remote, setRemote] = useState<RemoteRequirement | null>(null);
+  const [remoteError, setRemoteError] = useState("");
+  const [remoteBusy, setRemoteBusy] = useState(false);
+  const [remoteUpdate, setRemoteUpdate] = useState<RemoteRequirement | null>(
+    null,
+  );
+  const [remoteNotice, setRemoteNotice] = useState("");
   const sourceIds = params.get("items") || "";
   const sourceModelIds = params.get("models") || "";
   const [sourcesLoading, setSourcesLoading] = useState(
@@ -417,6 +432,49 @@ export function DevelopmentTaskCreatePage() {
     [selection, setSelection] = useState<RepositorySelection | null>(null),
     [base, setBase] = useState(""),
     [model, setModel] = useState("");
+  useEffect(() => {
+    if (!remoteId) return;
+    const controller = new AbortController();
+    setRemote(null);
+    setRemoteError("");
+    setRemoteUpdate(null);
+    api<{ data: RemoteRequirement }>(
+      `/api/v1/remote-requirements/${encodeURIComponent(remoteId)}`,
+      { signal: controller.signal },
+    )
+      .then(({ data }) => {
+        if (controller.signal.aborted) return;
+        setRemote(data);
+        setTitle((previous) => previous || data.item.title.slice(0, 120));
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) setRemoteError(e.message);
+      });
+    return () => controller.abort();
+  }, [remoteId]);
+  async function checkRemote() {
+    if (!remote) return;
+    setRemoteBusy(true);
+    setRemoteError("");
+    setRemoteNotice("");
+    try {
+      const { data } = await api<{ data: RemoteRequirement }>(
+        `/api/v1/remote-requirements/${remote.id}/refresh`,
+        { method: "POST" },
+      );
+      if (
+        data.item.version === remote.item.version &&
+        JSON.stringify(data.item) === JSON.stringify(remote.item)
+      ) {
+        setRemoteNotice("需求与保存的快照一致");
+        setRemoteUpdate(null);
+      } else setRemoteUpdate(data);
+    } catch (e) {
+      setRemoteError((e as Error).message);
+    } finally {
+      setRemoteBusy(false);
+    }
+  }
   const [items, setItems] = useState<SourceOption[]>([]),
     [models, setModels] = useState<SourceOption[]>([]),
     [picker, setPicker] = useState<"items" | "models" | null>(null);
@@ -576,7 +634,14 @@ export function DevelopmentTaskCreatePage() {
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!selection || saving || sourcesLoading) return;
+    if (
+      !selection ||
+      saving ||
+      sourcesLoading ||
+      remoteBusy ||
+      (remoteId && !remote)
+    )
+      return;
     setSaving(true);
     setError("");
     try {
@@ -585,6 +650,7 @@ export function DevelopmentTaskCreatePage() {
         body: JSON.stringify({
           title,
           requirement,
+          ...(remote ? { remoteSnapshotId: remote.id } : {}),
           directoryToken: selection.token,
           baseBranch: base,
           model,
@@ -613,16 +679,85 @@ export function DevelopmentTaskCreatePage() {
   return (
     <div className="workspace-content dev-page">
       <div className="page-heading">
-        <h1>新建研发任务</h1>
-        <Button variant="ghost" asChild>
+        <h1>{remoteId ? "预览需求并创建本机研发任务" : "新建研发任务"}</h1>
+        <Button
+          variant="ghost"
+          asChild
+          title={"返回任务列表"}
+          aria-label={"返回任务列表"}
+          size="icon-sm"
+        >
           <Link to="/development-tasks">
             <ArrowLeft />
-            返回任务列表
           </Link>
         </Button>
       </div>
+      {remoteId && (
+        <section className="dev-panel mb-5">
+          <h2>同事需求预览</h2>
+          {remoteError && (
+            <p role="alert" className="message">
+              {remoteError}
+            </p>
+          )}
+          {!remote && !remoteError && <p role="status">正在加载需求快照…</p>}
+          {remote && (
+            <>
+              <RemoteRequirementView source={remote} />
+              <Button
+                className="mt-4"
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={remoteBusy || saving}
+                onClick={checkRemote}
+              >
+                {remoteBusy ? "正在检查…" : "检查需求更新"}
+              </Button>
+            </>
+          )}
+          {remoteNotice && (
+            <p role="status" className="muted mt-3">
+              {remoteNotice}
+            </p>
+          )}
+          {remoteUpdate && (
+            <div className="mt-4 border-t border-border pt-4">
+              <p>发现新版本，请核对后决定是否采用：</p>
+              <RemoteRequirementView source={remoteUpdate} />
+              <div className="flex gap-2 mt-4">
+                <Button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    setRemote(remoteUpdate);
+                    setRemoteUpdate(null);
+                    setRemoteNotice("已采用新快照，请确认研发要求后启动");
+                  }}
+                >
+                  采用此版本
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRemoteUpdate(null)}
+                >
+                  保留原版本
+                </Button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
       <form className="dev-create-form" onSubmit={submit}>
-        <fieldset disabled={saving || sourcesLoading}>
+        <fieldset
+          disabled={
+            saving ||
+            sourcesLoading ||
+            remoteBusy ||
+            Boolean(remoteId && !remote)
+          }
+        >
           <section className="dev-panel">
             <h2>任务信息</h2>
             <label>
@@ -722,12 +857,13 @@ export function DevelopmentTaskCreatePage() {
                 </h3>
                 <Button
                   type="button"
-                  size="sm"
+                  size="icon-sm"
                   variant="outline"
                   onClick={() => setPicker("items")}
+                  title={"选择工作项"}
+                  aria-label={"选择工作项"}
                 >
                   <Plus />
-                  选择工作项
                 </Button>
               </div>
               <div className="dev-source-chips">
@@ -757,12 +893,13 @@ export function DevelopmentTaskCreatePage() {
                 </h3>
                 <Button
                   type="button"
-                  size="sm"
+                  size="icon-sm"
                   variant="outline"
                   onClick={() => setPicker("models")}
+                  title={"选择领域模型"}
+                  aria-label={"选择领域模型"}
                 >
                   <Plus />
-                  选择领域模型
                 </Button>
               </div>
               <div className="dev-source-chips">
@@ -784,7 +921,7 @@ export function DevelopmentTaskCreatePage() {
               </div>
             </div>
             <p className="dev-help">
-              创建时保存关联 ID，开始或继续研发时读取最新资料，按需加载内容。
+              本机关联资料在开始或继续研发时读取最新内容；同事需求使用预览确认的完整快照。
             </p>
           </section>
           {error && (
@@ -801,7 +938,7 @@ export function DevelopmentTaskCreatePage() {
                 choosing ||
                 !selection ||
                 !title.trim() ||
-                (!items.length && !requirement.trim())
+                (!items.length && !requirement.trim() && !remote)
               }
             >
               {saving ? "正在创建并启动…" : "创建并开始研发"}
@@ -1222,9 +1359,14 @@ function DevelopmentTaskDetail() {
             task.status === "completed" &&
             !task.restored &&
             !task.merge && (
-              <Button disabled={!!busy} onClick={() => void previewMerge()}>
+              <Button
+                disabled={!!busy}
+                onClick={() => void previewMerge()}
+                title={"合并回主分支"}
+                aria-label={"合并回主分支"}
+                size="icon-sm"
+              >
                 <GitBranch />
-                合并回主分支
               </Button>
             )}
           {task.executionMode !== "workspace" &&
@@ -1240,9 +1382,14 @@ function DevelopmentTaskDetail() {
               </Button>
             )}
           {canStart && task.executionMode === "workspace" && (
-            <Button disabled={!!busy} onClick={() => void action("start")}>
+            <Button
+              disabled={!!busy}
+              onClick={() => void action("start")}
+              title={task.status === "draft" ? "开始研发" : "继续研发"}
+              aria-label={task.status === "draft" ? "开始研发" : "继续研发"}
+              size="icon-sm"
+            >
               <Play />
-              {task.status === "draft" ? "开始研发" : "继续研发"}
             </Button>
           )}
           {running && (
@@ -1250,9 +1397,11 @@ function DevelopmentTaskDetail() {
               variant="outline"
               disabled={!!busy || task.status === "preparing"}
               onClick={() => void action("stop")}
+              title={task.status === "stopping" ? "重试停止" : "停止执行"}
+              aria-label={task.status === "stopping" ? "重试停止" : "停止执行"}
+              size="icon-sm"
             >
               <Square />
-              {task.status === "stopping" ? "重试停止" : "停止执行"}
             </Button>
           )}
           <Button
@@ -1264,9 +1413,11 @@ function DevelopmentTaskDetail() {
               !!task.merge?.cleanedAt
             }
             onClick={() => void action("open-directory")}
+            title={"打开研发目录"}
+            aria-label={"打开研发目录"}
+            size="icon-sm"
           >
             <FolderOpen />
-            打开研发目录
           </Button>
           {task.worktree &&
             !running &&
@@ -1276,9 +1427,11 @@ function DevelopmentTaskDetail() {
                 variant="outline"
                 disabled={!!busy}
                 onClick={() => setConfirm(true)}
+                title={"确认完成"}
+                aria-label={"确认完成"}
+                size="icon-sm"
               >
                 <Check />
-                确认完成
               </Button>
             )}
         </div>
@@ -1495,9 +1648,11 @@ function DevelopmentTaskDetail() {
               variant="outline"
               disabled={changesLoading}
               onClick={() => void loadChanges()}
+              title={changesLoading ? "正在读取…" : "刷新差异"}
+              aria-label={changesLoading ? "正在读取…" : "刷新差异"}
+              size="icon-sm"
             >
               <RefreshCw />
-              {changesLoading ? "正在读取…" : "刷新差异"}
             </Button>
           </div>
           <p className="dev-help">
@@ -1522,6 +1677,11 @@ function DevelopmentTaskDetail() {
         <section className="dev-detail-content dev-sources">
           <h2>研发要求</h2>
           <p>{task.requirement || "按照关联工作项完成实现。"}</p>
+          {task.remoteSource && (
+            <div className="mt-4">
+              <RemoteRequirementView source={task.remoteSource} />
+            </div>
+          )}
           <h2>
             {task.sourceMode === "references" ? "关联工作项" : "工作项快照"}{" "}
             <small>{task.sources.items.length}</small>

@@ -86,7 +86,7 @@
   padding: 8px 0;
   font-size: 11px;
   color: var(--muted-foreground);
-  margin: 16px 0 24px;
+  margin: 16px 0 0;
 }
 .space-card-counts > span {
   display: flex;
@@ -112,31 +112,6 @@
   line-height: 20px;
   color: var(--muted-foreground);
 }
-.space-card-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  margin-top: auto;
-}
-.space-card-enter {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 42px;
-  padding: 10px 16px;
-  border-radius: var(--ui-radius-button);
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-size: 12px;
-  font-weight: 500;
-  transition: opacity 200ms ease;
-}
-.space-card-open:hover .space-card-enter {
-  opacity: 0.88;
-}
 .space-card-more {
   position: absolute;
   right: 20px;
@@ -156,8 +131,7 @@
   color: var(--accent-foreground);
 }
 @media (prefers-reduced-motion: reduce) {
-  .space-card,
-  .space-card-enter {
+  .space-card {
     transition: none;
   }
   .space-card:hover {

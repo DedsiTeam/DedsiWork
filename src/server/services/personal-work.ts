@@ -283,7 +283,7 @@ export class PersonalWork {
         id: c.id,
         title: c.title,
         status: s.requests.length ? "waiting" : s.error ? "failed" : "running",
-        href: `/assistant?thread=${c.id}`,
+        href: `/assistant/thread/${c.id}`,
         detail:
           s.error ||
           (s.requests.length

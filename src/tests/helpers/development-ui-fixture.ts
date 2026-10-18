@@ -113,7 +113,7 @@ const server = Bun.serve({
 });
 console.log(
   JSON.stringify({
-    url: `${origin}/development-tasks/${selection.taskId}?workspace=${selection.spaceId}`,
+    url: `${origin}/workspace/${selection.spaceId}/development-tasks/${selection.taskId}`,
     directory: dir,
   }),
 );

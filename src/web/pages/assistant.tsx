@@ -1,6 +1,7 @@
+import { resourceRoute, useRouteInputs } from "../route-inputs";
 import { BusinessActionPreview } from "../components/business-action-preview";
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
 import { Check, Plus } from "lucide-react";
 import { ChatPage } from "./chat";
 import { ModelEditor } from "./domain-model";
@@ -13,7 +14,7 @@ import type { DomainModel } from "../../shared/domain-model";
 import "../assistant.css";
 
 export function AssistantPage() {
-  const [params] = useSearchParams();
+  const [params] = useRouteInputs("/assistant");
   const flowId = params.get("flow");
   return flowId ? <ProposalEditor key={flowId} id={flowId} /> : <ChatPage />;
 }
@@ -157,7 +158,12 @@ function ProposalEditor({ id }: { id: string }) {
               {flow.intent === "development" && (
                 <Button asChild variant="outline">
                   <Link
-                    to={`/development-tasks/new?${new URLSearchParams({ items: item.id, models: (flow.sourceModels || []).map((model) => model.id).join(",") })}`}
+                    to={resourceRoute("/development-tasks/new", {
+                      items: item.id,
+                      models: (flow.sourceModels || [])
+                        .map((model) => model.id)
+                        .join(","),
+                    })}
                   >
                     创建研发任务
                   </Link>
@@ -253,9 +259,15 @@ function ProposalEditor({ id }: { id: string }) {
                 )
               }
               onClick={() => void confirm()}
+              title={
+                saving ? "正在创建…" : `确认创建 ${checked.length} 个工作项`
+              }
+              aria-label={
+                saving ? "正在创建…" : `确认创建 ${checked.length} 个工作项`
+              }
+              size="icon-sm"
             >
               <Plus />
-              {saving ? "正在创建…" : `确认创建 ${checked.length} 个工作项`}
             </Button>
           </section>
         )

@@ -79,7 +79,7 @@ async function client(
   );
   await result.connect(
     new StreamableHTTPClientTransport(
-      new URL(`${origin}/mcp${workspace ? `?workspace=${workspace}` : ""}`),
+      new URL(`${origin}/mcp${workspace ? `/workspace/${workspace}` : ""}`),
       {
         requestInit: { headers: { Authorization: `Bearer ${token}` } },
       },

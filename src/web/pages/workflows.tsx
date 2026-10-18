@@ -89,8 +89,13 @@ export function WorkflowsPage() {
             <h2>复用你的工作方法</h2>
             <p>将需求拆解、验收检查等常用指令保存为模板，填入目标就能开始。</p>
           </div>
-          <Button onClick={() => setLibraryOpen(true)}>
-            <Play size={14} /> 使用 AI 模板
+          <Button
+            onClick={() => setLibraryOpen(true)}
+            title={"使用 AI 模板"}
+            aria-label={"使用 AI 模板"}
+            size="icon-sm"
+          >
+            <Play size={14} />{" "}
           </Button>
         </section>
       </div>
@@ -131,16 +136,22 @@ export function WorkflowsPage() {
               {run.error && <p role="alert">{run.error}</p>}
               <div className="workflow-activity-row">
                 {run.chatId && (
-                  <Button asChild size="sm" variant="secondary">
+                  <Button
+                    asChild
+                    size="icon-sm"
+                    variant="secondary"
+                    title={"查看结果"}
+                    aria-label={"查看结果"}
+                  >
                     <Link
-                      to={`/assistant?thread=${encodeURIComponent(run.chatId)}`}
+                      to={`/assistant/thread/${encodeURIComponent(run.chatId)}`}
                     >
-                      查看结果 <ArrowUpRight size={14} />
+                      <ArrowUpRight size={14} />
                     </Link>
                   </Button>
                 )}
                 <Button
-                  size="sm"
+                  size="icon-sm"
                   variant="outline"
                   disabled={
                     busy ||
@@ -153,8 +164,10 @@ export function WorkflowsPage() {
                       }),
                     )
                   }
+                  title={"再次运行"}
+                  aria-label={"再次运行"}
                 >
-                  <RotateCcw size={14} /> 再次运行
+                  <RotateCcw size={14} />{" "}
                 </Button>
                 {["running", "waiting"].includes(run.status) && (
                   <Button
@@ -250,7 +263,7 @@ export function WorkflowsPage() {
           onClose={() => setLibraryOpen(false)}
           onRun={async (_prompt, chatId) => {
             if (chatId)
-              navigate(`/assistant?thread=${encodeURIComponent(chatId)}`);
+              navigate(`/assistant/thread/${encodeURIComponent(chatId)}`);
           }}
         />
       )}

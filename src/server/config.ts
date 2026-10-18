@@ -24,7 +24,7 @@ export function loadConfig(options: { production?: boolean } = {}) {
     .int()
     .min(1)
     .max(65535)
-    .parse(process.env.DEDSIWORK_PORT || "3210");
+    .parse(process.env.DEDSIWORK_PORT || "13210");
   mkdirSync(dataDir, { recursive: true });
   const credentialsPath = join(dataDir, "access.json");
   if (!existsSync(credentialsPath))

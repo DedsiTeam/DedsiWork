@@ -183,7 +183,7 @@ fn launch_service(app: tauri::AppHandle, service: Arc<Service>, port: u16) -> Re
             if let Some(window) = app.get_webview_window("main") {
                 window
                     .navigate(
-                        format!("{origin}/desktop/start?token={token}")
+                        format!("{origin}/desktop/start/{token}")
                             .parse()
                             .map_err(|e| format!("无效服务地址：{e}"))?,
                     )
@@ -200,11 +200,11 @@ fn launch_service(app: tauri::AppHandle, service: Arc<Service>, port: u16) -> Re
 
 fn main() {
     let port = std::env::var("DEDSIWORK_PORT")
-        .unwrap_or_else(|_| "3210".into())
+        .unwrap_or_else(|_| "13210".into())
         .parse::<u16>()
         .ok()
         .filter(|p| *p > 0)
-        .unwrap_or(3210);
+        .unwrap_or(13210);
     let service = Arc::new(Service::default());
     let managed = service.clone();
     let app = tauri::Builder::default()

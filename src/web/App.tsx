@@ -3,7 +3,13 @@ import { DevelopmentNotifications } from "./components/development-notifications
 import { WorkspaceSwitcher } from "./components/workspace-switcher";
 import type { Workspace } from "../shared/workspace";
 import { useCallback, useEffect, useState } from "react";
-import { Outlet, useMatches, useLocation, useNavigate } from "react-router";
+import {
+  Outlet,
+  useMatches,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router";
 import { api, setCsrf, setApiWorkspace, getApiWorkspace } from "./api";
 import { Mark, LocalConnection } from "./components/workspace";
 import { Sidebar } from "./components/sidebar";
@@ -16,8 +22,15 @@ export function App() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [spaceReady, setSpaceReady] = useState(false);
   const location = useLocation();
+  const { workspaceId } = useParams();
+  const pagePath = location.pathname.replace(/^\/workspace\/[^/]+/, "");
+  const requestedWorkspace =
+    workspaceId || new URLSearchParams(location.search).get("workspace");
+  const canvasEditor = pagePath.startsWith("/notes/");
   const manager =
-    location.pathname === "/workspaces" || location.pathname === "/";
+    pagePath === "/workspaces" ||
+    pagePath.startsWith("/workspaces/edit/") ||
+    pagePath === "/";
   const updateWorkspace = useCallback(
     (value: Workspace) => setWorkspace(value),
     [],
@@ -108,11 +121,12 @@ export function App() {
       setSpaceReady(true);
       return;
     }
-    const requested = new URLSearchParams(location.search).get("workspace");
+    const requested = requestedWorkspace;
     if (workspace && (!requested || workspace.id === requested)) {
       setSpaceReady(true);
       return;
     }
+    setSpaceReady(false);
     const id = requested || sessionStorage.getItem("dedsiwork:active-space");
     if (!id) {
       setSpaceReady(true);
@@ -139,7 +153,7 @@ export function App() {
         }
       });
     return () => controller.abort();
-  }, [authenticated, manager, workspace, navigate, location.search]);
+  }, [authenticated, manager, workspace, navigate, requestedWorkspace]);
   useEffect(() => {
     document.title = `${title} · DedsiWork`;
     window.scrollTo({ top: 0 });
@@ -180,9 +194,11 @@ export function App() {
       }}
     >
       <div
-        className={`app-shell${manager ? " space-manager-shell" : " workspace-shell"}`}
+        className={`app-shell${manager ? " space-manager-shell" : " workspace-shell"}${canvasEditor ? " note-canvas-shell" : ""}`}
       >
-        {!manager && workspace && <Sidebar key={workspace.id} />}
+        {!manager && !canvasEditor && workspace && (
+          <Sidebar key={workspace.id} />
+        )}
         <main className="main-area">
           <header
             className="topbar"
@@ -194,7 +210,10 @@ export function App() {
             <DevelopmentNotifications />
             {!manager && <WorkspaceSwitcher />}
           </header>
-          {spaceReady && (manager || workspace) ? (
+          {spaceReady &&
+          (manager ||
+            (workspace &&
+              (!requestedWorkspace || workspace.id === requestedWorkspace))) ? (
             <Outlet key={manager ? "manager" : workspace!.id} />
           ) : (
             <div className="workspace-content">正在打开工作空间…</div>

@@ -13,7 +13,9 @@ const settings = navigation.find((group) => group.id === "system")!
   .children[0]!;
 
 export function Sidebar() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const prefix = /^\/workspace\/[^/]+/.exec(location.pathname)?.[0] || "";
+  const pathname = location.pathname.slice(prefix.length);
   const rail = useRef<HTMLElement>(null);
   const [indicator, setIndicator] = useState<{
     x: number;
@@ -65,12 +67,17 @@ export function Sidebar() {
       (item.to === "/work-items" &&
         pathname.startsWith("/work-items/") &&
         !pathname.startsWith("/work-items/sprints")) ||
-      (["/domain-models", "/development-tasks", "/notes"].includes(item.to) &&
+      ([
+        "/domain-models",
+        "/development-tasks",
+        "/notes",
+        "/work-items/sprints",
+      ].includes(item.to) &&
         pathname.startsWith(`${item.to}/`));
     return (
       <NavLink
         key={item.to}
-        to={item.to}
+        to={prefix + item.to}
         end={item.to !== "/assistant"}
         title={item.label}
         className={({ isActive }) =>

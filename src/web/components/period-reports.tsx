@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Copy, Download, RefreshCw } from "lucide-react";
+import { Copy, Download, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { api } from "../api";
 import { useWorkspace } from "../workspace-context";
 import { Button } from "./ui/button";
@@ -206,10 +206,48 @@ export function PeriodReports({
         <Button variant="ghost" onClick={() => setAnchor(localToday())}>
           本{type === "weekly" ? "周" : "月"}
         </Button>
-        <Button variant="outline" onClick={() => setRevision((v) => v + 1)}>
+        <Button
+          variant="outline"
+          onClick={() => setRevision((v) => v + 1)}
+          title={"刷新汇总"}
+          aria-label={"刷新汇总"}
+          size="icon-sm"
+        >
           <RefreshCw />
-          刷新汇总
         </Button>
+        {!loading && report && (
+          <div className="report-actions period-toolbar-actions">
+            <Button
+              size="icon-sm"
+              variant={preview ? "secondary" : "ghost"}
+              title={preview ? "返回汇总" : "预览全文"}
+              aria-label={preview ? "返回汇总" : "预览全文"}
+              aria-pressed={preview}
+              onClick={() => setPreview(!preview)}
+            >
+              {preview ? <EyeOff /> : <Eye />}
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              title="复制数据汇总"
+              aria-label="复制数据汇总"
+              onClick={() => void copy()}
+            >
+              <Copy />
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              title={exporting ? "请选择保存位置…" : "导出数据汇总"}
+              aria-label="导出数据汇总"
+              onClick={download}
+              disabled={exporting}
+            >
+              <Download />
+            </Button>
+          </div>
+        )}
       </div>
       {error && (
         <div role="alert" className="message error">
@@ -223,36 +261,6 @@ export function PeriodReports({
       ) : (
         <>
           <div className="report-editor period-editor">
-            <div className="report-document-header">
-              <div className="report-editor-heading">
-                <h2>
-                  {label} · {report.start} 至 {report.end}
-                </h2>
-                <span>{report.reportCount} 份日报</span>
-              </div>
-              <div className="report-actions report-document-actions">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setPreview(!preview)}
-                >
-                  {preview ? "返回汇总" : "预览全文"}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void copy()}>
-                  <Copy />
-                  复制数据汇总
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={download}
-                  disabled={exporting}
-                >
-                  <Download />
-                  {exporting ? "请选择保存位置…" : "导出数据汇总"}
-                </Button>
-              </div>
-            </div>
             <div className="report-metrics">
               <div>
                 <strong>{report.metrics.total}</strong>

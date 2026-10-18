@@ -85,9 +85,9 @@ desktopTest(
       expect((await fetch(new URL(script![1]!, origin))).status).toBe(200);
       expect((await fetch(`${origin}/api/v1/work-items`)).status).toBe(401);
       expect(
-        (await fetch(`${origin}/desktop/start?token=invalid`)).status,
+        (await fetch(`${origin}/desktop/start/invalid`)).status,
       ).toBe(403);
-      const paired = await fetch(`${origin}/desktop/start?token=${token}`, {
+      const paired = await fetch(`${origin}/desktop/start/${token}`, {
         redirect: "manual",
       });
       expect(paired.status).toBe(303);
@@ -98,7 +98,7 @@ desktopTest(
           .status,
       ).toBe(200);
       expect(
-        (await fetch(`${origin}/desktop/start?token=${token}`)).status,
+        (await fetch(`${origin}/desktop/start/${token}`)).status,
       ).toBe(403);
       const credentials = JSON.parse(
         readFileSync(resolve(folder, "access.json"), "utf8"),

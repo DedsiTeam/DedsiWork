@@ -150,7 +150,7 @@ export function ItemSprint({ item }: { item: WorkItem }) {
       {error && <p role="alert">{error}</p>}
       {loaded &&
         (sprint ? (
-          <Link to={`/work-items/sprints?sprint=${sprint.id}`}>
+          <Link to={`/work-items/sprints/sprint/${sprint.id}`}>
             所属冲刺：{sprint.name} · {sprintLabels[sprint.state]}
           </Link>
         ) : (

@@ -13,6 +13,7 @@ import {
   existsSync,
   readFileSync,
   realpathSync,
+  statSync,
 } from "node:fs";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { join, dirname, resolve } from "node:path";
@@ -37,6 +38,20 @@ export const git = (dir: string, ...args: string[]) => {
   if (r.exitCode) throw new Error(r.stderr.toString());
   return r.stdout.toString().trim();
 };
+// Windows 8.3 aliases (RUNNER~1) and long paths can name the same directory.
+// Compare filesystem identity, not the spelling returned by Git or realpath.
+function expectSameDirectory(actual: string, expected: string) {
+  const actualStat = statSync(actual, { bigint: true });
+  const expectedStat = statSync(expected, { bigint: true });
+  expect(actualStat.isDirectory()).toBe(true);
+  expect(expectedStat.isDirectory()).toBe(true);
+  expect(expectedStat.ino).not.toBe(0n);
+  expect([actualStat.dev, actualStat.ino]).toEqual([
+    expectedStat.dev,
+    expectedStat.ino,
+  ]);
+}
+
 export async function until<T>(
   read: () => T,
   predicate: (value: T) => boolean,
@@ -679,7 +694,7 @@ test("development repository is loaded from the workspace directory", async () =
   const f = fixture();
   try {
     const selection = await f.dev.selectDirectory(actor);
-    expect(selection.directory).toBe(realpathSync(f.repo));
+    expectSameDirectory(selection.directory, f.repo);
     expect(selection.currentBranch).toBe("main");
     expect(selection.branches).toContain("main");
   } finally {
@@ -707,7 +722,7 @@ test("workspace chat ignores a separately supplied working directory", async () 
   };
   try {
     const result = await chat.create({ cwd: f.dir }, actor);
-    expect(result.chat.cwd).toBe(realpathSync(f.repo));
+    expectSameDirectory(result.chat.cwd, f.repo);
     expect(calls.find((c) => c.method === "thread/start").params.cwd).toBe(
       result.chat.cwd,
     );
@@ -725,14 +740,14 @@ test("direct tasks preserve local edits, create no worktree and reject merge/cle
     const before = git(f.repo, "worktree", "list", "--porcelain");
     const task = await f.create("[HOLD]");
     expect(task.executionMode).toBe("workspace");
-    expect(task.worktree).toBe(f.repo);
+    expectSameDirectory(task.worktree, f.repo);
     expect(task.branch).toBe("main");
     await f.dev.start(task.id, actor);
     const running = await until(
       () => f.dev.get(task.id, actor),
       (t) => t.status === "running" && !!t.snapshot,
     );
-    expect(running.snapshot!.chat.cwd).toBe(f.repo);
+    expectSameDirectory(running.snapshot!.chat.cwd, f.repo);
     expect(git(f.repo, "worktree", "list", "--porcelain")).toBe(before);
     expect(git(f.repo, "branch", "--list", "codex/dev-*")).toBe("");
     expect(readFileSync(join(f.repo, "README.md"), "utf8")).toBe(
@@ -807,7 +822,7 @@ test("development MCP awaits async operations and preserves ownership and approv
     const repo = value(
       await c.callTool({ name: "development_task_repository", arguments: {} }),
     );
-    expect(repo.directory).toBe(f.repo);
+    expectSameDirectory(repo.directory, f.repo);
     expect(repo.token).toBeString();
     const input = {
       task: {

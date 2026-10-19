@@ -46,6 +46,37 @@ const questionMethods = new Set([
   "tool/requestUserInput",
 ]);
 
+// Apply on every start/resume so existing threads cannot retain interactive
+// permissions. Turns also override the sandbox to avoid sticky CLI settings.
+const automaticThreadPolicy = {
+  approvalPolicy: "never",
+  sandbox: "danger-full-access",
+} as const;
+
+function automaticApproval(method: string, params: any): unknown | undefined {
+  if (
+    method === "item/commandExecution/requestApproval" ||
+    method === "item/fileChange/requestApproval"
+  )
+    return { decision: "accept" };
+  if (method === "execCommandApproval" || method === "applyPatchApproval")
+    return { decision: "approved" };
+  if (method === "item/permissions/requestApproval")
+    return { permissions: params.permissions || {}, scope: "turn" };
+  // MCP tool consent is an empty form. Actual questions, credentials and URL
+  // authentication still need real input; do not invent answers for them.
+  if (
+    method === "mcpServer/elicitation/request" &&
+    (!params.mode ||
+      ["form", "openai/form", "openaiForm"].includes(params.mode)) &&
+    params.requestedSchema?.type === "object" &&
+    Object.keys(params.requestedSchema.properties || {}).length === 0 &&
+    !(params.requestedSchema.required || []).length
+  )
+    return { action: "accept", content: {}, _meta: null };
+  return undefined;
+}
+
 const assistantInstructions = `你是 DedsiWork Ai Agent，正常进行自由对话，可以使用 Codex 工具。根据对话情况，在用户讨论可执行需求或明确要求创建时，建议创建工作项；用户讨论领域建模时，建议创建领域模型。信息不足先澄清，不要把闲聊强制拆成工作项。需要创建时在自然语言解释后附加一个标记为 dedsiwork 的 Markdown JSON 代码块，符合以下 schema：${JSON.stringify(z.toJSONSchema(chatProposalSchema))}。应用会将代码块显示为可预览编辑的创建卡片。不要把草稿 JSON 直接写在正文里，不要在自然语言中重复全部字段；正文只用一两句话说明草稿范围和下一步操作。仅提议草稿，不能声称已经保存，必须由用户点击卡片预览并确认后创建。不要通过 shell、MCP、数据库或 HTTP 绕过应用确认创建 DedsiWork 工作项或模型。用户希望修改草稿时返回更新后的完整代码块。网址导航和冲刺看板也已接入：查询时读取当前工作空间的网址导航与冲刺资料文件后直接回答；创建、修改、删除网址或分组，以及创建修改删除冲刺、开始结束冲刺、加入移出工作项、变更看板状态时，输出 business_action 草稿，使用对应 operation。每张卡片只包含一个操作，先读取真实 ID 和最新版本，不编造 ID、网址、日期或工作项；缺少必要信息先询问。网址导航 expectedVersion 是整个导航的版本；修改网址时保留未要求更改的字段。新分组需先确认创建、取得真实 ID 后才能添加网址。冲刺日期使用 YYYY-MM-DD；日期不明确先确认。结束冲刺要明确未完成项是退回待规划还是转入指定计划中冲刺。删除分组会连同其中网址永久删除，必须说明影响范围；仅允许删除无工作项的冲刺。状态变化沿用业务约束，阻塞和退回等操作提供原因。不通过 shell、MCP、数据库或 HTTP 写入、修改、删除这些业务数据；所有写入必须经应用预览确认，删除还需二次确认。不要仅因用户查询而提出写入操作，不声称草稿已执行。当用户要求根据已有需求工作项和领域模型生成研发任务时，读取当前工作空间业务资料索引，核实需求和模型的完整内容、真实 ID 和版本，返回 development_items 草稿；sourceItems 仅关联 type=feature 的需求，sourceModels 关联实际采用的模型。不得编造 ID 或版本；缺少需求或模型时先协助生成并由用户确认保存，再继续。研发任务工作项固定 type=task，说明包括来源需求和模型、业务规则、实现范围、前后端及数据要求和验收标准。不要重新创建已有需求，不按前后端技术层拆分同一业务功能。用户确认研发任务工作项后，可在结果中点击创建研发任务。工作项 description 使用纯文本，默认优先级 normal。${workItemPlanningInstructions}领域模型规则：${domainModelInstructions}`;
 
 export class CodexChat extends CodexAppServer {
@@ -366,9 +397,7 @@ export class CodexChat extends CodexAppServer {
         ...(this.peerTool ? { dynamicTools: peerTools } : {}),
         developerInstructions: this.instructions() + context,
         ...(request.model ? { model: request.model } : {}),
-        approvalPolicy: "on-request",
-        sandbox: "workspace-write",
-        approvalsReviewer: "user",
+        ...automaticThreadPolicy,
       },
       60000,
     );
@@ -429,9 +458,7 @@ export class CodexChat extends CodexAppServer {
             cwd: this.workspaceInfo ? this.defaultWorkspace : row.cwd,
             developerInstructions:
               this.conversationInstructions(session) + session.assistantContext,
-            approvalPolicy: "on-request",
-            sandbox: "workspace-write",
-            approvalsReviewer: "user",
+            ...automaticThreadPolicy,
           },
           60000,
         );
@@ -603,9 +630,7 @@ export class CodexChat extends CodexAppServer {
               developerInstructions:
                 this.conversationInstructions(session) +
                 session.assistantContext,
-              approvalPolicy: "on-request",
-              sandbox: "workspace-write",
-              approvalsReviewer: "user",
+              ...automaticThreadPolicy,
             },
             60000,
           );
@@ -629,9 +654,7 @@ export class CodexChat extends CodexAppServer {
               developerInstructions:
                 this.conversationInstructions(session) +
                 session.assistantContext,
-              approvalPolicy: "on-request",
-              sandbox: "workspace-write",
-              approvalsReviewer: "user",
+              ...automaticThreadPolicy,
             },
             60000,
           );
@@ -648,9 +671,7 @@ export class CodexChat extends CodexAppServer {
               cwd: this.workspaceInfo ? this.defaultWorkspace : session.row.cwd,
               developerInstructions:
                 this.conversationInstructions(session) + context,
-              approvalPolicy: "on-request",
-              sandbox: "workspace-write",
-              approvalsReviewer: "user",
+              ...automaticThreadPolicy,
             },
             60000,
           );
@@ -676,8 +697,8 @@ export class CodexChat extends CodexAppServer {
                 : []),
               ...request.images.map((url) => ({ type: "image", url })),
             ],
-            approvalPolicy: "on-request",
-            approvalsReviewer: "user",
+            approvalPolicy: "never",
+            sandboxPolicy: { type: "dangerFullAccess" },
           },
           60000,
         );
@@ -943,6 +964,11 @@ export class CodexChat extends CodexAppServer {
             }),
         )
         .catch(() => {});
+      return true;
+    }
+    const approval = automaticApproval(message.method, message.params || {});
+    if (approval !== undefined) {
+      this.send({ id: message.id, result: approval });
       return true;
     }
     const id = crypto.randomUUID();

@@ -82,13 +82,23 @@ const compiled = Bun.spawnSync([
   fixtureCli,
 ]);
 if (compiled.exitCode !== 0)
-  throw new Error(`Failed to compile Codex fixture: ${compiled.stderr.toString()}`);
+  throw new Error(
+    `Failed to compile Codex fixture: ${compiled.stderr.toString()}`,
+  );
 
 // Re-sign Bun's compiled binary so macOS accepts its embedded fixture payload.
 if (process.platform === "darwin") {
-  const signed = Bun.spawnSync(["codesign", "--force", "--sign", "-", fixtureCli]);
+  const signed = Bun.spawnSync([
+    "codesign",
+    "--force",
+    "--sign",
+    "-",
+    fixtureCli,
+  ]);
   if (signed.exitCode !== 0)
-    throw new Error(`Failed to sign Codex fixture: ${signed.stderr.toString()}`);
+    throw new Error(
+      `Failed to sign Codex fixture: ${signed.stderr.toString()}`,
+    );
 }
 
 export function fixture() {
@@ -148,7 +158,7 @@ export function fixture() {
       return dev;
     },
     async create(
-      requirement = "[APPROVAL]",
+      requirement = "[QUESTION]",
       autoStart = false,
       sources: { itemIds?: string[]; modelIds?: string[] } = {},
     ) {
@@ -182,59 +192,111 @@ export function fixture() {
     },
   };
 }
-for (const method of ["command", "file"] as const)
-  for (const decision of ["accept", "decline"] as const)
-    test(`${method} approval ${decision}: waits, honors decision, rejects stale/other-owner requests`, async () => {
-      const f = fixture();
-      try {
-        const task = await f.create(
-          method === "file" ? "[FILE_APPROVAL]" : "[APPROVAL]",
-        );
-        await f.dev.start(task.id, actor);
-        const waiting = await until(
-          () => f.dev.get(task.id, actor),
-          (t) => t.status === "waiting",
-        );
-        const request = waiting.snapshot!.requests[0]!;
-        expect(request.method).toBe(
-          method === "file"
-            ? "item/fileChange/requestApproval"
-            : "item/commandExecution/requestApproval",
-        );
-        expect(waiting.snapshot!.items.some((i) => i.type === "plan")).toBe(
-          true,
-        );
-        expect(
-          existsSync(
-            join(f.dir, "codex", `${request.params.turnId}-approved.txt`),
-          ),
-        ).toBe(false);
-        await expect(
-          f.dev.answer(
-            task.id,
-            request.id,
-            { action: "accept" },
-            { ...actor, identity: "other" },
-          ),
-        ).rejects.toThrow("研发任务不存在");
-        await f.dev.answer(task.id, request.id, { action: decision }, actor);
-        const final = await until(
-          () => f.dev.get(task.id, actor),
-          (t) => t.status === "review",
-        );
-        expect(final.snapshot!.requests).toHaveLength(0);
-        expect(
-          existsSync(
-            join(f.dir, "codex", `${request.params.turnId}-approved.txt`),
-          ),
-        ).toBe(decision === "accept");
-        await expect(
-          f.dev.answer(task.id, request.id, { action: "accept" }, actor),
-        ).rejects.toThrow("执行请求已结束");
-      } finally {
-        await f.close();
+for (const marker of [
+  "APPROVAL",
+  "FILE_APPROVAL",
+  "MCP_APPROVAL",
+  "PERMISSIONS_APPROVAL",
+  "LEGACY_APPROVAL",
+]) {
+  test(`${marker} continues automatically without a pending approval`, async () => {
+    const f = fixture();
+    try {
+      const task = await f.create(`[${marker}]`);
+      await f.dev.start(task.id, actor);
+      const final = await until(
+        () => f.dev.get(task.id, actor),
+        (t) => t.status === "review",
+      );
+      expect(final.snapshot!.requests).toHaveLength(0);
+      expect(final.snapshot!.items.some((i) => i.type === "plan")).toBe(true);
+      const turnId = JSON.parse(
+        readFileSync(join(f.dir, "codex", "threads.json"), "utf8"),
+      )[final.chatId!].turns[0].id;
+      expect(existsSync(join(f.dir, "codex", `${turnId}-approved.txt`))).toBe(
+        true,
+      );
+      await f.dev.close();
+      f.reopen();
+      await f.dev.chat.readChat(final.chatId!, actor);
+      const policies = JSON.parse(
+        readFileSync(join(f.dir, "codex", "policies.json"), "utf8"),
+      );
+      expect(policies.some((p: any) => p.method === "thread/resume")).toBe(
+        true,
+      );
+      for (const { method, params } of policies) {
+        expect(params.approvalPolicy).toBe("never");
+        if (method === "turn/start")
+          expect(params.sandboxPolicy).toEqual({ type: "dangerFullAccess" });
+        else expect(params.sandbox).toBe("danger-full-access");
       }
-    }, 25000);
+    } finally {
+      await f.close();
+    }
+  }, 25000);
+}
+
+test("MCP data forms and authentication require real input; unknown threads are never approved", async () => {
+  const f = fixture();
+  const chat = new CodexChat(f.db, f.dir);
+  try {
+    const created = await chat.create({ cwd: f.repo }, actor);
+    const sent: any[] = [];
+    (chat as any).send = (message: any) => sent.push(message);
+    const handle = (method: string, params: any) =>
+      (chat as any).handleServerRequest({
+        id: crypto.randomUUID(),
+        method,
+        params: { threadId: created.chat.id, ...params },
+      });
+    expect(
+      handle("item/commandExecution/requestApproval", { threadId: "unknown" }),
+    ).toBe(false);
+    expect(sent).toHaveLength(0);
+    expect(
+      handle("mcpServer/elicitation/request", {
+        mode: "form",
+        requestedSchema: {
+          type: "object",
+          properties: { account: { type: "string" } },
+          required: ["account"],
+        },
+      }),
+    ).toBe(true);
+    expect(
+      handle("mcpServer/elicitation/request", {
+        mode: "url",
+        url: "https://example.invalid/login",
+      }),
+    ).toBe(true);
+    expect(sent).toHaveLength(0);
+    const snapshot = chat.checkpoint(created.chat.id)!;
+    expect(snapshot.requests).toHaveLength(2);
+    await expect(
+      chat.answer(
+        created.chat.id,
+        snapshot.requests[0]!.id,
+        { action: "accept", content: { account: "test" } },
+        { ...actor, identity: "other" },
+      ),
+    ).rejects.toThrow();
+    await chat.answer(
+      created.chat.id,
+      snapshot.requests[0]!.id,
+      { action: "accept", content: { account: "test" } },
+      actor,
+    );
+    expect(sent[0].result).toEqual({
+      action: "accept",
+      content: { account: "test" },
+      _meta: null,
+    });
+  } finally {
+    await chat.close();
+    await f.close();
+  }
+});
 
 test("SIGKILL restart preserves WAL history and resumes the same workspace directory and chat", async () => {
   const f = fixture();
@@ -332,7 +394,7 @@ test("backup restores development sources/history read-only, retries idempotentl
     const task = await dev.create(
       {
         title: "备份研发任务",
-        requirement: "[APPROVAL]",
+        requirement: "[QUESTION]",
         directoryToken: token,
         baseBranch: "main",
         itemIds: [item.id],
@@ -650,7 +712,7 @@ test("cleanup preserves post-merge edits and safely retries after restart", asyn
 test("creation starts automatically; actionable reminders persist and never accept or merge tasks", async () => {
   const f = fixture();
   try {
-    const task = await f.create("[APPROVAL]", true);
+    const task = await f.create("[QUESTION]", true);
     const waiting = await until(
       () => f.dev.get(task.id, actor),
       (t) => t.status === "waiting",
@@ -827,7 +889,7 @@ test("development MCP awaits async operations and preserves ownership and approv
     const input = {
       task: {
         title: "MCP Development",
-        requirement: "[APPROVAL]",
+        requirement: "[QUESTION]",
         directoryToken: repo.token,
         baseBranch: repo.currentBranch,
       },
@@ -1079,7 +1141,7 @@ test("new assistant source context is set before first turn without resuming an 
     const created = await chat.create({ cwd: f.repo }, actor);
     await chat.message(
       created.chat.id,
-      { text: "[APPROVAL]", clientId: crypto.randomUUID() },
+      { text: "[QUESTION]", clientId: crypto.randomUUID() },
       actor,
     );
     const result = await until(
@@ -1098,7 +1160,7 @@ test("new assistant source context is set before first turn without resuming an 
 test("permanent task deletion validates confirmation and removes Codex thread, history and source files", async () => {
   const f = fixture();
   try {
-    const task = await f.create("[APPROVAL]");
+    const task = await f.create("[QUESTION]");
     const item = f.items.create({ title: "保留关联工作项" }, actor);
     task.sources.items = [item];
     f.db

@@ -20,7 +20,12 @@ lines.on("line", (line) => {
   if (!m.method) {
     const r = pending.get(String(m.id));
     if (!r) return;
-    const accepted = m.result?.decision === "accept";
+    const accepted =
+      m.result?.decision === "accept" ||
+      m.result?.decision === "approved" ||
+      m.result?.action === "accept" ||
+      !!m.result?.permissions ||
+      !!m.result?.answers;
     writeFileSync(join(dir, `${r.turn.id}-decision.json`), JSON.stringify(m));
     if (accepted)
       writeFileSync(join(dir, `${r.turn.id}-approved.txt`), "approved");
@@ -48,6 +53,14 @@ lines.on("line", (line) => {
     });
     event("turn/completed", { threadId: r.threadId, turn: r.turn });
     return;
+  }
+  if (["thread/start", "thread/resume", "turn/start"].includes(m.method)) {
+    const log = join(dir, "policies.json");
+    const policies = existsSync(log)
+      ? JSON.parse(readFileSync(log, "utf8"))
+      : [];
+    policies.push({ method: m.method, params: p });
+    writeFileSync(log, JSON.stringify(policies));
   }
   const reply = (result: unknown) => send({ id: m.id, result });
   if (m.method === "initialized") return;
@@ -122,6 +135,10 @@ lines.on("line", (line) => {
       return;
     }
     const isFile = text.includes("[FILE_APPROVAL]");
+    const automatic = text.includes("APPROVAL]");
+    const mcp = text.includes("[MCP_APPROVAL]");
+    const permissions = text.includes("[PERMISSIONS_APPROVAL]");
+    const legacy = text.includes("[LEGACY_APPROVAL]");
     const item = {
       id: crypto.randomUUID(),
       type: isFile ? "fileChange" : "commandExecution",
@@ -144,15 +161,31 @@ lines.on("line", (line) => {
     });
     send({
       id: requestId,
-      method: isFile
-        ? "item/fileChange/requestApproval"
-        : "item/commandExecution/requestApproval",
+      method: !automatic
+        ? "item/tool/requestUserInput"
+        : mcp
+          ? "mcpServer/elicitation/request"
+          : permissions
+            ? "item/permissions/requestApproval"
+            : legacy
+              ? "execCommandApproval"
+              : isFile
+                ? "item/fileChange/requestApproval"
+                : "item/commandExecution/requestApproval",
       params: {
         threadId: p.threadId,
         turnId: turn.id,
         itemId: item.id,
         command: "printf approval-fixture",
-        reason: "仅验证一次性授权卡片",
+        reason: "验证自动执行",
+        questions: [],
+        ...(mcp
+          ? {
+              mode: "form",
+              requestedSchema: { type: "object", properties: {} },
+            }
+          : {}),
+        ...(permissions ? { permissions: { network: { enabled: true } } } : {}),
         availableDecisions: ["accept", "decline", "cancel"],
       },
     });

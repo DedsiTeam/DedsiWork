@@ -73,7 +73,7 @@ export const navigation = [
     label: "设置",
     icon: Settings2,
     children: [
-      { to: "/settings/service", label: "服务与 MCP", icon: Settings2 },
+      { to: "/settings/service", label: "MCP服务", icon: Settings2 },
     ],
   },
 ];

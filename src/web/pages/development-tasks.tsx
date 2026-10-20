@@ -1,4 +1,5 @@
 import { useRouteInputs } from "../route-inputs";
+import { DEFAULT_AI_MODEL, aiModelOptions } from "../../shared/ai-model";
 import type { RemoteRequirement } from "../../shared/remote-mcp";
 import { RemoteRequirementView } from "../components/remote-requirement";
 import { descriptionContent } from "../components/rich-text";
@@ -23,6 +24,16 @@ import {
   RefreshCw,
   X,
   ExternalLink,
+  ClipboardCheck,
+  CircleCheck,
+  ShieldCheck,
+  CircleAlert,
+  MessagesSquare,
+  UserRound,
+  Bot,
+  FileText,
+  ListTodo,
+  Layers,
 } from "lucide-react";
 import { api, subscribeApi } from "../api";
 import { Button } from "../components/ui/button";
@@ -431,7 +442,7 @@ export function DevelopmentTaskCreatePage() {
     [requirement, setRequirement] = useState(""),
     [selection, setSelection] = useState<RepositorySelection | null>(null),
     [base, setBase] = useState(""),
-    [model, setModel] = useState("");
+    [model, setModel] = useState<string>(DEFAULT_AI_MODEL.id);
   useEffect(() => {
     if (!remoteId) return;
     const controller = new AbortController();
@@ -795,7 +806,8 @@ export function DevelopmentTaskCreatePage() {
               </div>
             </label>
             <p className="dev-help">
-              自动使用工作空间的本地工作目录；如需修改，请前往工作空间设置。直接在该目录当前分支执行，保留并使用已有未提交修改，不创建工作树或切换分支。
+              使用工作空间目录中的 Git
+              仓库；选择起始分支后，开始研发时创建独立工作树和研发分支。工作树只包含起始分支已提交的代码，不包含原目录的未提交修改。
             </p>
             {!selection && !choosing && (
               <div className="dev-actions">
@@ -820,9 +832,9 @@ export function DevelopmentTaskCreatePage() {
             )}
             <div className="dev-form-columns">
               <label>
-                当前分支
+                起始分支
                 <select
-                  disabled
+                  disabled={!selection || choosing || saving}
                   value={base}
                   onChange={(e) => setBase(e.target.value)}
                 >
@@ -838,8 +850,7 @@ export function DevelopmentTaskCreatePage() {
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                 >
-                  <option value="">Codex 默认模型</option>
-                  {status?.models.map((m) => (
+                  {aiModelOptions(status?.models).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
                     </option>
@@ -930,7 +941,7 @@ export function DevelopmentTaskCreatePage() {
             </p>
           )}
           <div className="dev-create-footer">
-            <span>直接修改本地目录 · 人工验收 · 手动提交</span>
+            <span>独立 Git 工作树 · 人工验收 · 手动提交与合并</span>
             <Button
               type="submit"
               disabled={
@@ -1291,6 +1302,8 @@ function DevelopmentTaskDetail() {
     );
   const running = active(task),
     canStart = !running && task.status !== "completed" && !task.restored;
+  const executable =
+    task.executionMode === "workspace" || task.executionMode === "worktree";
   const delivery =
     task.deliveryHistory?.at(-1) ||
     (!running && task.snapshot
@@ -1331,6 +1344,11 @@ function DevelopmentTaskDetail() {
         </p>
       )}
       <section className="dev-detail-content dev-task-overview">
+        <div className="dev-region-heading">
+          <FolderOpen size={18} />
+          <h2>任务环境</h2>
+          <span>目录与执行配置</span>
+        </div>
         <dl>
           <div>
             <dt>代码仓库</dt>
@@ -1338,7 +1356,12 @@ function DevelopmentTaskDetail() {
           </div>
           <div>
             <dt>本地工作目录</dt>
-            <dd title={task.worktree}>{task.worktree || "历史目录不可用"}</dd>
+            <dd title={task.worktree}>
+              {task.worktree ||
+                (task.executionMode === "worktree"
+                  ? "开始研发时创建独立工作树"
+                  : "历史目录不可用")}
+            </dd>
           </div>
           <div>
             <dt>研发分支</dt>
@@ -1381,7 +1404,7 @@ function DevelopmentTaskDetail() {
                 清理研发目录
               </Button>
             )}
-          {canStart && task.executionMode === "workspace" && (
+          {canStart && executable && (
             <Button
               disabled={!!busy}
               onClick={() => void action("start")}
@@ -1441,7 +1464,7 @@ function DevelopmentTaskDetail() {
         </p>
         {!task.executionMode && !task.restored && (
           <p className="dev-help">
-            历史工作树任务保留查阅与合并；继续研发请创建新任务，直接使用工作空间目录。
+            历史工作树任务保留查阅与合并；继续研发请创建新的独立工作树任务。
           </p>
         )}
         {task.merge && (
@@ -1457,9 +1480,16 @@ function DevelopmentTaskDetail() {
           </p>
         )}
       </section>
-      <section className="dev-detail-content" aria-label="交付与收尾">
-        <h2>交付与收尾</h2>
-        <p>
+      <section
+        className="dev-detail-content dev-delivery"
+        aria-label="交付与收尾"
+      >
+        <div className="dev-region-heading">
+          <ClipboardCheck size={20} />
+          <h2>交付与收尾</h2>
+          <span>本次交付摘要</span>
+        </div>
+        <p className="dev-delivery-summary">
           研发：{developmentStatusLabels[task.status]} ·
           工作项验收：在下方逐项核对 · 代码：
           {task.executionMode === "workspace"
@@ -1475,13 +1505,30 @@ function DevelopmentTaskDetail() {
               报告，仍需人工核验。
               {running ? "当前正在修改，以下为上次交付。" : ""}
             </p>
-            <h3>完成内容</h3>
-            <pre>{delivery.completed}</pre>
-            <h3>验证结果</h3>
-            <pre>{delivery.verification}</pre>
-            <h3>遗留问题</h3>
-            <pre>{delivery.remaining}</pre>
-            {canStart && task.chatId && task.executionMode === "workspace" && (
+            <div className="dev-delivery-sections">
+              <section>
+                <h3>
+                  <CircleCheck size={17} />
+                  完成内容
+                </h3>
+                <pre>{delivery.completed}</pre>
+              </section>
+              <section>
+                <h3>
+                  <ShieldCheck size={17} />
+                  验证结果
+                </h3>
+                <pre>{delivery.verification}</pre>
+              </section>
+              <section className="dev-delivery-remaining">
+                <h3>
+                  <CircleAlert size={17} />
+                  遗留问题
+                </h3>
+                <pre>{delivery.remaining}</pre>
+              </section>
+            </div>
+            {canStart && task.chatId && executable && (
               <Button
                 variant="outline"
                 onClick={() => revise("请基于本次交付继续修改。\n验收反馈：")}
@@ -1550,6 +1597,11 @@ function DevelopmentTaskDetail() {
       </div>
       {tab === "progress" && (
         <section className="dev-progress" aria-label="研发执行记录">
+          <div className="dev-region-heading">
+            <MessagesSquare size={20} />
+            <h2>执行记录</h2>
+            <span>完整对话与工具执行过程</span>
+          </div>
           <div className="dev-live-heading">
             <div>
               <span
@@ -1596,7 +1648,24 @@ function DevelopmentTaskDetail() {
                   <pre>{item.text}</pre>
                 </details>
               ) : (
-                <ChatMessage key={item.id} item={item} onLinkError={setError} />
+                <div
+                  key={item.id}
+                  className={`dev-record dev-record-${item.role}`}
+                >
+                  {item.role !== "tool" && (
+                    <div className="dev-record-label">
+                      {item.role === "user" ? (
+                        <UserRound size={15} />
+                      ) : (
+                        <Bot size={15} />
+                      )}
+                      <span>
+                        {item.role === "user" ? "你的补充要求" : "Codex 回复"}
+                      </span>
+                    </div>
+                  )}
+                  <ChatMessage item={item} onLinkError={setError} />
+                </div>
               ),
             )}
           </div>
@@ -1609,7 +1678,7 @@ function DevelopmentTaskDetail() {
               onResult={() => {}}
             />
           ))}
-          {task.executionMode === "workspace" &&
+          {executable &&
             task.chatId &&
             !task.restored &&
             task.status !== "completed" && (
@@ -1642,11 +1711,13 @@ function DevelopmentTaskDetail() {
       )}
       {tab === "changes" && (
         <section className="dev-detail-content dev-changes">
-          <div className="dev-section-title">
+          <div className="dev-region-heading">
+            <Code2 size={20} />
             <h2>工作目录状态与提交记录</h2>
             <Button
+              className="dev-region-action"
               variant="outline"
-              disabled={changesLoading}
+              disabled={changesLoading || !task.worktree || !!task.restored}
               onClick={() => void loadChanges()}
               title={changesLoading ? "正在读取…" : "刷新差异"}
               aria-label={changesLoading ? "正在读取…" : "刷新差异"}
@@ -1663,60 +1734,154 @@ function DevelopmentTaskDetail() {
               {changesError}
             </p>
           )}
-          {changes && (
-            <>
-              <h3>工作目录状态</h3>
-              <pre>{changes.status}</pre>
-              <h3>提交记录</h3>
-              <pre>{changes.commits}</pre>
-            </>
+          {!task.worktree || task.restored ? (
+            <EmptyState
+              icon={FolderOpen}
+              compact
+              title="暂无可用的任务工作目录"
+              description={
+                task.restored
+                  ? "此任务来自数据库副本，保留研发记录，不读取原代码目录。"
+                  : "任务创建工作树后，这里会显示目录状态与提交记录。"
+              }
+            />
+          ) : changesLoading && !changes ? (
+            <p className="dev-help" role="status">
+              正在读取工作目录…
+            </p>
+          ) : (
+            changes && (
+              <div className="dev-change-sections">
+                <section>
+                  <h3>
+                    <FolderOpen size={16} />
+                    工作目录状态
+                  </h3>
+                  {changes.status === "工作目录没有未提交修改" ? (
+                    <EmptyState
+                      compact
+                      icon={CircleCheck}
+                      title="工作目录干净"
+                      description="当前没有未提交的文件修改。"
+                    />
+                  ) : (
+                    <pre>{changes.status}</pre>
+                  )}
+                </section>
+                <section>
+                  <h3>
+                    <GitBranch size={16} />
+                    提交记录
+                  </h3>
+                  {!changes.commits || changes.commits === "暂无新提交" ? (
+                    <EmptyState
+                      compact
+                      icon={GitBranch}
+                      title="暂无新提交"
+                      description="基准提交之后的提交记录会显示在这里。"
+                    />
+                  ) : (
+                    <pre>{changes.commits}</pre>
+                  )}
+                </section>
+                {changes.diff && (
+                  <section className="dev-change-diff">
+                    <h3>
+                      <Code2 size={16} />
+                      代码差异
+                    </h3>
+                    <pre>{changes.diff}</pre>
+                    {changes.truncated && (
+                      <p className="dev-help">
+                        差异内容较长，当前仅展示部分；完整内容请在研发目录中查看。
+                      </p>
+                    )}
+                  </section>
+                )}
+              </div>
+            )
           )}
         </section>
       )}
       {tab === "sources" && (
         <section className="dev-detail-content dev-sources">
-          <h2>研发要求</h2>
-          <p>{task.requirement || "按照关联工作项完成实现。"}</p>
+          <div className="dev-region-heading">
+            <FileText size={20} />
+            <h2>需求与模型</h2>
+            <span>研发依据与关联资料</span>
+          </div>
+          <section className="dev-reference-group dev-requirement">
+            <h3>研发要求</h3>
+            <p>{task.requirement || "按照关联工作项完成实现。"}</p>
+          </section>
           {task.remoteSource && (
             <div className="mt-4">
               <RemoteRequirementView source={task.remoteSource} />
             </div>
           )}
-          <h2>
-            {task.sourceMode === "references" ? "关联工作项" : "工作项快照"}{" "}
-            <small>{task.sources.items.length}</small>
-          </h2>
-          {task.sources.items.map((item) => (
-            <details key={item.id}>
-              <summary>
-                {item.title}
-                <small>
-                  {task.sourceMode === "references" ? "关联时版本" : "版本"}{" "}
-                  {item.version}
-                </small>
-              </summary>
-              <pre>{JSON.stringify(item, null, 2)}</pre>
-            </details>
-          ))}
-          {!task.sources.items.length && <p>未关联工作项</p>}
-          <h2>
-            {task.sourceMode === "references" ? "关联领域模型" : "领域模型快照"}{" "}
-            <small>{task.sources.models.length}</small>
-          </h2>
-          {task.sources.models.map((model) => (
-            <details key={model.id}>
-              <summary>
-                {model.name}
-                <small>
-                  {task.sourceMode === "references" ? "关联时版本" : "版本"}{" "}
-                  {model.version}
-                </small>
-              </summary>
-              <pre>{JSON.stringify(model, null, 2)}</pre>
-            </details>
-          ))}
-          {!task.sources.models.length && <p>未关联领域模型</p>}
-          <p className="dev-help">
+          <section className="dev-reference-group">
+            <h3>
+              <ListTodo size={17} />
+              {task.sourceMode === "references"
+                ? "关联工作项"
+                : "工作项快照"}{" "}
+              <span className="dev-reference-count">
+                {task.sources.items.length}
+              </span>
+            </h3>
+            {task.sources.items.map((item) => (
+              <details key={item.id}>
+                <summary>
+                  {item.title}
+                  <small>
+                    {task.sourceMode === "references" ? "关联时版本" : "版本"}{" "}
+                    {item.version}
+                  </small>
+                </summary>
+                <pre>{JSON.stringify(item, null, 2)}</pre>
+              </details>
+            ))}
+            {!task.sources.items.length && (
+              <EmptyState
+                compact
+                icon={ListTodo}
+                title="未关联工作项"
+                description="本任务按上方研发要求执行。"
+              />
+            )}
+          </section>
+          <section className="dev-reference-group">
+            <h3>
+              <Layers size={17} />
+              {task.sourceMode === "references"
+                ? "关联领域模型"
+                : "领域模型快照"}{" "}
+              <span className="dev-reference-count">
+                {task.sources.models.length}
+              </span>
+            </h3>
+            {task.sources.models.map((model) => (
+              <details key={model.id}>
+                <summary>
+                  {model.name}
+                  <small>
+                    {task.sourceMode === "references" ? "关联时版本" : "版本"}{" "}
+                    {model.version}
+                  </small>
+                </summary>
+                <pre>{JSON.stringify(model, null, 2)}</pre>
+              </details>
+            ))}
+            {!task.sources.models.length && (
+              <EmptyState
+                compact
+                icon={Layers}
+                title="未关联领域模型"
+                description="本任务没有额外的模型设计约束。"
+              />
+            )}
+          </section>
+          <p className="dev-help dev-source-note">
             创建于 {date(task.createdAt)}。
             {task.sourceMode === "references"
               ? "这里保存关联 ID；每次开始或继续研发时读取最新资料。本次执行期间使用固定资料，后续修改将在下次执行时生效。"
@@ -1731,9 +1896,7 @@ function DevelopmentTaskDetail() {
             task={task}
             onTask={accept}
             onRevise={
-              canStart && task.executionMode === "workspace" && task.chatId
-                ? revise
-                : undefined
+              canStart && executable && task.chatId ? revise : undefined
             }
           />
         )}

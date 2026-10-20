@@ -10,6 +10,39 @@
 }
 .bookmark-section {
   margin-bottom: 24px;
+  position: relative;
+}
+.bookmark-section.is-sorting {
+  transition: transform 200ms ease;
+  will-change: transform;
+}
+.bookmark-section.is-dragging {
+  z-index: 2;
+  transition: none;
+  background: var(--background);
+  border-radius: var(--ui-radius-panel);
+  outline: 1px solid var(--input);
+}
+.bookmark-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.bookmark-drag-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+.is-dragging .bookmark-drag-handle {
+  cursor: grabbing;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bookmark-section.is-sorting {
+    transition: none;
+  }
 }
 .bookmark-section > header {
   display: flex;
@@ -82,6 +115,55 @@
   justify-content: flex-end;
   padding: 0 16px 16px;
 }
+.bookmark-tile[data-link-movable="true"] {
+  touch-action: none;
+  user-select: none;
+}
+.bookmark-tile[data-link-movable="true"] > a {
+  cursor: grab;
+}
+.bookmark-tile[data-link-dragging="true"] {
+  opacity: 0.35;
+}
+.bookmark-tile[data-link-before="true"] {
+  border-inline-start: 4px solid var(--primary);
+  background: var(--accent);
+}
+.bookmark-section[data-link-target="true"] {
+  border-radius: var(--ui-radius-panel);
+  outline: 1px dashed var(--ring);
+  background: var(--muted);
+}
+.bookmark-section[data-link-append="true"] .bookmark-grid::after {
+  content: "";
+  min-height: 76px;
+  border: 2px dashed var(--ring);
+  border-radius: var(--ui-radius-card);
+  background: var(--accent);
+}
+.bookmark-link-preview {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  width: 220px;
+  padding: 16px;
+  border: 1px solid var(--input);
+  border-radius: var(--ui-radius-panel);
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+.bookmark-link-preview strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bookmark-link-preview span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
 .bookmark-group-empty {
   font-size: 12px;
   color: var(--muted-foreground);
@@ -105,7 +187,7 @@
   padding: 28px;
   background: var(--popover);
   border-radius: var(--ui-radius-dialog);
-  box-shadow: 0 18px 80px rgb(13 12 34 / 0.15);
+  box-shadow: 0 18px 80px rgb(var(--theme-base-rgb) / 0.15);
 }
 .bookmark-dialog h2 {
   font-size: 18px;

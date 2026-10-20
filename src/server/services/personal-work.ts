@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import { z } from "zod";
 import { AppError } from "../../shared/errors";
 import { PAGE_SIZE } from "../../shared/pagination";
+import { descriptionPreview } from "../../shared/description";
 import {
   focusInput,
   sourceInput,
@@ -205,6 +206,9 @@ export class PersonalWork {
     };
   }
   search(params: URLSearchParams) {
+    const kind = z
+      .enum(["all", "item", "model", "note", "bookmark"])
+      .parse(params.get("kind") || "all");
     const q = z
       .string()
       .trim()
@@ -249,9 +253,20 @@ export class PersonalWork {
     rows.sort(
       (a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id),
     );
+    const filtered =
+      kind === "all" ? rows : rows.filter((row) => row.kind === kind);
     return {
-      data: rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-      meta: { total: rows.length, page, pageSize: PAGE_SIZE },
+      data: filtered
+        .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+        .map((row) => ({
+          ...row,
+          text: descriptionPreview(
+            row.kind === "item"
+              ? this.items.get(row.id).description
+              : row.text || "",
+          ),
+        })),
+      meta: { total: filtered.length, page, pageSize: PAGE_SIZE },
     };
   }
   overview(

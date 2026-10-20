@@ -454,7 +454,6 @@ export function WorkItemsPage({
                       </span>
                     </span>
                   </button>
-                  <WorkItemId id={item.id} compact />
                   <div className="task-meta">
                     <span className={`priority priority-${item.priority}`}>
                       {priorityLabels[item.priority]}
@@ -468,26 +467,30 @@ export function WorkItemsPage({
                         : formatDate(item.updatedAt)}
                     </time>
                   </div>
-                  <div className="row-reveal task-row-actions">
-                    {view === "trash" ? (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        title="永久删除"
-                        disabled={loading || purging}
-                        aria-label={`永久删除 ${item.title}`}
-                        onClick={() => confirmPurge([item])}
-                      >
-                        <Trash2 />
-                      </Button>
-                    ) : (
-                      <CopyForCodex
-                        compact
-                        item={item}
-                        disabled={loading}
-                        onNotice={setNotice}
-                      />
-                    )}
+                  <div className="task-card-footer">
+                    <WorkItemId id={item.id} compact />
+                    <div className="row-reveal task-row-actions">
+                      {view === "trash" ? (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          title="永久删除"
+                          disabled={loading || purging}
+                          aria-label={`永久删除 ${item.title}`}
+                          onClick={() => confirmPurge([item])}
+                        >
+                          <Trash2 />
+                        </Button>
+                      ) : (
+                        <CopyForCodex
+                          compact
+                          textOnly
+                          item={item}
+                          disabled={loading}
+                          onNotice={setNotice}
+                        />
+                      )}
+                    </div>
                   </div>
                 </article>
               ))}

@@ -35,7 +35,7 @@
 .collection-card-grid .task-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
   gap: 14px 10px;
   min-height: 210px;
 }
@@ -81,7 +81,7 @@
   color: var(--foreground);
 }
 .collection-card-grid .task-meta {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 3;
   gap: 8px;
   flex-wrap: wrap;
@@ -95,8 +95,25 @@
   text-align: left;
 }
 .collection-card-grid .task-row-actions {
-  grid-column: 2;
-  grid-row: 3;
+  display: flex;
+  width: auto;
+  max-width: 100%;
+  flex-shrink: 0;
+  margin-left: 0;
+}
+.collection-card-grid .task-card-footer {
+  min-width: 0;
+  grid-column: 1 / -1;
+  grid-row: 4;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding-top: 4px;
+}
+.collection-card-grid .task-card-footer .work-item-id {
+  max-width: 140px;
 }
 .collection-card-grid .model-entry {
   display: flex;
@@ -147,13 +164,15 @@
 }
 
 .collection-card-grid:not(.selection-mode) .task-row {
-  grid-template-rows: 1fr auto;
+  grid-template-rows: 1fr auto auto;
   min-height: 180px;
 }
 .collection-card-grid:not(.selection-mode) .task-main {
   grid-row: 1;
 }
-.collection-card-grid:not(.selection-mode) .task-meta,
-.collection-card-grid:not(.selection-mode) .task-row-actions {
+.collection-card-grid:not(.selection-mode) .task-meta {
   grid-row: 2;
+}
+.collection-card-grid:not(.selection-mode) .task-card-footer {
+  grid-row: 3;
 }

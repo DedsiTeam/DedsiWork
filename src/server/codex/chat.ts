@@ -3,6 +3,7 @@ import { chatProposals, chatProposalSchema } from "../../shared/chat-proposal";
 import { domainModelInstructions } from "./app-server";
 import { workItemPlanningInstructions } from "./work-item-planning";
 import type { Workspace } from "../../shared/workspace";
+import { resolveAIModel } from "../../shared/ai-model";
 import type { Database } from "bun:sqlite";
 import { mkdirSync, realpathSync, statSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -396,7 +397,7 @@ export class CodexChat extends CodexAppServer {
         cwd,
         ...(this.peerTool ? { dynamicTools: peerTools } : {}),
         developerInstructions: this.instructions() + context,
-        ...(request.model ? { model: request.model } : {}),
+        model: resolveAIModel(request.model),
         ...automaticThreadPolicy,
       },
       60000,
@@ -409,7 +410,7 @@ export class CodexChat extends CodexAppServer {
       id: thread.id,
       title: "新对话",
       cwd,
-      model: thread.model || request.model || null,
+      model: thread.model || resolveAIModel(request.model),
       owner: actor.identity,
       updatedAt: new Date().toISOString(),
     };
@@ -626,7 +627,7 @@ export class CodexChat extends CodexAppServer {
             {
               cwd,
               ...(this.peerTool ? { dynamicTools: peerTools } : {}),
-              ...(request.model ? { model: request.model } : {}),
+              model: resolveAIModel(request.model || session.row.model),
               developerInstructions:
                 this.conversationInstructions(session) +
                 session.assistantContext,

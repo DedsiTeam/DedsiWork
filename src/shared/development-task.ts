@@ -1,5 +1,6 @@
 import type { RemoteRequirement } from "./remote-mcp";
 import { z } from "zod";
+import { resolveAIModel } from "./ai-model";
 import type { WorkItem } from "./work-item";
 import type { DomainModel } from "./domain-model";
 import type { ChatSnapshot } from "./chat";
@@ -12,7 +13,7 @@ export const developmentCreateSchema = z
     baseBranch: z.string().min(1).max(250),
     itemIds: z.array(z.uuid()).max(20).default([]),
     modelIds: z.array(z.uuid()).max(10).default([]),
-    model: z.string().trim().max(200).default(""),
+    model: z.string().trim().max(200).default("").transform(resolveAIModel),
   })
   .strict()
   .refine(
@@ -47,7 +48,7 @@ export type DevelopmentTask = {
   title: string;
   requirement: string;
   repository: string;
-  executionMode?: "workspace";
+  executionMode?: "workspace" | "worktree";
   baseBranch: string;
   baseCommit: string;
   branch: string;

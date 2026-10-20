@@ -1,4 +1,6 @@
 import { EmptyState } from "../components/empty-state";
+import { createPortal } from "react-dom";
+import { useBookmarkLinkDrag } from "../components/use-bookmark-link-drag";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
@@ -8,8 +10,10 @@ import {
   ArrowRight,
   Plus,
   Pencil,
+  Check,
   Trash2,
   ExternalLink,
+  GripVertical,
 } from "lucide-react";
 import { api } from "../api";
 import { Button } from "../components/ui/button";
@@ -20,6 +24,7 @@ import {
   type BookmarkState,
 } from "../../shared/bookmarks";
 import "../bookmarks.css";
+import { useBookmarkGroupDrag } from "../components/use-bookmark-group-drag";
 
 type Editor = {
   kind: "group" | "link" | "delete-group" | "delete-link";
@@ -41,6 +46,27 @@ export function BookmarksPage() {
   const lock = useRef(false);
   const spaceId = useRef(workspace?.id);
   spaceId.current = workspace?.id;
+  function reorder(groups: BookmarkGroup[]) {
+    if (lock.current) return;
+    const previous = data;
+    const id = spaceId.current;
+    setData({ ...data, groups });
+    void save(groups).then((saved) => {
+      if (!saved && id === spaceId.current) setData(previous);
+    });
+  }
+  const groupDrag = useBookmarkGroupDrag(
+    data.groups,
+    loading || busy || !!editor,
+    workspace?.id,
+    reorder,
+  );
+  const linkDrag = useBookmarkLinkDrag(
+    data.groups,
+    loading || busy || !!editor || !!groupDrag.dragging,
+    workspace?.id,
+    reorder,
+  );
   async function load(signal?: AbortSignal) {
     setLoading(true);
     setError("");
@@ -159,7 +185,22 @@ export function BookmarksPage() {
   const groups = data.groups;
   const deleting = editor?.kind.startsWith("delete");
   return (
-    <div className="workspace-content bookmarks-page">
+    <div className="workspace-content bookmarks-page" ref={linkDrag.root}>
+      {linkDrag.preview &&
+        createPortal(
+          <div
+            className="bookmark-link-preview"
+            aria-hidden="true"
+            style={{
+              left: Math.min(linkDrag.preview.x + 16, window.innerWidth - 240),
+              top: Math.min(linkDrag.preview.y + 16, window.innerHeight - 80),
+            }}
+          >
+            <strong>{linkDrag.preview.link.title}</strong>
+            <span>拖动到目标位置 · Esc 取消</span>
+          </div>,
+          document.body,
+        )}
       <div className="page-heading">
         <div>
           <h1>网址导航</h1>
@@ -174,7 +215,7 @@ export function BookmarksPage() {
             aria-label={editing ? "完成编辑" : "编辑"}
             size="icon-sm"
           >
-            <Pencil />
+            {editing ? <Check /> : <Pencil />}
           </Button>
           <Button
             disabled={loading || busy}
@@ -206,9 +247,32 @@ export function BookmarksPage() {
         />
       ) : (
         groups.map((group) => (
-          <section className="bookmark-section" key={group.id}>
+          <section
+            className={`bookmark-section${groupDrag.dragging === group.id ? " is-dragging" : ""}${groupDrag.dragging ? " is-sorting" : ""}`}
+            key={group.id}
+            ref={(element) => groupDrag.ref(group.id, element)}
+            style={groupDrag.style(group.id)}
+            data-bookmark-group={group.id}
+            data-link-target={linkDrag.target?.groupId === group.id}
+            data-link-append={
+              linkDrag.target?.groupId === group.id && !linkDrag.target.beforeId
+            }
+          >
             <header>
-              <h2>{group.title}</h2>
+              <div className="bookmark-group-title">
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="bookmark-drag-handle"
+                  disabled={busy || groups.length < 2}
+                  aria-label={`拖拽排序分组 ${group.title}`}
+                  title="拖拽调整分组顺序，Esc 取消；也可在编辑模式中使用上下移动按钮"
+                  {...groupDrag.handle(group.id)}
+                >
+                  <GripVertical />
+                </Button>
+                <h2>{group.title}</h2>
+              </div>
               <div className="bookmarks-actions">
                 {editing && (
                   <>
@@ -266,9 +330,14 @@ export function BookmarksPage() {
             </header>
             <div className="bookmark-grid">
               {group.links.map((link, index) => (
-                <article className="bookmark-tile" key={link.id}>
+                <article
+                  className="bookmark-tile"
+                  key={link.id}
+                  {...linkDrag.cardProps(group.id, link)}
+                >
                   <a
                     href={link.url}
+                    draggable={false}
                     onClick={(e) => {
                       e.preventDefault();
                       void visit(link.url);

@@ -1,4 +1,5 @@
 import { ReportDraftHistory } from "./report-draft-history";
+import { DEFAULT_AI_MODEL, aiModelOptions } from "../../shared/ai-model";
 import { useReportExport } from "../report-export";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -74,7 +75,7 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
     [busy, setBusy] = useState(false),
     [preview, setPreview] = useState(false),
     [note, setNote] = useState(""),
-    [model, setModel] = useState("");
+    [model, setModel] = useState<string>(DEFAULT_AI_MODEL.id);
   const [connection, setConnection] = useState<CodexStatus | null>(null),
     [connecting, setConnecting] = useState(false);
   const mounted = useRef(true),
@@ -277,8 +278,7 @@ export function ReportAIPanel({ report }: { report: PeriodReport }) {
               disabled={running || busy}
               onChange={(e) => setModel(e.target.value)}
             >
-              <option value="">Codex 默认模型</option>
-              {connection?.models.map((item) => (
+              {aiModelOptions(connection?.models).map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
                 </option>

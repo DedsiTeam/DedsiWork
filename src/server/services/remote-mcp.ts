@@ -155,7 +155,7 @@ export class PeerConnections {
     const entry = this.get(id),
       url = endpoint(entry.url);
     const client = new Client(
-      { name: "dedsiwork-colleague", version: "0.0.5" },
+      { name: "dedsiwork-colleague", version: "0.0.6" },
       { versionNegotiation: { mode: "auto" } },
     );
     const controller = new AbortController();

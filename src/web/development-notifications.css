@@ -1,25 +1,36 @@
 .development-notice-trigger {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--ui-control-height-sm);
+  height: var(--ui-control-height-sm);
+  padding: 0;
   border: 0;
   border-radius: var(--ui-radius-button);
   background: transparent;
-  color: #777585;
+  color: var(--muted-foreground);
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
 .development-notice-trigger:hover {
-  background: #f0eff3;
-  color: #0d0c22;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.development-notice-trigger:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 .development-notice-trigger span {
+  position: absolute;
+  top: 0;
+  right: 0;
   min-width: 17px;
   padding: 1px 4px;
-  background: #0d0c22;
-  color: #fff;
-  border-radius: var(--ui-radius-control);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: var(--ui-radius-pill);
   font-size: 10px;
 }
 .confirmation-content.development-notice-dialog {
@@ -36,6 +47,7 @@
 .development-notice-heading button {
   border: 0;
   background: transparent;
+  color: var(--foreground);
   padding: 5px;
   cursor: pointer;
 }
@@ -49,14 +61,14 @@
   overflow: auto;
 }
 .development-notice-list article {
-  border-top: 1px solid #e9e8ef;
+  border-top: 1px solid var(--border);
   padding: 18px 0;
 }
 .development-notice-list article p {
   margin: 8px 0;
 }
 .development-notice-list article small {
-  color: #777585;
+  color: var(--muted-foreground);
 }
 .development-notice-list article > div {
   display: flex;

@@ -12,38 +12,108 @@ import type {
 } from "../../shared/personal-work";
 import { developmentStatusLabels } from "../../shared/development-task";
 import { statusLabels } from "../../shared/work-item";
+import {
+  CalendarCheck,
+  Clock3,
+  Inbox,
+  Bot,
+  PackageCheck,
+  type LucideIcon,
+} from "lucide-react";
 import "../personal-work.css";
-function Cards({ title, items }: { title: string; items: WorkCard[] }) {
+function SectionHeading({
+  title,
+  count,
+  icon: Icon,
+}: {
+  title: string;
+  count: number;
+  icon: LucideIcon;
+}) {
+  return (
+    <header className="today-section-heading">
+      <Icon size={18} aria-hidden="true" />
+      <h2>{title}</h2>
+      <span>{count}</span>
+    </header>
+  );
+}
+function Cards({
+  title,
+  items,
+  kind,
+}: {
+  title: string;
+  items: WorkCard[];
+  kind: "attention" | "running" | "delivered";
+}) {
   const [page, setPage] = useState(1);
   const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE)),
     current = Math.min(page, pages);
   return (
-    <section className="personal-section">
-      <h2>
-        {title} · {items.length}
-      </h2>
+    <section className={`personal-section today-panel today-panel-${kind}`}>
+      <SectionHeading
+        title={title}
+        count={items.length}
+        icon={
+          kind === "attention" ? Inbox : kind === "running" ? Bot : PackageCheck
+        }
+      />
       {!items.length ? (
         <EmptyState
           compact
-          title="暂无事项"
-          description="相关工作有变化后会显示在这里。"
+          icon={
+            kind === "attention"
+              ? Inbox
+              : kind === "running"
+                ? Bot
+                : PackageCheck
+          }
+          title={
+            kind === "attention"
+              ? "暂无待处理事项"
+              : kind === "running"
+                ? "暂无进行中的研发"
+                : "暂无交付记录"
+          }
+          description={
+            kind === "attention"
+              ? "需要你确认或补充信息时，会显示在这里。"
+              : kind === "running"
+                ? "AI 开始执行后，可在这里查看进展。"
+                : "研发交付后，可在这里查看结果和验收状态。"
+          }
         />
       ) : (
         items.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE).map((t) => (
           <div className="personal-row" key={t.id}>
             <div>
               <Link to={t.href}>{t.title}</Link>
-              <p>
-                {t.href.startsWith("/assistant") && t.status === "running"
-                  ? "处理中"
-                  : developmentStatusLabels[
-                      t.status as keyof typeof developmentStatusLabels
-                    ] || t.status}
-                {t.detail ? ` · ${t.detail}` : ""}
-              </p>
+              <div className="today-row-meta">
+                <span className="today-status">
+                  {t.href.startsWith("/assistant") && t.status === "running"
+                    ? "处理中"
+                    : developmentStatusLabels[
+                        t.status as keyof typeof developmentStatusLabels
+                      ] || t.status}
+                </span>
+              </div>
+              {t.detail && (
+                <p className="today-row-detail" title={t.detail}>
+                  {t.detail}
+                </p>
+              )}
             </div>
             <Button asChild variant="outline" size="sm">
-              <Link to={t.href}>处理</Link>
+              <Link to={t.href}>
+                {t.status === "completed"
+                  ? "查看详情"
+                  : t.status === "review"
+                    ? "去验收"
+                    : kind === "running"
+                      ? "查看进度"
+                      : "去处理"}
+              </Link>
             </Button>
           </div>
         ))
@@ -147,13 +217,18 @@ export function TodayPage() {
     const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE)),
       current = Math.min(page, pages);
     return (
-      <section className="personal-section">
-        <h2>
-          {title} · {items.length}
-        </h2>
+      <section
+        className={`personal-section today-panel today-panel-${title === "今日重点" ? "focus" : "later"}`}
+      >
+        <SectionHeading
+          title={title}
+          count={items.length}
+          icon={title === "今日重点" ? CalendarCheck : Clock3}
+        />
         {!items.length ? (
           <EmptyState
             compact
+            icon={title === "今日重点" ? CalendarCheck : Clock3}
             title="还没有安排"
             description="从工作项详情选择今日重点或稍后处理。"
           />
@@ -219,11 +294,10 @@ export function TodayPage() {
     );
   }
   return (
-    <div className="workspace-content">
-      <header className="personal-heading">
+    <div className="workspace-content today-page">
+      <header className="personal-heading page-heading">
         <div>
           <h1>今日工作台</h1>
-          <p className="muted">{localDate()} · 专注推进自己的工作</p>
         </div>
         <div className="personal-actions">
           <Button asChild variant="outline">
@@ -238,12 +312,12 @@ export function TodayPage() {
       {!data ? (
         <p role="status">正在整理工作进展…</p>
       ) : (
-        <div className="personal-grid">
+        <div className="personal-grid today-grid">
           {focusList("今日重点", today, focusPage, setFocusPage)}
-          <Cards title="等我处理" items={data.attention} />
-          <Cards title="AI 正在做" items={data.running} />
-          <Cards title="最近交付" items={data.delivered} />
           {focusList("稍后与未完成计划", later, laterPage, setLaterPage)}
+          <Cards title="等我处理" items={data.attention} kind="attention" />
+          <Cards title="AI 正在做" items={data.running} kind="running" />
+          <Cards title="最近交付" items={data.delivered} kind="delivered" />
         </div>
       )}
     </div>

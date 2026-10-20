@@ -78,8 +78,19 @@ fn show_error(app: &tauri::AppHandle, message: &str) {
     }
 }
 
-fn launch_service(app: tauri::AppHandle, service: Arc<Service>, port: u16) -> Result<(), String> {
-    let data_dir = std::env::var_os("DEDSIWORK_DATA_DIR")
+fn desktop_data_dir(_app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    // Debug builds never inherit the production data override.
+    if cfg!(debug_assertions) {
+        #[cfg(windows)]
+        return std::env::var_os("LOCALAPPDATA")
+            .map(|path| PathBuf::from(path).join("DedsiWork-dev"))
+            .ok_or_else(|| "LOCALAPPDATA missing".to_string());
+        #[cfg(not(windows))]
+        return _app.path().app_local_data_dir()
+            .map(|path| path.with_file_name("com.dedsi.work.dev"))
+            .map_err(|error| error.to_string());
+    }
+    std::env::var_os("DEDSIWORK_DATA_DIR")
         .map(PathBuf::from)
         .map(Ok)
         .unwrap_or_else(|| {
@@ -96,10 +107,14 @@ fn launch_service(app: tauri::AppHandle, service: Arc<Service>, port: u16) -> Re
             }
             #[cfg(not(windows))]
             {
-                app.path().app_local_data_dir()
+                _app.path().app_local_data_dir()
             }
         })
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())
+}
+
+fn launch_service(app: tauri::AppHandle, service: Arc<Service>, port: u16) -> Result<(), String> {
+    let data_dir = desktop_data_dir(&app)?;
     fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
     let log_path = data_dir.join("desktop-service.log");
     let log = OpenOptions::new()
@@ -116,7 +131,7 @@ fn launch_service(app: tauri::AppHandle, service: Arc<Service>, port: u16) -> Re
         } else {
             "dedsiwork-service"
         });
-    if cfg!(debug_assertions) && !sidecar.exists() {
+    if cfg!(debug_assertions) {
         sidecar = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(concat!(
             "binaries/dedsiwork-service-",
             env!("DEDSIWORK_SIDECAR_TARGET")
@@ -199,12 +214,14 @@ fn launch_service(app: tauri::AppHandle, service: Arc<Service>, port: u16) -> Re
 }
 
 fn main() {
-    let port = std::env::var("DEDSIWORK_PORT")
-        .unwrap_or_else(|_| "13210".into())
+    let default_port = if cfg!(debug_assertions) { 13211 } else { 13210 };
+    let port = std::env::var(if cfg!(debug_assertions) { "DEDSIWORK_DEV_PORT" } else { "DEDSIWORK_PORT" })
+        .unwrap_or_else(|_| default_port.to_string())
         .parse::<u16>()
         .ok()
         .filter(|p| *p > 0)
-        .unwrap_or(13210);
+        .unwrap_or(default_port);
+    let app_title = if cfg!(debug_assertions) { "DedsiWork 开发版" } else { "DedsiWork" };
     let service = Arc::new(Service::default());
     let managed = service.clone();
     let app = tauri::Builder::default()
@@ -265,7 +282,14 @@ fn main() {
                     .background_color(tauri::webview::Color(255, 255, 255, 255))
                     .theme(Some(tauri::Theme::Light))
                     .initialization_script(include_str!("context-menu.js"))
-                    .title("DedsiWork");
+                    .title(app_title);
+            // Keep browser sessions and local storage out of the installed app.
+            #[cfg(debug_assertions)]
+            let window = window.data_directory(
+                desktop_data_dir(app.handle())
+                    .map_err(std::io::Error::other)?
+                    .join("webview"),
+            );
             #[cfg(target_os = "macos")]
             let window = window
                 .title_bar_style(tauri::TitleBarStyle::Overlay)
@@ -289,7 +313,7 @@ fn main() {
                         .expect("missing application icon")
                         .clone(),
                 )
-                .tooltip("DedsiWork")
+                .tooltip(app_title)
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {

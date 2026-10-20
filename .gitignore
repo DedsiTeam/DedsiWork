@@ -37,3 +37,6 @@ access.json
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

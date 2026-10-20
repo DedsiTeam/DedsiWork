@@ -27,6 +27,9 @@ const child = Bun.spawn(
     process.execPath,
     resolve(root, "node_modules/@tauri-apps/cli/tauri.js"),
     command,
+    ...(command === "dev"
+      ? ["--config", resolve(root, "src-tauri/tauri.dev.conf.json")]
+      : []),
     ...process.argv.slice(3),
   ],
   {

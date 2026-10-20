@@ -297,21 +297,21 @@ export function createMcp(
       );
       tool(
         "development_task_repository",
-        "自动读取工作空间本地 Git 仓库及当前分支，返回创建任务所需 token；不会弹出目录选择器。",
+        "自动读取工作空间本地 Git 仓库、可选本地分支及当前分支，返回创建任务所需 token；不会弹出目录选择器。",
         z.object({}).strict(),
         false,
         () => development.selectDirectory(actor),
       );
       tool(
         "development_task_create",
-        "创建并立即开始研发，直接修改工作空间本地目录。先调用 development_task_repository，将 token 填入 directoryToken，currentBranch 填入 baseBranch。关联工作项和模型必须属于当前空间。需用户已授权开始研发。",
+        "创建并立即开始研发，在所选起始分支的已提交代码上创建独立 Git 工作树和研发分支。先调用 development_task_repository，将 token 填入 directoryToken，从 branches 中选择起始分支填入 baseBranch（默认 currentBranch）。关联工作项和模型必须属于当前空间。需用户已授权开始研发。",
         z.object({ task: developmentCreateSchema }).strict(),
         false,
         ({ task }) => development.create(task, actor),
       );
       tool(
         "development_task_start",
-        "开始或继续研发任务，直接修改本地代码；同一空间一次只能执行一个任务，历史工作树任务不可继续。",
+        "开始或继续研发任务；新任务首次开始时创建独立工作树，再次开始复用原工作树。同一空间一次只能执行一个任务，历史工作树任务不可继续。",
         taskId,
         false,
         ({ id }) => development.start(id, actor),

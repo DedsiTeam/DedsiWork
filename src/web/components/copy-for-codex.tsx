@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy } from "lucide-react";
+import { ClipboardCopy } from "lucide-react";
 import {
   priorityLabels,
   statusLabels,
@@ -19,11 +19,13 @@ export function CopyForCodex({
   disabled,
   onNotice,
   compact = false,
+  textOnly = false,
 }: {
   item: WorkItem;
   disabled: boolean;
   onNotice: (message: string) => void;
   compact?: boolean;
+  textOnly?: boolean;
 }) {
   const [manualText, setManualText] = useState("");
   const [copying, setCopying] = useState(false);
@@ -56,7 +58,7 @@ export function CopyForCodex({
       <Button
         type="button"
         variant={compact ? "ghost" : "outline"}
-        size={compact ? "icon-sm" : "sm"}
+        size={compact && !textOnly ? "icon-sm" : "sm"}
         aria-label={compact ? `复制 ${item.title} 给 Codex` : undefined}
         disabled={disabled || copying}
         title={
@@ -66,8 +68,14 @@ export function CopyForCodex({
         }
         onClick={() => void copy()}
       >
-        <Copy />
-        {!compact && (copying ? "复制中…" : "codex")}
+        {textOnly ? (
+          "Codex"
+        ) : (
+          <>
+            <ClipboardCopy />
+            {!compact && (copying ? "复制中…" : "复制给 Codex")}
+          </>
+        )}
       </Button>
       <Dialog
         open={Boolean(manualText)}

@@ -10,10 +10,10 @@
   width: 100%;
   height: 34px;
   padding: 0 11px;
-  border: 1px solid rgb(13 12 34 / 0.112);
+  border: 1px solid rgb(var(--theme-base-rgb) / 0.112);
   border-radius: var(--ui-radius-control);
   background: #ffffff;
-  color: rgb(13 12 34 / 0.549);
+  color: rgb(var(--theme-base-rgb) / 0.549);
   font-size: 12px;
   cursor: pointer;
   text-align: left;
@@ -22,17 +22,17 @@
     box-shadow 0.16s;
 }
 .date-picker-trigger svg {
-  color: rgb(13 12 34 / 0.366);
+  color: rgb(var(--theme-base-rgb) / 0.366);
   flex-shrink: 0;
 }
 .date-picker-trigger:hover {
-  border-color: rgb(13 12 34 / 0.245);
+  border-color: rgb(var(--theme-base-rgb) / 0.245);
 }
 .date-picker-trigger:focus-visible,
 .date-picker-trigger.is-open {
   outline: none;
-  border-color: #0d0c22;
-  box-shadow: 0 0 0 3px rgb(13 12 34 / 0.039);
+  border-color: var(--theme-base);
+  box-shadow: 0 0 0 3px rgb(var(--theme-base-rgb) / 0.039);
 }
 .date-picker-trigger:disabled {
   opacity: 0.55;
@@ -45,10 +45,10 @@
   z-index: 10;
   width: 268px;
   padding: 12px;
-  border: 1px solid rgb(13 12 34 / 0.09);
+  border: 1px solid rgb(var(--theme-base-rgb) / 0.09);
   border-radius: var(--ui-radius-popover);
   background: #ffffff;
-  box-shadow: 0 8px 30px rgb(13 12 34 / 0.094);
+  box-shadow: 0 8px 30px rgb(var(--theme-base-rgb) / 0.094);
   user-select: none;
 }
 .date-picker-heading {
@@ -58,7 +58,7 @@
   margin-bottom: 10px;
 }
 .date-picker-heading strong {
-  color: rgb(13 12 34 / 0.701);
+  color: rgb(var(--theme-base-rgb) / 0.701);
   font-size: 12px;
   font-weight: 550;
 }
@@ -75,12 +75,12 @@
   border: 0;
   border-radius: var(--ui-radius-control);
   background: transparent;
-  color: rgb(13 12 34 / 0.433);
+  color: rgb(var(--theme-base-rgb) / 0.433);
   cursor: pointer;
 }
 .date-picker-heading button:hover {
-  background: rgb(13 12 34 / 0.054);
-  color: #0d0c22;
+  background: rgb(var(--theme-base-rgb) / 0.054);
+  color: var(--theme-base);
 }
 .date-picker-weekdays,
 .date-picker-days {
@@ -94,7 +94,7 @@
 .date-picker-weekdays span {
   text-align: center;
   padding: 4px 0;
-  color: rgb(13 12 34 / 0.363);
+  color: rgb(var(--theme-base-rgb) / 0.363);
   font-size: 10px;
 }
 .date-picker-days button {
@@ -105,16 +105,16 @@
   border: 0;
   border-radius: var(--ui-radius-control);
   background: transparent;
-  color: rgb(13 12 34 / 0.624);
+  color: rgb(var(--theme-base-rgb) / 0.624);
   font-size: 11px;
   cursor: pointer;
 }
 .date-picker-days button:hover:not(:disabled) {
-  background: rgb(13 12 34 / 0.057);
-  color: #0d0c22;
+  background: rgb(var(--theme-base-rgb) / 0.057);
+  color: var(--theme-base);
 }
 .date-picker-days button.other-month {
-  color: rgb(13 12 34 / 0.241);
+  color: rgb(var(--theme-base-rgb) / 0.241);
 }
 .date-picker-days button.today:not(.selected)::after {
   content: "";
@@ -124,19 +124,19 @@
   width: 3px;
   height: 3px;
   border-radius: var(--ui-radius-circle);
-  background: #0d0c22;
+  background: var(--theme-base);
 }
 .date-picker-days button.selected,
 .date-picker-days button.selected:hover {
-  background: #0d0c22;
+  background: var(--theme-base);
   color: #ffffff;
 }
 .date-picker-days button:disabled {
-  color: rgb(13 12 34 / 0.166);
+  color: rgb(var(--theme-base-rgb) / 0.166);
   cursor: default;
 }
 .date-picker-days button:focus-visible {
-  outline: 2px solid #0d0c22;
+  outline: 2px solid var(--theme-base);
   outline-offset: 1px;
 }
 .date-picker-footer {
@@ -145,18 +145,18 @@
   justify-content: space-between;
   margin-top: 9px;
   padding-top: 9px;
-  border-top: 1px solid rgb(13 12 34 / 0.058);
+  border-top: 1px solid rgb(var(--theme-base-rgb) / 0.058);
 }
 .date-picker-footer span {
   font-size: 10px;
-  color: rgb(13 12 34 / 0.367);
+  color: rgb(var(--theme-base-rgb) / 0.367);
 }
 .date-picker-footer button {
   border: 0;
   border-radius: var(--ui-radius-control);
-  background: rgb(13 12 34 / 0.049);
+  background: rgb(var(--theme-base-rgb) / 0.049);
   padding: 4px 9px;
-  color: rgb(13 12 34 / 0.512);
+  color: rgb(var(--theme-base-rgb) / 0.512);
   font-size: 10px;
   cursor: pointer;
 }
@@ -176,8 +176,8 @@
   justify-content: space-between;
   padding-top: 10px;
   margin-top: 10px;
-  border-top: 1px solid rgb(13 12 34 / 0.058);
-  color: rgb(13 12 34 / 0.425);
+  border-top: 1px solid rgb(var(--theme-base-rgb) / 0.058);
+  color: rgb(var(--theme-base-rgb) / 0.425);
   font-size: 11px;
 }
 .date-picker-time > div {
@@ -189,14 +189,14 @@
   height: 26px;
   width: 48px;
   padding: 0 4px;
-  border: 1px solid rgb(13 12 34 / 0.099);
+  border: 1px solid rgb(var(--theme-base-rgb) / 0.099);
   border-radius: var(--ui-radius-control);
-  background: rgb(13 12 34 / 0.02);
-  color: rgb(13 12 34 / 0.558);
+  background: rgb(var(--theme-base-rgb) / 0.02);
+  color: rgb(var(--theme-base-rgb) / 0.558);
   font-size: 11px;
 }
 .date-picker-footer .date-picker-done {
-  background: #0d0c22;
+  background: var(--theme-base);
   color: #ffffff;
 }
 .date-picker-popover.opens-down {

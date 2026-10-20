@@ -1,7 +1,7 @@
 # 项目协作约定
 
 - 每次完成代码修改后，重新构建并重启 DedsiWork 桌面客户端，并确认客户端与内嵌服务成功启动。前端、服务或共享代码均内嵌在 sidecar 中，不能仅刷新页面。
-- 重启应沿用当前数据目录；已有客户端运行时先正常退出，再启动更新后的客户端。开发启动命令为在 src 目录执行 bun run desktop:dev。
+- 重启应沿用当前环境的数据目录，开发版与正式版不得共用。Windows 开发版固定使用 `%LOCALAPPDATA%\DedsiWork-dev`，正式版保留 `%LOCALAPPDATA%\DedsiWork`；不得将正式版数据复制或迁移到开发目录。已有客户端运行时先正常退出，再启动更新后的客户端。开发启动命令为在 src 目录执行 bun run desktop:dev。
 
 ## 路由传参规范
 
@@ -13,24 +13,24 @@
 
 ## UI 配色规范
 
-- 全站采用白底、近黑文字与灰阶交互的配色体系。后续新增页面、组件及修改的样式必须复用现有语义化主题变量，不得自行硬编码十六进制、RGB、HSL 等颜色，也不得使用固定色值的 Tailwind 色板类。
-- 主题变量以 `src/web/index.css` 为主；基础组件映射在 `src/styles/globals.css`，桌面表面覆盖在 `src/web/surfaces.css`。页面应使用 `var(--变量名)` 或对应的语义化 Tailwind 类（如 `bg-card`、`text-foreground`、`border-border`）。下表中的色值仅说明当前主题，不能复制到页面样式中。
+- 全站采用白底、近黑文字与同色系交互的配色体系。后续新增页面、组件及修改的样式必须复用现有语义化主题变量，不得自行硬编码十六进制、RGB、HSL 等颜色，也不得使用固定色值的 Tailwind 色板类。
+- 主色统一由 `src/styles/globals.css` 的 `--theme-base` 定义，文字与主按钮使用主色，辅助文字、页面底色、边框及交互背景采用全局配套色；阴影与焦点轮廓沿用主色透明度。主题变量以 `src/web/index.css` 为主；基础组件映射在 `src/styles/globals.css`，桌面表面覆盖在 `src/web/surfaces.css`。页面应使用 `var(--变量名)` 或对应的语义化 Tailwind 类（如 `bg-card`、`text-foreground`、`border-border`）。下表中的色值仅说明当前主题，不能复制到页面样式中。
 
 | 用途 | 主题变量 | 当前配色 |
 | --- | --- | --- |
-| 页面背景 | `--background` | 白色 `#FFFFFF` |
-| 卡片背景 / 文字 | `--card` / `--card-foreground` | 白色 / 近黑色 |
-| 弹窗背景 / 文字 | `--popover` / `--popover-foreground` | 白色 / 近黑色 |
-| 正文与标题 | `--foreground` | 近黑色 `#0D0C22` |
-| 主按钮背景 / 文字 | `--primary` / `--primary-foreground` | 近黑色 / 白色 |
-| 次要文字与辅助图标 | `--muted-foreground` | 近黑色的 55% 不透明度 |
-| 轻微背景强调 | `--muted` | 近黑色的 2.5% 不透明度 |
-| 次要按钮背景 / 文字 | `--secondary` / `--secondary-foreground` | 近黑色的 4.5% 不透明度 / 近黑色 |
-| 悬停、选中强调背景 / 文字 | `--accent` / `--accent-foreground` | 近黑色的 6% 不透明度 / 近黑色 |
-| 普通边框 | `--border` | 近黑色的 10% 不透明度 |
-| 输入框边框 | `--input` | 近黑色的 16% 不透明度 |
-| 键盘焦点轮廓 | `--ring` | 近黑色的 30% 不透明度 |
-| 侧栏背景 | `--sidebar` | 浅灰色 `#F3F3F5` |
+| 页面背景 | `--background` | 冷灰白 `#F7F7F9` |
+| 卡片背景 / 文字 | `--card` / `--card-foreground` | 白色 / 近黑主色 |
+| 弹窗背景 / 文字 | `--popover` / `--popover-foreground` | 白色 / 近黑主色 |
+| 正文与标题 | `--foreground` | 主色 `#080616` |
+| 主按钮背景 / 文字 | `--primary` / `--primary-foreground` | 近黑主色 / 白色 |
+| 次要文字与辅助图标 | `--muted-foreground` | 冷灰 `#777581` |
+| 轻微背景强调 | `--muted` | 冷灰白 `#F7F7F9` |
+| 次要按钮背景 / 文字 | `--secondary` / `--secondary-foreground` | 浅冷灰 `#F0EFF3` / 近黑主色 |
+| 悬停、选中强调背景 / 文字 | `--accent` / `--accent-foreground` | 浅冷灰 `#F0EFF3` / 近黑主色；侧栏选中 `#E8E6EE` |
+| 普通边框 | `--border` | 淡冷灰 `#E3E1E8` |
+| 输入框边框 | `--input` | 近黑主色的 16% 不透明度 |
+| 键盘焦点轮廓 | `--ring` | 近黑主色的 30% 不透明度 |
+| 侧栏背景 | `--sidebar` | 白色 |
 
 - 默认、悬停、选中、禁用、焦点等状态均须遵循同一主题；不得为单个业务模块另设紫色或其他品牌色。侧栏和图表使用现有 `--sidebar-*`、`--chart-*` 变量。
 - 优先复用已有 UI 组件及其语义化样式。需要新的语义颜色或阴影时，先在全局主题中统一定义，再由页面引用；不得通过页面私有变量变相引入独立色板。
@@ -86,3 +86,7 @@ re-read whole files.
 After big code changes, refresh the graph with `trail build` (deterministic,
 no API key, $0).
 <!-- trail:end -->
+
+- 主色 RGB 通道统一定义为 `--theme-base-rgb: 8 6 22`（`#080616`），`--theme-base` 从其生成。透明色使用 `rgb(var(--theme-base-rgb) / 透明度)`，避免构建压缩器错误折叠与 transparent 的 color-mix；更换主色时只修改 RGB 通道。
+
+- 配套浅色统一定义在 globals.css：页面 `--theme-page: #F7F7F9`、辅助文字 `--theme-subtle: #777581`、悬停 `--theme-hover: #F0EFF3`、选中 `--theme-selected: #E8E6EE`、边框 `--theme-line: #E3E1E8`。这些语义配套色独立定义，不随主色机械套用透明度；白色卡片保持不变。

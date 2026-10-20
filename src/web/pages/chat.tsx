@@ -1,4 +1,9 @@
 import { useRouteInputs } from "../route-inputs";
+import {
+  DEFAULT_AI_MODEL,
+  aiModelOptions,
+  resolveAIModel,
+} from "../../shared/ai-model";
 import { RICH_TEXT_PREFIX } from "../../shared/description";
 import type { SourceKind } from "../../shared/personal-work";
 import { EmptyState } from "../components/empty-state";
@@ -33,6 +38,15 @@ import {
 } from "lucide-react";
 import { api } from "../api";
 import { Button } from "../components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { useWorkspace } from "../workspace-context";
 import type { CodexStatus } from "../../shared/domain-model-ai";
 import type {
@@ -1028,23 +1042,40 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
                       .pop() || "工作空间目录"}
                   </span>
                 </div>
-                {status?.models.length ? (
-                  <select
-                    className="chat-model-select"
-                    aria-label="选择模型"
-                    value={model || snapshot?.chat.model || ""}
+                {status ? (
+                  <Select
+                    value={resolveAIModel(model || snapshot?.chat.model)}
                     disabled={busy || loading}
-                    onChange={(event) => setModel(event.target.value)}
+                    onValueChange={setModel}
                   >
-                    {!snapshot?.chat.model && (
-                      <option value="">Codex 默认模型</option>
-                    )}
-                    {status.models.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      className="chat-model-select"
+                      size="sm"
+                      aria-label="选择模型"
+                    >
+                      <SelectValue placeholder={DEFAULT_AI_MODEL.name} />
+                    </SelectTrigger>
+                    <SelectContent
+                      className="chat-model-menu"
+                      position="popper"
+                      side="top"
+                      align="start"
+                      sideOffset={6}
+                      collisionPadding={12}
+                    >
+                      <SelectGroup>
+                        <SelectLabel>执行模型</SelectLabel>
+                        {aiModelOptions(
+                          status.models,
+                          model || snapshot?.chat.model,
+                        ).map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 ) : null}
               </div>
               {busy ? (

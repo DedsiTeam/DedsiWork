@@ -2,7 +2,7 @@
 :root,
 :root.dark {
   color-scheme: light;
-  --background: #f8f8f8;
+  --background: var(--theme-page);
   --workspace-background: var(--background);
   --card: #ffffff;
   --popover: var(--card);
@@ -96,19 +96,51 @@ body,
   border-color: var(--border);
 }
 
-/* The macOS overlay title bar owns the first 104px when no sidebar is present. */
-.app-shell .topbar[data-native-controls-inset] {
-  padding-left: 104px;
+/* A single window-wide toolbar on both the manager and business pages. */
+.app-shell > .topbar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 30;
+  height: var(--header-height);
+  margin: 0;
+  padding: 0 var(--ui-page-padding-inline);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+.app-shell > .topbar[data-native-controls-inset] {
+  padding-left: var(--ui-native-controls-inset);
+}
+.app-shell .topbar-drag-space {
+  flex: 1;
+  align-self: stretch;
+  min-width: 24px;
+}
+.app-shell .topbar-actions {
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 12px;
+  -webkit-app-region: no-drag;
+}
+.app-shell > .main-area {
+  padding: calc(var(--header-height) + var(--ui-shell-content-gap)) 0
+    var(--ui-shell-content-gap);
+}
+.app-shell .topbar .space-header-info {
+  min-width: 0;
+  margin: 0;
+  color: var(--muted-foreground);
 }
 
 /* A light gray navigation rail alongside an open workspace. */
 .workspace-shell .sidebar-floating {
-  width: 80px;
-  height: calc(100vh - var(--header-height) - 32px);
-  top: calc(var(--header-height) + 16px);
-  margin: calc(var(--header-height) + 16px) 0 16px 16px;
+  position: fixed;
+  left: 0;
+  top: var(--header-height);
+  width: var(--ui-navigation-rail-width);
+  height: calc(100vh - var(--header-height));
+  margin: 0;
   padding: 10px 6px;
-  border-radius: var(--ui-radius-pill);
+  border-radius: 0;
   background: var(--sidebar) !important;
   color: var(--sidebar-foreground);
 }
@@ -206,29 +238,22 @@ body,
   margin-top: auto;
   padding-top: 8px;
 }
-.workspace-shell .main-area {
-  padding: 0 0 16px;
-}
-.workspace-shell .topbar {
-  margin: 0 0 16px -96px;
-  padding-left: 116px;
-  border-bottom: 0;
-  color: var(--muted-foreground);
-}
-.workspace-shell .topbar[data-native-controls-inset] {
-  padding-left: 116px;
+.workspace-shell .sidebar-floating + .main-area {
+  margin-left: var(--ui-navigation-rail-width);
 }
 .workspace-shell .main-area > :is(.workspace-content, .settings-content) {
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  min-height: calc(100vh - var(--header-height) - 32px);
+  min-height: calc(
+    100vh - var(--header-height) - 2 * var(--ui-shell-content-gap)
+  );
   padding: var(--ui-page-padding-block) var(--ui-page-padding-inline);
 }
 .workspace-shell
   .main-area
   > :is(.chat-page, .note-editor-content, .dm-editor-page, .dm-diagram-page) {
-  height: calc(100vh - var(--header-height) - 32px);
+  height: calc(100vh - var(--header-height) - 2 * var(--ui-shell-content-gap));
   min-height: 0;
 }
 .app-shell .page-heading {
@@ -238,7 +263,10 @@ body,
   gap: var(--ui-page-heading-gap);
 }
 .space-manager-shell .main-area > .spaces-page {
-  padding: var(--ui-page-padding-inline);
+  min-height: calc(
+    100vh - var(--header-height) - 2 * var(--ui-shell-content-gap)
+  );
+  padding: var(--ui-page-padding-block) var(--ui-page-padding-inline);
 }
 .workspace-shell .chat-composer {
   border-radius: var(--ui-radius-panel);

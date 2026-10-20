@@ -1,4 +1,5 @@
 import { version } from "../../package.json";
+import { resolveAIModel } from "../../shared/ai-model";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { accessSync, constants, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -509,7 +510,7 @@ export class CodexAppServer<T = DomainModelInput> {
     const { thread } = await this.rpc<{ thread: { id: string } }>(
       "thread/start",
       {
-        ...(request.model ? { model: request.model } : {}),
+        model: resolveAIModel(request.model),
         cwd: this.workspace,
         approvalPolicy: "never",
         sandbox: "read-only",

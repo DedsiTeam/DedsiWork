@@ -196,20 +196,27 @@ export function App() {
       <div
         className={`app-shell${manager ? " space-manager-shell" : " workspace-shell"}${canvasEditor ? " note-canvas-shell" : ""}`}
       >
+        <header
+          className="topbar"
+          data-native-controls-inset={
+            isTauri() && /Mac/i.test(navigator.platform) ? true : undefined
+          }
+          {...windowDrag}
+        >
+          <div className="topbar-drag-space" aria-hidden="true" />
+          <div
+            className="topbar-actions"
+            onPointerDown={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
+          >
+            {!manager && <WorkspaceSwitcher />}
+            <DevelopmentNotifications />
+          </div>
+        </header>
         {!manager && !canvasEditor && workspace && (
           <Sidebar key={workspace.id} />
         )}
         <main className="main-area">
-          <header
-            className="topbar"
-            data-native-controls-inset={
-              isTauri() && /Mac/i.test(navigator.platform) ? true : undefined
-            }
-            {...windowDrag}
-          >
-            <DevelopmentNotifications />
-            {!manager && <WorkspaceSwitcher />}
-          </header>
           {spaceReady &&
           (manager ||
             (workspace &&

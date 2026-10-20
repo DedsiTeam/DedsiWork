@@ -5,7 +5,6 @@ import {} from "react-router";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import {
-  Folder,
   FolderOpen,
   Plus,
   MoreHorizontal,
@@ -323,9 +322,6 @@ export function WorkspacesPage() {
                 }}
               >
                 <span className="space-card-title">
-                  <span className="space-card-icon">
-                    <Folder size={21} strokeWidth={1.5} />
-                  </span>
                   <strong>{space.name}</strong>
                   {opening === space.id && (
                     <LoaderCircle size={13} className="ai-spin" />

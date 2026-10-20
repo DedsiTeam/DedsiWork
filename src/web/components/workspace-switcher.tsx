@@ -1,4 +1,4 @@
-import { Folder, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useWorkspace } from "../workspace-context";
 
 export function WorkspaceSwitcher() {
@@ -11,7 +11,6 @@ export function WorkspaceSwitcher() {
       onDoubleClick={(event) => event.stopPropagation()}
     >
       <span className="space-header-name" title={workspace.name}>
-        <Folder size={14} />
         <span>{workspace.name}</span>
       </span>
       <button

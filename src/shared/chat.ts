@@ -45,6 +45,7 @@ export type ChatItem = {
   type: string;
   text: string;
   status?: string;
+  phase?: string;
   images?: string[];
 };
 export type ChatRequest = {
@@ -53,6 +54,7 @@ export type ChatRequest = {
   params: Record<string, any>;
 };
 export type ChatSnapshot = {
+  tokenUsage?: { total: number; known: boolean };
   revision: number;
   chat: ChatSummary;
   items: ChatItem[];

@@ -44,6 +44,13 @@ export const developmentStatusLabels = {
 } as const;
 export type DevelopmentStatus = keyof typeof developmentStatusLabels;
 export type DevelopmentTask = {
+  team?: {
+    id: string;
+    key: string;
+    maxParallel: number;
+    instructions: string;
+    effort?: string;
+  };
   id: string;
   title: string;
   requirement: string;

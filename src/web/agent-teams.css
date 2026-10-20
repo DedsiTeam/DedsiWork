@@ -1,0 +1,118 @@
+.agent-team-page {
+  max-width: 1120px;
+  margin-inline: auto;
+  width: 100%;
+}
+.agent-team-page .team-section {
+  margin-bottom: 24px;
+  padding: 24px;
+  background: var(--card);
+  color: var(--card-foreground);
+  border-radius: var(--ui-radius-card);
+}
+.agent-team-page h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+.agent-team-page h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 24px 0 12px;
+}
+.team-muted {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.team-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.team-actions h2 {
+  margin: 0;
+  margin-right: auto;
+}
+.team-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+.team-role {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+.team-role > input {
+  margin-top: 4px;
+  accent-color: var(--primary);
+}
+.team-role > span {
+  display: grid;
+  gap: 6px;
+}
+.team-role small {
+  color: var(--muted-foreground);
+}
+.team-form {
+  display: grid;
+  gap: 16px;
+}
+.team-form > label,
+.team-settings > label,
+.team-actions > label {
+  display: grid;
+  gap: 8px;
+}
+.team-form > button {
+  justify-self: start;
+}
+.team-settings {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.team-history {
+  display: grid;
+  gap: 16px;
+}
+.team-history > a {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.team-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+  font-size: 13px;
+}
+.team-conversation article + article,
+.team-plan article + article {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.team-conversation article > strong,
+.team-plan article > strong {
+  display: block;
+  margin-bottom: 8px;
+}
+.agent-team-page details {
+  margin-block: 16px;
+}
+.agent-team-page summary {
+  cursor: pointer;
+  color: var(--foreground);
+}
+.agent-team-page pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.team-plan > .team-actions {
+  margin-top: 20px;
+}

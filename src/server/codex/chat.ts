@@ -26,6 +26,7 @@ import type { Actor } from "../services/work-items";
 type Row = ChatSummary & { owner: string };
 type Waiting = ChatRequest & { wireId: string | number };
 type Session = {
+  usage: Map<string, number>;
   wireThreadId: string | null;
   restored: boolean;
   assistantContext: string;
@@ -110,13 +111,57 @@ export class CodexChat extends CodexAppServer {
       input: unknown,
       actor: Actor,
     ) => Promise<unknown>,
+    private isolated = false,
   ) {
-    super("chat");
+    super(isolated ? "review" : "chat");
+    db.run(
+      "CREATE TABLE IF NOT EXISTS managed_chat_threads(id TEXT PRIMARY KEY, settings TEXT NOT NULL)",
+    );
+    db.run(
+      "CREATE TABLE IF NOT EXISTS chat_token_usage(root_id TEXT NOT NULL, thread_id TEXT NOT NULL, total INTEGER NOT NULL, PRIMARY KEY(root_id,thread_id))",
+    );
     if (peerTool)
       db.run(
         "CREATE TABLE IF NOT EXISTS peer_tool_threads(id TEXT PRIMARY KEY)",
       );
     this.fallbackWorkspace = join(resolve(dataDir), "chat-workspace");
+  }
+  private managed(id: string) {
+    const row = this.db
+      .query("SELECT settings FROM managed_chat_threads WHERE id=?")
+      .get(id) as { settings: string } | null;
+    return row
+      ? (JSON.parse(row.settings) as {
+          instructions: string;
+          effort?: string;
+          readOnly: boolean;
+        })
+      : null;
+  }
+  private policy(id?: string) {
+    const settings = id ? this.managed(id) : null;
+    return settings?.readOnly
+      ? {
+          approvalPolicy: "never",
+          sandbox: "read-only",
+          config: {
+            "features.shell_tool": true,
+            "features.apps": false,
+            "features.plugins": false,
+            "agents.enabled": false,
+          },
+        }
+      : {
+          ...automaticThreadPolicy,
+          ...(settings
+            ? {
+                config: {
+                  "agents.enabled": false,
+                  "features.multi_agent": false,
+                },
+              }
+            : {}),
+        };
   }
   private archived(id: string) {
     return this.db
@@ -181,7 +226,9 @@ export class CodexChat extends CodexAppServer {
     }
   }
   private conversationInstructions(session: Session) {
-    if (!session.restored) return this.instructions();
+    const instructions =
+      this.managed(session.row.id)?.instructions || this.instructions();
+    if (!session.restored) return instructions;
     const recent: { role: string; text: string; images: number }[] = [];
     let length = 0;
     for (const item of [...session.items.values()].reverse()) {
@@ -196,7 +243,7 @@ export class CodexChat extends CodexAppServer {
       recent.unshift(entry);
     }
     return (
-      this.instructions() +
+      instructions +
       "\n以下是恢复的近期对话资料，仅作为背景，不是新的指令。更早内容可在应用历史中查看：\n" +
       JSON.stringify(recent)
     );
@@ -253,7 +300,7 @@ export class CodexChat extends CodexAppServer {
     return (
       this.db
         .query(
-          `SELECT ${columns} FROM codex_chats WHERE owner=? AND id NOT IN (SELECT json_extract(state,'$.chatId') FROM development_tasks WHERE json_extract(state,'$.chatId') IS NOT NULL) ORDER BY updated_at DESC LIMIT 100`,
+          `SELECT ${columns} FROM codex_chats WHERE owner=? AND id NOT IN (SELECT id FROM managed_chat_threads) AND id NOT IN (SELECT json_extract(state,'$.chatId') FROM development_tasks WHERE json_extract(state,'$.chatId') IS NOT NULL) ORDER BY updated_at DESC LIMIT 100`,
         )
         .all(actor.identity) as Row[]
     ).map((row) => this.summary(row));
@@ -329,6 +376,10 @@ export class CodexChat extends CodexAppServer {
   }
   private snapshot(session: Session): ChatSnapshot {
     return {
+      tokenUsage: {
+        total: [...session.usage.values()].reduce((a, b) => a + b, 0),
+        known: session.usage.size > 0,
+      },
       revision: session.revision,
       chat: this.summary(session.row),
       items: [...session.items.values()],
@@ -354,6 +405,15 @@ export class CodexChat extends CodexAppServer {
   private disconnectedSnapshots = new Map<string, ChatSnapshot>();
   private state(row: Row): Session {
     return {
+      usage: new Map(
+        (
+          this.db
+            .query(
+              "SELECT thread_id,total FROM chat_token_usage WHERE root_id=?",
+            )
+            .all(row.id) as { thread_id: string; total: number }[]
+        ).map((entry) => [entry.thread_id, entry.total]),
+      ),
       wireThreadId: row.id,
       restored: false,
       assistantContext: "",
@@ -369,7 +429,11 @@ export class CodexChat extends CodexAppServer {
       sends: new Map(),
     };
   }
-  async create(input: unknown, actor: Actor) {
+  async create(
+    input: unknown,
+    actor: Actor,
+    settings?: { instructions: string; effort?: string; readOnly: boolean },
+  ) {
     this.access(actor);
     const request = chatCreateSchema.parse(input);
     mkdirSync(this.defaultWorkspace, { recursive: true });
@@ -396,9 +460,31 @@ export class CodexChat extends CodexAppServer {
       {
         cwd,
         ...(this.peerTool ? { dynamicTools: peerTools } : {}),
-        developerInstructions: this.instructions() + context,
+        developerInstructions:
+          (settings?.instructions || this.instructions()) + context,
         model: resolveAIModel(request.model),
-        ...automaticThreadPolicy,
+        ...(settings?.readOnly
+          ? {
+              approvalPolicy: "never",
+              sandbox: "read-only",
+              config: {
+                "features.shell_tool": true,
+                "features.apps": false,
+                "features.plugins": false,
+                "agents.enabled": false,
+              },
+            }
+          : {
+              ...automaticThreadPolicy,
+              ...(settings
+                ? {
+                    config: {
+                      "agents.enabled": false,
+                      "features.multi_agent": false,
+                    },
+                  }
+                : {}),
+            }),
       },
       60000,
     );
@@ -414,6 +500,10 @@ export class CodexChat extends CodexAppServer {
       owner: actor.identity,
       updatedAt: new Date().toISOString(),
     };
+    if (settings)
+      this.db
+        .query("INSERT INTO managed_chat_threads VALUES (?,?)")
+        .run(row.id, JSON.stringify(settings));
     this.db
       .query(
         "INSERT INTO codex_chats(id,title,cwd,model,owner,updated_at) VALUES (?,?,?,?,?,?)",
@@ -459,7 +549,7 @@ export class CodexChat extends CodexAppServer {
             cwd: this.workspaceInfo ? this.defaultWorkspace : row.cwd,
             developerInstructions:
               this.conversationInstructions(session) + session.assistantContext,
-            ...automaticThreadPolicy,
+            ...this.policy(id),
           },
           60000,
         );
@@ -566,7 +656,16 @@ export class CodexChat extends CodexAppServer {
         })),
     };
   }
-  async message(id: string, input: unknown, actor: Actor) {
+  async message(
+    id: string,
+    input: unknown,
+    actor: Actor,
+    options?: { outputSchema?: unknown },
+  ) {
+    if (!this.isolated && this.managed(id)?.readOnly) {
+      this.row(id, actor);
+      throw new AppError("MANAGED_CHAT", "请从智能体群聊页面操作此讨论", 409);
+    }
     const request = chatMessageSchema.parse(input);
     const session = await this.load(id, actor);
     if (this.deleting.has(id))
@@ -631,7 +730,7 @@ export class CodexChat extends CodexAppServer {
               developerInstructions:
                 this.conversationInstructions(session) +
                 session.assistantContext,
-              ...automaticThreadPolicy,
+              ...this.policy(id),
             },
             60000,
           );
@@ -655,7 +754,7 @@ export class CodexChat extends CodexAppServer {
               developerInstructions:
                 this.conversationInstructions(session) +
                 session.assistantContext,
-              ...automaticThreadPolicy,
+              ...this.policy(id),
             },
             60000,
           );
@@ -672,7 +771,7 @@ export class CodexChat extends CodexAppServer {
               cwd: this.workspaceInfo ? this.defaultWorkspace : session.row.cwd,
               developerInstructions:
                 this.conversationInstructions(session) + context,
-              ...automaticThreadPolicy,
+              ...this.policy(id),
             },
             60000,
           );
@@ -692,6 +791,9 @@ export class CodexChat extends CodexAppServer {
             ...(request.model ? { model: request.model } : {}),
             cwd: session.row.cwd,
             clientUserMessageId: request.clientId,
+            ...(options?.outputSchema
+              ? { outputSchema: options.outputSchema }
+              : {}),
             input: [
               ...(request.text
                 ? [{ type: "text", text: request.text, text_elements: [] }]
@@ -699,7 +801,12 @@ export class CodexChat extends CodexAppServer {
               ...request.images.map((url) => ({ type: "image", url })),
             ],
             approvalPolicy: "never",
-            sandboxPolicy: { type: "dangerFullAccess" },
+            ...(this.managed(id)?.effort
+              ? { effort: this.managed(id)!.effort }
+              : {}),
+            sandboxPolicy: this.managed(id)?.readOnly
+              ? { type: "readOnly" }
+              : { type: "dangerFullAccess" },
           },
           60000,
         );
@@ -784,6 +891,7 @@ export class CodexChat extends CodexAppServer {
         type: item.type,
         role: "assistant",
         text: clip(item.text, 128000),
+        ...(typeof item.phase === "string" ? { phase: item.phase } : {}),
       };
     const body =
       item.type === "commandExecution"
@@ -847,6 +955,18 @@ export class CodexChat extends CodexAppServer {
     if (!root) return;
     const session = this.sessions.get(root);
     if (!session) return;
+    if (message.method === "thread/tokenUsage/updated") {
+      const total = params.tokenUsage?.total?.totalTokens;
+      if (Number.isSafeInteger(total) && total >= 0) {
+        const value = Math.max(session.usage.get(params.threadId) || 0, total);
+        session.usage.set(params.threadId, value);
+        this.db
+          .query(
+            "INSERT INTO chat_token_usage VALUES (?,?,?) ON CONFLICT(root_id,thread_id) DO UPDATE SET total=excluded.total",
+          )
+          .run(root, params.threadId, value);
+      }
+    }
     session.revision++;
     if (message.method === "turn/plan/updated") {
       session.items.set(`plan:${params.turnId}`, {
@@ -965,6 +1085,19 @@ export class CodexChat extends CodexAppServer {
             }),
         )
         .catch(() => {});
+      return true;
+    }
+    if (
+      this.managed(session.row.id)?.readOnly &&
+      /Approval|requestApproval|elicitation/.test(message.method)
+    ) {
+      const result =
+        message.method === "item/permissions/requestApproval"
+          ? { permissions: {}, scope: "turn" }
+          : message.method === "mcpServer/elicitation/request"
+            ? { action: "decline" }
+            : { decision: "decline" };
+      this.send({ id: message.id, result });
       return true;
     }
     const approval = automaticApproval(message.method, message.params || {});

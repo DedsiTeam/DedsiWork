@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { useLocation, useNavigate, type NavigateOptions } from "react-router";
 
 const resourceKeys: Record<string, string[]> = {
-  "/assistant": ["flow", "thread", "items", "handoff"],
+  "/assistant": ["flow", "thread", "items", "handoff", "team"],
   "/development-tasks/new": ["remote", "items", "models"],
   "/work-items/sprints": ["sprint"],
   "/workspaces": ["edit"],

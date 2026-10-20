@@ -49,7 +49,7 @@ export const domainModelInstructions = `你是领域驱动设计建模助手。�
 /** One private stdio App Server, owned and terminated by the desktop service. */
 export class CodexAppServer<T = DomainModelInput> {
   constructor(
-    private mode: "model" | "chat" | "image" = "model",
+    private mode: "model" | "chat" | "image" | "review" = "model",
     private generation?: {
       schema: z.ZodType;
       requestSchema?: z.ZodType<{ prompt: string; model?: string }>;
@@ -153,7 +153,13 @@ export class CodexAppServer<T = DomainModelInput> {
               "hooks",
               "multi_agent",
               "skill_search",
-            ].flatMap((feature) => ["--disable", feature]),
+            ]
+              .filter(
+                (feature) =>
+                  this.mode !== "review" ||
+                  !["shell_tool", "unified_exec"].includes(feature),
+              )
+              .flatMap((feature) => ["--disable", feature]),
           ],
       {
         cwd: this.workspace,

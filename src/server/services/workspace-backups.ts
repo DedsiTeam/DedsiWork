@@ -50,6 +50,9 @@ const tables = [
   "personal_sources",
   "report_drafts",
   "workflow_runs",
+  "agent_teams",
+  "managed_chat_threads",
+  "chat_token_usage",
 ];
 const packageSchema = z
   .object({
@@ -251,10 +254,16 @@ export class WorkspaceBackups {
             n: number;
           }
         ).n;
-        if (![8, 9, 10, 11, 12, 13, 14, 15, 16].includes(version))
+        if (![8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(version))
           throw new Error();
         for (const table of tables) {
           if (
+            ([
+              "agent_teams",
+              "managed_chat_threads",
+              "chat_token_usage",
+            ].includes(table) &&
+              version < 17) ||
             ([
               "personal_focus",
               "personal_sources",
@@ -370,6 +379,9 @@ export class WorkspaceBackups {
                       "personal_sources",
                       "report_drafts",
                       "workflow_runs",
+                      "agent_teams",
+                      "managed_chat_threads",
+                      "chat_token_usage",
                     ].includes(table) ||
                       table === "ai_workflows" ||
                       table === "bookmarks" ||
@@ -402,6 +414,12 @@ export class WorkspaceBackups {
                   .run(actor.identity);
                 target.exec(`UPDATE workflow_runs SET state=json_remove(state,'$.scheduleId');
                   UPDATE workflow_runs SET state=json_set(state,'$.status','interrupted','$.error','备份恢复的运行仅供查阅，请确认后手动重跑') WHERE json_extract(state,'$.status') IN ('starting','running','waiting');`);
+                target
+                  .query("UPDATE agent_teams SET owner=?")
+                  .run(actor.identity);
+                target.exec(
+                  "UPDATE agent_teams SET state=json_set(state,'$.status','interrupted','$.restored',json('true'),'$.error','备份恢复的群聊仅供查阅，请在当前项目新建群聊')",
+                );
                 target
                   .query("UPDATE codex_chats SET owner=?,cwd=?")
                   .run(
@@ -507,6 +525,7 @@ export class WorkspaceBackups {
                         type: z.string(),
                         text: z.string(),
                         status: z.string().optional(),
+                        phase: z.string().optional(),
                         images: z.array(z.string()).optional(),
                       })
                       .strict(),

@@ -1,4 +1,5 @@
 import { TodayPage } from "./pages/today";
+import { AgentTeamsPage } from "./pages/agent-teams";
 import { LibraryPage } from "./pages/library";
 import { WorkflowsPage } from "./pages/workflows";
 import { BookmarksPage } from "./pages/bookmarks";
@@ -23,6 +24,16 @@ import {
   DevelopmentTaskCreatePage,
 } from "./pages/development-tasks";
 const routes = [
+  {
+    path: "assistant/teams",
+    Component: AgentTeamsPage,
+    handle: { title: "智能体群聊" },
+  },
+  {
+    path: "assistant/team/:team",
+    Component: AgentTeamsPage,
+    handle: { title: "智能体群聊" },
+  },
   {
     path: "assistant/flow/:flow",
     Component: AssistantPage,

@@ -276,5 +276,17 @@ export function openDatabase(path: string) {
       );
     })();
   }
+  if (
+    !db.query("SELECT version FROM schema_migrations WHERE version=17").get()
+  ) {
+    db.transaction(() => {
+      db.exec(`CREATE TABLE IF NOT EXISTS agent_teams(id TEXT PRIMARY KEY, owner TEXT NOT NULL, state TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS managed_chat_threads(id TEXT PRIMARY KEY, settings TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS chat_token_usage(root_id TEXT NOT NULL, thread_id TEXT NOT NULL, total INTEGER NOT NULL, PRIMARY KEY(root_id,thread_id));`);
+      db.query("INSERT INTO schema_migrations VALUES (17,?)").run(
+        new Date().toISOString(),
+      );
+    }).immediate();
+  }
   return db;
 }

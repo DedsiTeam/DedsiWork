@@ -33,6 +33,7 @@ import { CodexChat, openChatGPT, openChatLink } from "./codex/chat";
 import { dirname, join } from "node:path";
 import { AssistantService } from "./services/assistant";
 import { DevelopmentTasks } from "./services/development-tasks";
+import { AgentTeams } from "./services/agent-teams";
 
 export function createApp(options: {
   dbPath: string;
@@ -125,6 +126,14 @@ export function createApp(options: {
       remote,
     );
     const canvasUI = new CanvasUI();
+    const teams = new AgentTeams(
+      db,
+      dirname(path),
+      () => workspaces.get(id).directory,
+      service,
+      domainModels,
+      development,
+    );
     const canvasAssistant = new CanvasAssistant(db);
     const personal = new PersonalWork(db, service);
     const records = new ReportRecords(db);
@@ -152,8 +161,10 @@ export function createApp(options: {
       assistant,
       chat,
       development,
+      teams,
       mcp,
       async close() {
+        await teams.close();
         await execution.close();
         await Promise.allSettled([
           chat.close(),
@@ -468,7 +479,43 @@ export function createApp(options: {
         assistant,
         chat,
         development,
+        teams,
       } = scoped(req);
+      if (url.pathname === "/api/v1/agent-teams/agents" && req.method === "GET")
+        return reply({ data: await teams.discover(actor) });
+      if (url.pathname === "/api/v1/agent-teams") {
+        if (req.method === "GET")
+          return reply(teams.list(actor, url.searchParams.get("page") || 1));
+        if (req.method === "POST")
+          return reply(
+            { data: await teams.create(await json(req), actor) },
+            201,
+          );
+      }
+      const teamMatch =
+        /^\/api\/v1\/agent-teams\/([^/]+)(?:\/(messages|confirm|control))?$/.exec(
+          url.pathname,
+        );
+      if (teamMatch) {
+        const id = z.uuid().parse(teamMatch[1]);
+        if (req.method === "GET" && !teamMatch[2])
+          return reply({ data: teams.get(id, actor) });
+        if (req.method === "POST") {
+          if (teamMatch[2] === "messages")
+            return reply({
+              data: await teams.message(id, await json(req), actor),
+            });
+          if (teamMatch[2] === "confirm")
+            return reply({
+              data: await teams.confirm(id, await json(req), actor),
+            });
+          if (teamMatch[2] === "control")
+            return reply({
+              data: await teams.control(id, await json(req), actor),
+            });
+        }
+        throw new AppError("METHOD_NOT_ALLOWED", "不支持此方法", 405);
+      }
       if (url.pathname === "/api/v1/personal/overview" && req.method === "GET")
         return reply({ data: personal.overview(actor, development, chat) });
       if (url.pathname === "/api/v1/personal/search" && req.method === "GET")

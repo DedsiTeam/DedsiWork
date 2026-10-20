@@ -9,7 +9,7 @@ import type { SourceKind } from "../../shared/personal-work";
 import { EmptyState } from "../components/empty-state";
 import { AIWorkflowLibrary } from "../components/ai-workflows";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { businessActionLabels } from "../../shared/assistant-business";
 import { chatProposals, chatProposalContent } from "../../shared/chat-proposal";
 import type { AssistantFlow } from "../../shared/assistant";
@@ -660,6 +660,15 @@ export function ChatPage({ embedded = false }: { embedded?: boolean } = {}) {
       <div className="page-heading">
         <div className="chat-heading">
           {!embedded && <h1>DedsiWork Ai Agent</h1>}
+          {!embedded && (
+            <Button variant="outline" size="sm" asChild>
+              <Link
+                to={`${workspace ? `/workspace/${encodeURIComponent(workspace.id)}` : ""}/assistant/teams`}
+              >
+                智能体群聊
+              </Link>
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"

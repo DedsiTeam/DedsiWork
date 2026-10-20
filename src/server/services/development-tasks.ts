@@ -347,9 +347,13 @@ export class DevelopmentTasks {
     };
   }
   private remoteCreates = new Map<string, Promise<DevelopmentTask>>();
-  async create(input: unknown, actor: Actor): Promise<DevelopmentTask> {
+  async create(
+    input: unknown,
+    actor: Actor,
+    team?: DevelopmentTask["team"],
+  ): Promise<DevelopmentTask> {
     const request = developmentCreateSchema.parse(input);
-    if (!request.remoteSnapshotId) return this.createImpl(input, actor);
+    if (!request.remoteSnapshotId) return this.createImpl(input, actor, team);
     const key = actor.identity + ":" + request.remoteSnapshotId;
     if (this.remoteCreates.has(key)) return this.remoteCreates.get(key)!;
     const task = this.createImpl(input, actor).finally(() =>
@@ -358,7 +362,11 @@ export class DevelopmentTasks {
     this.remoteCreates.set(key, task);
     return task;
   }
-  private async createImpl(input: unknown, actor: Actor) {
+  private async createImpl(
+    input: unknown,
+    actor: Actor,
+    team?: DevelopmentTask["team"],
+  ) {
     this.access(actor);
     const request = developmentCreateSchema.parse(input);
     const remoteSource = request.remoteSnapshotId
@@ -413,6 +421,7 @@ export class DevelopmentTasks {
     const id = crypto.randomUUID(),
       now = new Date().toISOString();
     const task: DevelopmentTask = {
+      ...(team ? { team } : {}),
       id,
       title: request.title,
       requirement: request.requirement,
@@ -449,7 +458,7 @@ export class DevelopmentTasks {
       .query("INSERT INTO development_tasks VALUES (?,?,?,?)")
       .run(id, actor.identity, JSON.stringify(task), now);
     this.selections.delete(request.directoryToken);
-    return this.start(id, actor);
+    return team ? task : this.start(id, actor);
   }
   private async ensureWorktree(task: DevelopmentTask) {
     if (task.executionMode === "workspace") {
@@ -532,7 +541,7 @@ export class DevelopmentTasks {
   private prompt(task: DevelopmentTask, sourcePrompt: string) {
     return `研发任务：${task.title}\n研发要求：${task.requirement || "按照关联工作项完成实现"}\n起始分支：${task.baseBranch}\n基准提交：${task.baseCommit}\n研发分支：${task.branch}\n本地工作目录：${task.worktree}\n\n${sourcePrompt}\n\n请开始研发，遵循研发要求中的测试与验证安排。完成后等待人工验收，不自动提交或合并。`;
   }
-  private checkExecution(task: DevelopmentTask) {
+  private checkExecution(task: DevelopmentTask, allowTeam = false) {
     if (task.executionMode !== "workspace" && task.executionMode !== "worktree")
       throw new AppError(
         "LEGACY_TASK",
@@ -542,6 +551,42 @@ export class DevelopmentTasks {
     const active = this.db
       .query("SELECT state FROM development_tasks")
       .all() as { state: string }[];
+    if (task.team) {
+      if (!allowTeam)
+        throw new AppError("TEAM_TASK", "请从智能体群聊调度此研发任务", 409);
+      const row = this.db
+        .query("SELECT state FROM agent_teams WHERE id=?")
+        .get(task.team.id) as { state: string } | null;
+      const group = row ? JSON.parse(row.state) : null;
+      if (
+        !group ||
+        group.restored ||
+        !["running", "review"].includes(group.status) ||
+        group.usage >= group.tokenBudget
+      )
+        throw new AppError(
+          "TEAM_PAUSED",
+          "请先从群聊页面继续工作并检查预算",
+          409,
+        );
+      const others = active
+        .map((row) => JSON.parse(row.state) as DevelopmentTask)
+        .filter(
+          (other) => other.id !== task.id && activeStates.has(other.status),
+        );
+      if (
+        others.some((other) => other.team?.id !== task.team!.id) ||
+        others.length >= task.team.maxParallel
+      )
+        throw new AppError("WORKSPACE_BUSY", "等待研发并发空位", 409);
+      group.status = "running";
+      group.revision++;
+      group.updatedAt = new Date().toISOString();
+      this.db
+        .query("UPDATE agent_teams SET state=? WHERE id=?")
+        .run(JSON.stringify(group), group.id);
+      return;
+    }
     if (
       active.some((row) => {
         const other = JSON.parse(row.state) as DevelopmentTask;
@@ -555,6 +600,28 @@ export class DevelopmentTasks {
       );
   }
   async start(id: string, actor: Actor) {
+    return this.startTask(id, actor, false);
+  }
+  async startTeamTask(id: string, actor: Actor, baseCommit: string) {
+    const task = this.get(id, actor);
+    if (!task.team) throw new AppError("TEAM_TASK", "不是群聊研发任务", 409);
+    const others = (
+      this.db.query("SELECT state FROM development_tasks").all() as {
+        state: string;
+      }[]
+    )
+      .map((row) => JSON.parse(row.state) as DevelopmentTask)
+      .filter((other) => other.id !== id && activeStates.has(other.status));
+    if (
+      others.some((other) => other.team?.id !== task.team!.id) ||
+      others.length >= task.team.maxParallel
+    )
+      throw new AppError("WORKSPACE_BUSY", "等待研发并发空位", 409);
+    if (!task.worktree) task.baseCommit = baseCommit;
+    this.save(task);
+    return this.startTask(id, actor, true);
+  }
+  private async startTask(id: string, actor: Actor, team: boolean) {
     this.access(actor);
     const task = this.get(id, actor);
     if (
@@ -569,7 +636,7 @@ export class DevelopmentTasks {
         "恢复的任务仅供查阅，请在工作空间目录创建新的研发任务",
         409,
       );
-    this.checkExecution(task);
+    if (!team) this.checkExecution(task);
     this.locks.add(id);
     task.status = "preparing";
     task.error = null;
@@ -595,6 +662,17 @@ export class DevelopmentTasks {
         const snapshot = await this.chat.create(
           { cwd: task.worktree, ...(task.model ? { model: task.model } : {}) },
           actor,
+          task.team
+            ? {
+                instructions:
+                  instructions +
+                  "\n项目智能体角色配置：\n" +
+                  task.team.instructions +
+                  "\n仅执行本任务，不继续委派，不修改分配范围以外文件。",
+                effort: task.team.effort,
+                readOnly: false,
+              }
+            : undefined,
         );
         task.chatId = snapshot.chat.id;
         task.model = snapshot.chat.model || task.model;
@@ -690,8 +768,12 @@ export class DevelopmentTasks {
         "请先停止当前执行，或点击开始/继续研发",
         409,
       );
-    this.checkExecution(task);
+    this.checkExecution(task, true);
     this.locks.add(id);
+    if (task.team) {
+      task.status = "preparing";
+      this.save(task);
+    }
     try {
       await this.ensureWorktree(task);
       const sourcePrompt = await prepareDevelopmentSources(

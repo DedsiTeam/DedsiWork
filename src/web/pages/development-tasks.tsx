@@ -1,4 +1,4 @@
-import { useRouteInputs } from "../route-inputs";
+import { resourceRoute, useRouteInputs } from "../route-inputs";
 import { DEFAULT_AI_MODEL, aiModelOptions } from "../../shared/ai-model";
 import type { RemoteRequirement } from "../../shared/remote-mcp";
 import { RemoteRequirementView } from "../components/remote-requirement";
@@ -1068,7 +1068,7 @@ export function DevelopmentTaskPage() {
 
 function DevelopmentTaskDetail() {
   const { id } = useParams(),
-    { notify } = useWorkspace();
+    { notify, workspace } = useWorkspace();
   const [task, setTask] = useState<DevelopmentTask | null>(null),
     [error, setError] = useState(""),
     [connection, setConnection] = useState("正在连接实时进度…"),
@@ -1332,6 +1332,15 @@ function DevelopmentTaskDetail() {
           <h1>{task.title}</h1>
           <Status task={task} />
         </div>
+        {task.team && (
+          <Button variant="outline" asChild>
+            <Link
+              to={`${workspace ? `/workspace/${encodeURIComponent(workspace.id)}` : ""}${resourceRoute("/assistant", { team: task.team.id })}`}
+            >
+              返回智能体群聊
+            </Link>
+          </Button>
+        )}
       </div>
       {error && (
         <p role="alert" className="message error">
@@ -1404,7 +1413,7 @@ function DevelopmentTaskDetail() {
                 清理研发目录
               </Button>
             )}
-          {canStart && executable && (
+          {canStart && executable && !task.team && (
             <Button
               disabled={!!busy}
               onClick={() => void action("start")}
